@@ -1,9 +1,0 @@
-<?xml version="1.0"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" 
-  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg width="60" height="80" version="1.1"
- xmlns="http://www.w3.org/2000/svg">
-  <circle fill="#555555" cx="14" cy="40" r="5"/>
-  <circle fill="#555555" cx="30" cy="40" r="5"/>
-  <circle fill="#555555" cx="46" cy="40" r="5"/>
-</svg>

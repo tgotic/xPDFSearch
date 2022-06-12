@@ -1,21 +1,21 @@
-#include "PDFExtractor.h"
-#include <process.h>
+#include "PDFExtractor.hh"
 #include <CharTypes.h>
 #include <TextString.h>
-#include "xPDFInfo.h"
+#include "xPDFInfo.hh"
 #include <locale.h>
 #include <wchar.h>
 #include <strsafe.h>
+#include <charconv>
 
 /**
 * @file
 * PDF metadata and text extraction class.
 * 
-* PDF document is opened on a first call of #PDFExtractor::extract or #PDFExtractor::compare functions.
-* It stays open while following #PDFExtractor::extract or #PDFExtractor::compare functions calls 
+* PDF document is open on a first call to #PDFExtractor::extract or #PDFExtractor::compare functions.
+* It stays open while #PDFExtractor::extract or #PDFExtractor::compare functions calls 
 * have the same fileName value. Opening and processing PDF document can take significant
 * time, CPU and memory. It is better to keep PDFDoc object active while TC may do
-* multiple calls of extract or compare functions in short time.
+* multiple calls to extract or compare functions in short time.
 * When fileName changes, currently open file is closed,
 * and new one is open. This works fine until last file in the list/directory. 
 * TC doesn't inform plugin that file can be closed. It stays open and cannot be modified,
@@ -38,39 +38,40 @@
 * 
 * @endmsc
 *
-* Similar principle has been used in text extraction. Data offset that TC sends in unitIndex
+* Similar principle has been used in text extraction. Data offset that TC sends in unit
 * cannot be used to jump to a position in PDF. When a block of text is extracted from PDF,
 * extraction thread stops and informs TC thread about extracted data. TC compares data
-* with search string and informs plugin if document can be closed.
+* with search string and informs plugin if data extraction can be aborted and document closed.
 *
 * @msc
 * TC,WDX,PRODUCER,XPDF,OUTPUT_DEV;
-* TC=>WDX [label="ContentGetValueW(unitIndex=0)"];
+* TC=>WDX [label="ContentGetValueW(unit=0)"];
 * WDX=>PRODUCER [label="StartWorkerThread"];
 * PRODUCER=>PRODUCER [label="waitForProducer"];
 * WDX->PRODUCER [label="PRODUCER EVENT"];
 * WDX=>WDX [label="waitForConsumer"];
-* PRODUCER=>XPDF [label="doWork"];
+* PRODUCER=>XPDF [label="open"];
 * XPDF=>>OUTPUT_DEV [label="outputFunction"];
 * OUTPUT_DEV->WDX [label="CONSUMER EVENT"];
 * OUTPUT_DEV=>OUTPUT_DEV [label="wait for PRODUCER"];
-* WDX>>TC [label="fieldValue"];
+* WDX>>TC [label="ft_fulltextw"];
 * TC=>TC [label="compare"];
-* TC=>WDX [label="ContentGetValueW(unitIndex=1)"];
+* TC=>WDX [label="ContentGetValueW(unit>0)"];
 * WDX->OUTPUT_DEV [label="PRODUCER EVENT"];
-* OUTPUT_DEV>>XPDF [label="return 0"];
+* OUTPUT_DEV>>XPDF [label="continue"];
 * XPDF=>>OUTPUT_DEV [label="outputFunction"];
 * OUTPUT_DEV->WDX [label="CONSUMER EVENT"];
 * OUTPUT_DEV=>OUTPUT_DEV [label="wait for PRODUCER"];
-* WDX>>TC [label="fieldValue"];
+* WDX>>TC [label="ft_fulltextw"];
 * TC=>TC [label="string found"];
-* TC=>WDX [label="ContentGetValueW(unitIndex=-1)"];
+* TC=>WDX [label="ContentGetValueW(unit=-1)"];
 * WDX->OUTPUT_DEV [label="cancel, PRODUCER EVENT"];
 * WDX=>WDX [label="waitForConsumer"];
-* OUTPUT_DEV>>XPDF [label="return 1"];
-* XPDF>>PRODUCER [label="Request"];
-* PRODUCER->WDX [label="CONSUMER EVENT, close PDF"];
-* WDX>>TC [label="result"];
+* OUTPUT_DEV>>XPDF [label="abort"];
+* XPDF>>PRODUCER [label="doWork"];
+* PRODUCER=>PRODUCER [label="close"];
+* PRODUCER->WDX [label="CONSUMER EVENT"];
+* WDX>>TC [label="ft_fieldempty"];
 * ...;
 * PRODUCER=>PRODUCER [label="waitForProducer"]; 
 * @endmsc
@@ -80,21 +81,10 @@
 /**
 * The keys required to read the metadata fields. 
 */
-static const char* metaDataFields[] =
+static constexpr const char* metaDataFields[] =
 {
     "Title", "Subject", "Keywords", "Author", "Creator", "Producer"
 };
-
-/**
-* Constructor.
-* Alloc ThreadData object, Critical Section and locale.
-*/
-PDFExtractor::PDFExtractor()
-{
-    m_data = new ThreadData();
-    InitializeCriticalSection(&m_data->lock);
-    m_locale = _create_locale(LC_COLLATE, ".ACP");
-}
 
 /**
 * Destructor, free allocated resources.
@@ -103,72 +93,24 @@ PDFExtractor::PDFExtractor()
 PDFExtractor::~PDFExtractor()
 {
     TRACE(L"%hs\n", __FUNCTION__);
-
-    if (m_data)
-    {
-        if (m_data->handles[CONSUMER_HANDLE])
-        {
-            CloseHandle(m_data->handles[CONSUMER_HANDLE]);
-            m_data->handles[CONSUMER_HANDLE] = nullptr;
-        }
-        if (m_data->handles[PRODUCER_HANDLE])
-        {
-            CloseHandle(m_data->handles[PRODUCER_HANDLE]);
-            m_data->handles[PRODUCER_HANDLE] = nullptr;
-        }
-        if (m_data->request.allocated && m_data->request.fieldValue)
-        {
-            delete[] static_cast<char*>(m_data->request.fieldValue);
-            m_data->request.fieldValue = nullptr;
-            m_data->request.allocated = false;
-        }
-        TRACE(L"%hs!CS\n", __FUNCTION__);
-        DeleteCriticalSection(&m_data->lock);
-
-        TRACE(L"%hs!data\n", __FUNCTION__);
-        delete m_data;
-        m_data = nullptr;
-    }
-    if (m_search)
-    {
-        TRACE(L"%hs!search\n", __FUNCTION__);
-        delete m_search;
-        m_search = nullptr;
-    }
-
-    if (m_locale)
-    {
-        TRACE(L"%hs!locale\n", __FUNCTION__);
-        _free_locale(m_locale);
-        m_locale = nullptr;
-    }
 }
-
 /**
-* Close PdfDoc.
+* Close PDFDoc.
 * Set Request::status to closed.
 */
 void PDFExtractor::closeDoc()
 {
-    if (m_doc)
-    {
-        InterlockedExchange(&m_data->request.status, request_status::closed);
-        delete m_doc;
-        m_doc = nullptr;
-    }
+    m_data->setStatus(request_status::closed);
+    m_doc.reset();
 }
 
 /**
-* Close PdfDoc and free resources.
+* Close PDFDoc and free resources.
 */
 void PDFExtractor::close()
 {
-    if (m_fileName)
-    {
-        TRACE(L"%hs!%ls\n", __FUNCTION__, m_fileName);
-        free(m_fileName);
-        m_fileName = nullptr;
-    }
+    // TRACE(L"%hs!%ls\n", __FUNCTION__, m_fileName.c_str());
+    m_fileName.clear();
     closeDoc();
 }
 
@@ -181,48 +123,58 @@ void PDFExtractor::close()
 */
 bool PDFExtractor::open()
 {
-    auto newFile = false;
-    EnterCriticalSection(&m_data->lock);
+    auto newFile{ false };
+    std::wstring requestFileName;
     {
-        if (!m_data->request.fileName)
+        std::lock_guard lock(m_data->mutex);
+        const auto fileName{ m_data->getRequestFileName() };
+        if (fileName)
         {
-            close();
+            TRACE(L"%hs!%request file name=%ls\n", __FUNCTION__, fileName);
+            requestFileName.assign(fileName);
         }
         else
+            TRACE(L"%hs!nullptr\n", __FUNCTION__);
+    }
+    if (requestFileName.empty())
+    {
+        close();
+    }
+    else
+    {
+        if (m_fileName.empty())
         {
-            if (!m_fileName)
-            {
-                m_fileName = _wcsdup(m_data->request.fileName);
-                newFile = true;
-            }
-            else if (m_fileName && wcsicmp(m_fileName, m_data->request.fileName))
-            {
-                close();
-                m_fileName = _wcsdup(m_data->request.fileName);
-                newFile = true;
-            }
+            m_fileName = std::move(requestFileName);
+            newFile = true;
+        }
+        else if (wcsicmp(m_fileName.c_str(), requestFileName.c_str()))
+        {
+            close();
+            m_fileName = std::move(requestFileName);
+            newFile = true;
         }
     }
-    LeaveCriticalSection(&m_data->lock);
 
     if (newFile)
     {
         closeDoc();
-        if (m_fileName)
-            m_doc = new PDFDoc(m_fileName, lstrlenW(m_fileName));
+        if (!m_fileName.empty())
+        {
+            m_data->setStatus(request_status::active);
+            m_doc = std::make_unique<PDFDoc>(m_fileName.c_str(), m_fileName.size());
+            TRACE(L"%hs!%ls\n", __FUNCTION__, m_fileName.c_str());
+        }
 
         if (m_doc)
         {
-            if (m_doc->isOk())
-                InterlockedExchange(&m_data->request.status, request_status::active);
-            else
+            if (!m_doc->isOk())
             {
-                closeDoc();
-                EnterCriticalSection(&m_data->lock);
+                close();
                 {
-                    m_data->request.result = ft_fileerror;
+                    std::lock_guard lock(m_data->mutex);
+                    m_data->setRequestResult(ft_fileerror);
                 }
-                LeaveCriticalSection(&m_data->lock);
+
             }
         }
     }
@@ -233,17 +185,17 @@ bool PDFExtractor::open()
 * Converts string from PDF Unicode to wchar_t.
 * 
 * @param[out]       dst     converted string
-* @param[in,out]    cbDst   size of #dst in bytes
+* @param[in,out]    cbDst   size of dst in bytes
 * @param[in]        src     string to convert
 * @param[in]        cchSrc  number of unicode characters
-* @return number of characters in #dst, 0 if error
+* @return number of characters in dst, 0 if error
 */
 ptrdiff_t PDFExtractor::UnicodeToUTF16(wchar_t* dst, int *cbDst, const Unicode* src, int cchSrc)
 {
-    auto start = dst;
     if (src && dst && cbDst)
     {
-        for (int i = 0; (i < cchSrc) && (*cbDst > sizeOfWchar); i++)
+        const auto start{ dst };
+        for (auto i{ 0 }; (i < cchSrc) && (*cbDst > sizeOfWchar); i++)
         {
             *dst++ = *src++ & 0xFFFF;
             *cbDst -= sizeOfWchar;
@@ -255,19 +207,19 @@ ptrdiff_t PDFExtractor::UnicodeToUTF16(wchar_t* dst, int *cbDst, const Unicode* 
 }
 
 /**
-* Removes characters in #delims from input string.
+* Removes characters from input string.
 * 
 * @param[in,out]    str     string to be cleaned up
 * @param[in]        cchStr  count of characters in string
-* @param[in]        delims  characters to clean up from #str
-* @return number of characters in #str
+* @param[in]        delims  characters to clean up from str
+* @return number of characters in str
 */
 size_t PDFExtractor::removeDelimiters(wchar_t* str, size_t cchStr, const wchar_t* delims)
 {
-    size_t i = 0;
+    size_t i{ 0 };
     if (str && (cchStr > 0) && delims)
     {
-        size_t n = 0;
+        size_t n{ 0 };
         for (; n < cchStr; ++n)
         {
             if (wcschr(delims, str[n]))
@@ -290,9 +242,9 @@ size_t PDFExtractor::removeDelimiters(wchar_t* str, size_t cchStr, const wchar_t
 * @param[in]    nibble   nibble to convert
 * @return converted hex character
 */
-wchar_t PDFExtractor::nibble2wchar(int nibble)
+wchar_t PDFExtractor::nibble2wchar(char nibble)
 {
-    auto ret = L'x';
+    auto ret{ L'x' };
     if ((nibble >= 0) && (nibble <= 9))
         ret = nibble + L'0';
     else if ((nibble >= 0x0A) && (nibble <= 0x0F))
@@ -308,9 +260,9 @@ wchar_t PDFExtractor::nibble2wchar(int nibble)
 * @param[in]    cbDst   size of dst in bytes
 * @param[in]    value   value to convert to hex string
 */
-void PDFExtractor::appendHexValue(wchar_t* dst, int cbDst, int value)
+void PDFExtractor::appendHexValue(wchar_t* dst, size_t cbDst, int value)
 {
-    wchar_t tmp[2] = { 0 };
+    wchar_t tmp[2]{ 0 };
 
     tmp[0] = nibble2wchar((value >> 4) & 0x0F);
     StringCbCatW(dst, cbDst, tmp);
@@ -332,16 +284,15 @@ void PDFExtractor::getMetadataString(PDFDoc* doc, const char* key)
     if (doc->getDocInfo(&objDocInfo)->isDict())
     {
         Object obj;
-        auto dict = objDocInfo.getDict();
+        const auto dict{ objDocInfo.getDict() };
         if (dict->lookup(key, &obj)->isString())
         {
             TextString ts(obj.getString());
-            EnterCriticalSection(&m_data->lock);
-            {
-                if (UnicodeToUTF16(static_cast<wchar_t*>(m_data->request.fieldValue), &m_data->request.cbfieldValue, ts.getUnicode(), ts.getLength()))
-                    m_data->request.result = ft_stringw;
-            }
-            LeaveCriticalSection(&m_data->lock);
+            int len{ REQUEST_BUFFER_SIZE };
+
+            std::lock_guard lock(m_data->mutex);
+            if (UnicodeToUTF16(static_cast<wchar_t*>(m_data->getRequestBuffer()), &len, ts.getUnicode(), ts.getLength()))
+                m_data->setRequestResult(ft_stringw);
         }
         obj.free();
     }
@@ -357,23 +308,29 @@ void PDFExtractor::getMetadataString(PDFDoc* doc, const char* key)
 */
 BOOL PDFExtractor::hasSignature(PDFDoc* doc)
 {
-    auto catalog = doc->getCatalog();
+    BOOL ret{ FALSE };
+    const auto catalog{ doc->getCatalog() };
     if (catalog)
     {
-        auto acroForm = catalog->getAcroForm();
+        const auto acroForm{ catalog->getAcroForm() };
         if (acroForm->isDict())
         {
-            Object obj;
-            auto dict = acroForm->getDict();
-            if (dict->lookup("SigFlags", &obj)->isInt())
+            const auto dict{ acroForm->getDict() };
+            if (dict)
             {
-                // verify bit positions 1 and 2
-                return static_cast<BOOL>(obj.getInt() & 0x03);
+                Object obj;
+                if (dict->lookup("SigFlags", &obj)->isInt())
+                {
+                    // verify only bit position 1; 
+                    // bit position 2 informs that signature will be invalidated
+                    // if document is not saved as incremental
+                    ret = static_cast<BOOL>(obj.getInt() & 0x01);
+                }
+                obj.free();
             }
-            obj.free();
         }
     }
-    return FALSE;
+    return ret;
 }
 
 /**
@@ -385,35 +342,34 @@ BOOL PDFExtractor::hasSignature(PDFDoc* doc)
 */
 void PDFExtractor::getDocID(PDFDoc* doc)
 {
-    Object fileIDObj, fileIDObj1;
+    Object fileIDObj;
 
     doc->getXRef()->getTrailerDict()->dictLookup("ID", &fileIDObj);
     if (fileIDObj.isArray()) 
     {
-        EnterCriticalSection(&m_data->lock);
+        auto len{ REQUEST_BUFFER_SIZE };
+        std::lock_guard lock(m_data->mutex);
+        auto dst{ static_cast<wchar_t*>(m_data->getRequestBuffer()) };
+        *dst = 0;
+        // convert byte arrays to human readable strings
+        for (int i{ 0 }; i < fileIDObj.arrayGetLength(); i++)
         {
-            auto dst = static_cast<wchar_t*>(m_data->request.fieldValue);
-            *dst = 0;
-            // convert byte arrays to human readable strings
-            for (int i = 0; i < fileIDObj.arrayGetLength(); i++)
+            Object fileIDObj1;
+            if (fileIDObj.arrayGet(i, &fileIDObj1)->isString())
             {
-                if (fileIDObj.arrayGet(i, &fileIDObj1)->isString())
-                {
-                    GString* str = fileIDObj1.getString();
-                    if (i)
-                        StringCbCatW(dst, m_data->request.cbfieldValue, L"-");
+                const auto str{ fileIDObj1.getString() };
+                if (i)
+                    StringCbCatW(dst, len, L"-");
 
-                    for (int j = 0; j < str->getLength(); j++)
-                    {
-                        appendHexValue(dst, m_data->request.cbfieldValue, str->getChar(j));
-                    }
+                for (int j{ 0 }; j < str->getLength(); j++)
+                {
+                    appendHexValue(dst, len, str->getChar(j));
                 }
-                fileIDObj1.free();
             }
-            if (*dst)
-                m_data->request.result = ft_stringw;
+            fileIDObj1.free();
         }
-        LeaveCriticalSection(&m_data->lock);
+        if (*dst)
+            m_data->setRequestResult(ft_stringw);
     }
     fileIDObj.free();
 }
@@ -435,7 +391,7 @@ BOOL PDFExtractor::isIncremental(PDFDoc* doc)
 * "Tagged PDF (PDF 1.4) is a stylized use of PDF that builds on the logical structure framework described in 14.7, "Logical Structure""
 *
 * @param[in]    doc     pointer to PDFDoc object
-* @return   true if PDF is tagged
+* @return true if PDF is tagged
 */
 BOOL PDFExtractor::isTagged(PDFDoc* doc)
 {
@@ -450,25 +406,23 @@ BOOL PDFExtractor::isTagged(PDFDoc* doc)
 */
 void PDFExtractor::getMetadataAttrStr(PDFDoc* doc)
 {
-    EnterCriticalSection(&m_data->lock);
-    {
-        auto dst = static_cast<wchar_t*>(m_data->request.fieldValue);
-        *dst = 0;
+    auto len{ REQUEST_BUFFER_SIZE };
+    std::lock_guard lock(m_data->mutex);
+    auto dst{ static_cast<wchar_t*>(m_data->getRequestBuffer()) };
+    *dst = 0;
 
-        StringCbCatW(dst, m_data->request.cbfieldValue, doc->okToPrint()    ? L"P" : L"-");
-        StringCbCatW(dst, m_data->request.cbfieldValue, doc->okToCopy()     ? L"C" : L"-");
-        StringCbCatW(dst, m_data->request.cbfieldValue, doc->okToChange()   ? L"M" : L"-");
-        StringCbCatW(dst, m_data->request.cbfieldValue, doc->okToAddNotes() ? L"N" : L"-");
-        StringCbCatW(dst, m_data->request.cbfieldValue, isIncremental(doc)  ? L"I" : L"-");
-        StringCbCatW(dst, m_data->request.cbfieldValue, isTagged(doc)       ? L"T" : L"-");
-        StringCbCatW(dst, m_data->request.cbfieldValue, doc->isLinearized() ? L"L" : L"-");
-        StringCbCatW(dst, m_data->request.cbfieldValue, doc->isEncrypted()  ? L"E" : L"-");
-        StringCbCatW(dst, m_data->request.cbfieldValue, hasSignature(doc)   ? L"S" : L"-");
+    StringCbCatW(dst, len, doc->okToPrint()    ? L"P" : L"-");
+    StringCbCatW(dst, len, doc->okToCopy()     ? L"C" : L"-");
+    StringCbCatW(dst, len, doc->okToChange()   ? L"M" : L"-");
+    StringCbCatW(dst, len, doc->okToAddNotes() ? L"N" : L"-");
+    StringCbCatW(dst, len, isIncremental(doc)  ? L"I" : L"-");
+    StringCbCatW(dst, len, isTagged(doc)       ? L"T" : L"-");
+    StringCbCatW(dst, len, doc->isLinearized() ? L"L" : L"-");
+    StringCbCatW(dst, len, doc->isEncrypted()  ? L"E" : L"-");
+    StringCbCatW(dst, len, hasSignature(doc)   ? L"S" : L"-");
 
-        if (*dst)
-            m_data->request.result = ft_stringw;
-    }
-    LeaveCriticalSection(&m_data->lock);
+    if (*dst)
+        m_data->setRequestResult(ft_stringw);
 }
 
 /**
@@ -485,54 +439,75 @@ void PDFExtractor::getMetadataDate(PDFDoc* doc, const char* key)
     if (doc->getDocInfo(&objDocInfo)->isDict())
     {
         Object obj;
-        auto dict = objDocInfo.getDict();
+        const auto dict{ objDocInfo.getDict() };
         if (dict->lookup(key, &obj)->isString())
         {
-            const auto acrobatDateTimeString = obj.getString()->getCString();
-            if (acrobatDateTimeString && ((strlen(acrobatDateTimeString) == 16) || (strlen(acrobatDateTimeString) == 23)))
+            const auto acrobatDateTimeString{ obj.getString()->getCString() };
+            if (acrobatDateTimeString && (acrobatDateTimeString[0] == 'D') && (acrobatDateTimeString[1] == ':'))
             {
-                SYSTEMTIME sysTime = { 0 };
-                FILETIME fileTime = { 0 };
-                char dateTimeString[5] = { 0 };
-
-                // Year
-                StringCchCopyNA(dateTimeString, sizeof(dateTimeString), acrobatDateTimeString + 2, 4);
-                sysTime.wYear = atoi(dateTimeString);
-                // Month
-                StringCchCopyNA(dateTimeString, sizeof(dateTimeString), acrobatDateTimeString + 6, 2);
-                sysTime.wMonth = atoi(dateTimeString);
-                // Day
-                StringCchCopyNA(dateTimeString, sizeof(dateTimeString), acrobatDateTimeString + 8, 2);
-                sysTime.wDay = atoi(dateTimeString);
-                // Hours
-                StringCchCopyNA(dateTimeString, sizeof(dateTimeString), acrobatDateTimeString + 10, 2);
-                sysTime.wHour = atoi(dateTimeString);
-                // Minutes
-                StringCchCopyNA(dateTimeString, sizeof(dateTimeString), acrobatDateTimeString + 12, 2);
-                sysTime.wMinute = atoi(dateTimeString);
-                // Seconds
-                StringCchCopyNA(dateTimeString, sizeof(dateTimeString), acrobatDateTimeString + 14, 2);
-                sysTime.wSecond = atoi(dateTimeString);
-
-                if (SystemTimeToFileTime(&sysTime, &fileTime))
+                // D:20080918111951
+                // D:20080918111951Z
+                // D:20080918111951-07'00'
+                const auto len{ strlen(acrobatDateTimeString) };
+                SYSTEMTIME sysTime{ };
+                int hours{ 0 }, minutes{ 0 }, offset{ 0 };
+                if (len >= 6U)  // D:YYYY is minimum
                 {
-                    // Different timezone given.
-                    if (strlen(acrobatDateTimeString) == 23)
+                    // default values for hours and minutes, PDF 1.7
+                    sysTime.wHour = 1;
+                    sysTime.wMinute = 1;
+
+                    std::from_chars(acrobatDateTimeString + 2U, acrobatDateTimeString + 6U, sysTime.wYear);
+                    if (len >= 8U)
                     {
-                        StringCchCopyNA(dateTimeString, sizeof(dateTimeString), acrobatDateTimeString + 16, 3);
-                        LARGE_INTEGER timeValue;
-                        timeValue.HighPart = fileTime.dwHighDateTime;
-                        timeValue.LowPart = fileTime.dwLowDateTime;
-                        timeValue.QuadPart -= _atoi64(dateTimeString) * 36000000000ULL;
-                        fileTime.dwHighDateTime = timeValue.HighPart;
-                        fileTime.dwLowDateTime = timeValue.LowPart;
+                        std::from_chars(acrobatDateTimeString + 6U, acrobatDateTimeString + 8U, sysTime.wMonth);
+                        if (len >= 10U)
+                        {
+                            std::from_chars(acrobatDateTimeString + 8U, acrobatDateTimeString + 10U, sysTime.wDay);
+                            if (len >= 12U)
+                            {
+                                std::from_chars(acrobatDateTimeString + 10U, acrobatDateTimeString + 12U, sysTime.wHour);
+                                if (len >= 14U)
+                                {
+                                    std::from_chars(acrobatDateTimeString + 12U, acrobatDateTimeString + 14U, sysTime.wMinute);
+                                    if (len >= 16U)
+                                    {
+                                        std::from_chars(acrobatDateTimeString + 14U, acrobatDateTimeString + 16U, sysTime.wSecond);
+                                        if (len >= 19U)
+                                        {
+                                            std::from_chars(acrobatDateTimeString + 17U, acrobatDateTimeString + 19U, hours);
+                                            if (len >= 22U)
+                                            {
+                                                std::from_chars(acrobatDateTimeString + 20U, acrobatDateTimeString + 22U, minutes);
+                                            }
+                                            offset = hours * 3600 + minutes * 60;
+                                            if (acrobatDateTimeString[16] == '-')
+                                                offset = 0 - offset;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
-                    EnterCriticalSection(&m_data->lock);
+                    FILETIME fileTime{ };
+                    if (SystemTimeToFileTime(&sysTime, &fileTime))
                     {
-                        memcpy(m_data->request.fieldValue, &fileTime, sizeof(FILETIME));
-                        m_data->request.result = ft_datetime;
+                        if (offset)
+                        {
+                            LARGE_INTEGER timeValue;
+                            timeValue.HighPart = fileTime.dwHighDateTime;
+                            timeValue.LowPart = fileTime.dwLowDateTime;
+                            timeValue.QuadPart -= offset * 10000000ULL;
+    
+                            fileTime.dwHighDateTime = timeValue.HighPart;
+                            fileTime.dwLowDateTime = timeValue.LowPart;
+                        }
+                        {
+                            std::lock_guard lock(m_data->mutex);
+                            memcpy(m_data->getRequestBuffer(), &fileTime, sizeof(FILETIME));
+                            m_data->setRequestResult(ft_datetime);
+                        }
                     }
-                    LeaveCriticalSection(&m_data->lock);
                 }
             }
         }
@@ -542,49 +517,30 @@ void PDFExtractor::getMetadataDate(PDFDoc* doc, const char* key)
 }
 
 /** 
-* Converts a given point value to the unit given in unitIndex.
+* Converts a given point value to the unit given in unit.
 *
-* @param[in]    pageSizePointsValue   page size in points
+* @param[in]    units   units index
+* @return units conversion ratio, 0 for unknown units
 */
-void PDFExtractor::getPaperSize(double pageSizePointsValue)
+double PDFExtractor::getPaperSize(int units)
 {
-    switch (m_data->request.unitIndex)
+    switch (units)
     {
     case suMilliMeters:
-        pageSizePointsValue *= 0.3528;
+        return 0.3528;
         break;
     case suCentiMeters:
-        pageSizePointsValue *= 0.03528;
+        return 0.03528;
         break;
     case suInches:
-        pageSizePointsValue *= 0.0139;
+        return 0.0139;
         break;
     case suPoints:
+        return 1.0;
         break;
     default:
-        pageSizePointsValue = 0.0;
-        break;
+        return 0.0;
     }
-    getValue(pageSizePointsValue, ft_numeric_floating);
-}
-
-/**
-* Sets simple result values (BOOL, int and double) to output buffer.
-* Data exchange is guarded in critical section.
-*
-* @tparam       T       typedef of value
-* @param        value   value to be set to output buffer
-* @param[in]    type    type of result value
-*/
-template<typename T> 
-void PDFExtractor::getValue(T value, int type)
-{
-    EnterCriticalSection(&m_data->lock);
-    {
-        *(static_cast<T*>(m_data->request.fieldValue)) = value;
-        m_data->request.result = type;
-    }
-    LeaveCriticalSection(&m_data->lock);
 }
 
 /**
@@ -592,7 +548,8 @@ void PDFExtractor::getValue(T value, int type)
 */
 void PDFExtractor::doWork()
 {
-    switch (m_data->request.fieldIndex)
+    const auto field{ m_data->getRequestField() };
+    switch (field)
     {
     case fiTitle:
     case fiSubject:
@@ -600,73 +557,68 @@ void PDFExtractor::doWork()
     case fiAuthor:
     case fiCreator:
     case fiProducer:
-        getMetadataString(m_doc, metaDataFields[m_data->request.fieldIndex]);
+        getMetadataString(m_doc.get(), metaDataFields[field]);
         break;
     case fiDocStart:
     case fiFirstRow:
-        m_tc.output(m_doc, m_data);
+    case fiText:
+        m_tc.output(m_doc.get(), m_data.get());
         break;
     case fiNumberOfPages:
-        getValue(m_doc->getNumPages(), ft_numeric_32);
+        m_data->setValue(m_doc->getNumPages(), ft_numeric_32);
         break;
     case fiPDFVersion:
-        getValue(m_doc->getPDFVersion(), ft_numeric_floating);
+        m_data->setValue(m_doc->getPDFVersion(), ft_numeric_floating);
         break;
     case fiPageWidth:
-        getPaperSize(m_doc->getPageCropWidth(1));
+        m_data->setValue(m_doc->getPageCropWidth(1) * getPaperSize(m_data->getRequestUnit()), ft_numeric_floating);
         break;
     case fiPageHeight:
-        getPaperSize(m_doc->getPageCropHeight(1));
+        m_data->setValue(m_doc->getPageCropHeight(1) * getPaperSize(m_data->getRequestUnit()), ft_numeric_floating);
         break;
     case fiCopyingAllowed:
-        getValue<BOOL>(m_doc->okToCopy(), ft_boolean);
+        m_data->setValue<BOOL>(m_doc->okToCopy(), ft_boolean);
         break;
     case fiPrintingAllowed:
-        getValue<BOOL>(m_doc->okToPrint(), ft_boolean);
+        m_data->setValue<BOOL>(m_doc->okToPrint(), ft_boolean);
         break;
     case fiAddCommentsAllowed:
-        getValue<BOOL>(m_doc->okToAddNotes(), ft_boolean);
+        m_data->setValue<BOOL>(m_doc->okToAddNotes(), ft_boolean);
         break;
     case fiChangingAllowed:
-        getValue<BOOL>(m_doc->okToChange(), ft_boolean);
+        m_data->setValue<BOOL>(m_doc->okToChange(), ft_boolean);
         break;
     case fiEncrypted:
-        getValue<BOOL>(m_doc->isEncrypted(), ft_boolean);
+        m_data->setValue<BOOL>(m_doc->isEncrypted(), ft_boolean);
         break;
     case fiTagged:
-        getValue(isTagged(m_doc), ft_boolean);
+        m_data->setValue(isTagged(m_doc.get()), ft_boolean);
         break;
     case fiLinearized:
-        getValue<BOOL>(m_doc->isLinearized(), ft_boolean);
+        m_data->setValue<BOOL>(m_doc->isLinearized(), ft_boolean);
         break;
     case fiIncremental:
-        getValue(isIncremental(m_doc), ft_boolean);
+        m_data->setValue(isIncremental(m_doc.get()), ft_boolean);
         break;
     case fiSignature:
-        getValue(hasSignature(m_doc), ft_boolean);
+        m_data->setValue(hasSignature(m_doc.get()), ft_boolean);
         break;
     case fiCreationDate:
-        getMetadataDate(m_doc, "CreationDate");
+        getMetadataDate(m_doc.get(), "CreationDate");
         break;
     case fiLastModifiedDate:
-        getMetadataDate(m_doc, "ModDate");
+        getMetadataDate(m_doc.get(), "ModDate");
         break;
     case fiID:
-        getDocID(m_doc);
+        getDocID(m_doc.get());
         break;
     case fiAttributesString:
-        getMetadataAttrStr(m_doc);
-        break;
-    case fiText:
-        m_tc.output(m_doc, m_data);
+        getMetadataAttrStr(m_doc.get());
         break;
     default:
         break;
     }
-    // change status from active to complete
-    InterlockedCompareExchange(&m_data->request.status, request_status::complete, request_status::active);
-
-    TRACE(L"%hs!%d complete\n", __FUNCTION__, m_data->request.fieldIndex);
+    TRACE(L"%hs!%ls!%d complete!status=%ld\n", __FUNCTION__, m_fileName.c_str(), field, m_data->getStatus());
 }
 
 /**
@@ -677,28 +629,29 @@ void PDFExtractor::doWork()
 */
 void PDFExtractor::waitForProducer()
 {
-    long status;
-    DWORD dwRet;
-    InterlockedExchange(&m_data->active, TRUE);
-    while (InterlockedOr(&m_data->active, 0))
+    m_data->setActive(true);
+    while (m_data->isActive())
     {
-        // !!! produder idle point !!!
-        dwRet = WaitForSingleObject(m_data->handles[PRODUCER_HANDLE], PRODUCER_TIMEOUT);
+        // !!! producer idle point !!!
+        const auto dwRet{ m_data->waitForProducer(PRODUCER_TIMEOUT) };
         if (dwRet == WAIT_OBJECT_0)
         {
-            status = InterlockedOr(&m_data->request.status, 0);
-            if (status != request_status::canceled)
-            {
-                if (open())
-                    doWork();
-
-                // check status after extraction is complete
-                status = InterlockedOr(&m_data->request.status, 0);
-            }
-            // inform consumer that extraction is complete or cancelled
-            SetEvent(m_data->handles[CONSUMER_HANDLE]);
-            if (status == request_status::canceled)
+            auto status{ m_data->getStatus() };
+            if ((status != request_status::cancelled) && (status != request_status::complete) && open())
+                doWork();
+            // change status from active to complete
+            m_data->setStatusCond(request_status::complete, request_status::active);
+            // change status from cancelled to closed
+            status = m_data->setStatusCond(request_status::closed, request_status::cancelled);
+            if (status == request_status::cancelled)
                 close();
+
+            // inform consumer that extraction is complete or closed
+            TRACE(L"%hs!status=%ld!TC notified\n", __FUNCTION__, status);
+            // if consumer has already notified us, reset that event and wait for new one
+            m_data->resetProducer();
+            // notify consumer that producer is ready for new request
+            m_data->notifyConsumer();
         }
         else if (dwRet == WAIT_TIMEOUT)
         {
@@ -708,7 +661,7 @@ void PDFExtractor::waitForProducer()
         else
         {
             // set thread exit flag
-            InterlockedExchange(&m_data->active, FALSE);
+            m_data->setActive(false);
         }
     }
     // thread is about to exit, close PDFDoc
@@ -718,20 +671,21 @@ void PDFExtractor::waitForProducer()
 /**
 * Extraction thread entry function.
 * This is a static function, there is no access to non-static functions.
-* Ponter to PDFExtractor object (this) is passed in function parameter.
+* Pointer to PDFExtractor object (this) is passed in function parameter.
 * 
 * @param[in]    param   pointer to PDFExtractor object (this)
 * @return 0
 */
 unsigned int __stdcall threadFunc(void* param)
 {
-    if (param)
+    auto extractor{ static_cast<PDFExtractor*>(param) };
+    if (extractor)
     {
-        auto extractor = static_cast<PDFExtractor*>(param);
         extractor->waitForProducer();
     }
     TRACE(L"%hs!end thread\n", __FUNCTION__);
     _endthreadex(0);
+
     return 0;
 }
 
@@ -743,139 +697,74 @@ unsigned int __stdcall threadFunc(void* param)
 */
 unsigned int PDFExtractor::startWorkerThread()
 {
-    unsigned int threadID = 0;
-
-    if (!m_data->handles[CONSUMER_HANDLE])
-        m_data->handles[CONSUMER_HANDLE] = CreateEventW(nullptr, FALSE, FALSE, nullptr);
-
-    if (!m_data->handles[PRODUCER_HANDLE])
-        m_data->handles[PRODUCER_HANDLE] = CreateEventW(nullptr, FALSE, FALSE, nullptr);
-
-    if (m_data->handles[CONSUMER_HANDLE] && m_data->handles[PRODUCER_HANDLE])
-    {
-        // if thread is not started..
-        if (!m_data->handles[THREAD_HANDLE])
-        {
-            // start new thread
-            m_data->handles[THREAD_HANDLE] = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, threadFunc, this, 0, &threadID));
-            if (m_data->handles[THREAD_HANDLE])
-            {
-                // wait a little bit for thread to start...
-                auto dwRet = WaitForSingleObject(m_data->handles[THREAD_HANDLE], 10);
-                if (dwRet != WAIT_TIMEOUT)
-                    threadID = 0;
-            }
-        }
-        else
-        {
-            // get running thread ID
-            threadID = GetThreadId(m_data->handles[THREAD_HANDLE]);
-        }
-    }
-    return threadID;
+    return m_data->start(threadFunc, this);
 }
 
+// #pragma optimize( "", off )
 /**
 * Raise producer event to start extraction and wait for consumer event.
-* If consumer doesn't respond in #CONSUMER_TIMEOUT, function returns #ft_fieldempty.
+* If consumer doesn't respond in time, function returns #ft_timeout.
 * 
-* @return result of an extraction
+* @param[in]    timeout time to wait for Consumer signal in miliseconds
+* @return result of an extraction, #ft_timeout if consumer did not send signal, #ft_fileerror if error
 */
-int PDFExtractor::waitForConsumer()
+int PDFExtractor::waitForConsumer(DWORD timeout)
 {
-    int result = ft_fileerror;
-    if (InterlockedOr(&m_data->active, 0) && m_data->handles[PRODUCER_HANDLE] && m_data->handles[CONSUMER_HANDLE])
+    int result{ ft_fileerror };
+    const auto dwRet{ m_data->notifyProducerWaitForConsumer(timeout) };
+    switch (dwRet)
     {
-        auto dwRet = SignalObjectAndWait(m_data->handles[PRODUCER_HANDLE], m_data->handles[CONSUMER_HANDLE], CONSUMER_TIMEOUT, FALSE);
-        switch (dwRet)
-        {
-        case WAIT_OBJECT_0:
-            EnterCriticalSection(&m_data->lock);
-            {
-                result = m_data->request.result;
-            }
-            LeaveCriticalSection(&m_data->lock);
-            break;
-        case WAIT_TIMEOUT:
-            InterlockedCompareExchange(&m_data->request.status, request_status::canceled, request_status::active);
-            result = ft_fieldempty;
-            break;
-        default:
-            InterlockedCompareExchange(&m_data->request.status, request_status::canceled, request_status::active);
-            result = ft_fileerror;
-            break;
-        }
-
-        TRACE(L"%hs!consumer!dw=%lu result=%d\n", __FUNCTION__, dwRet, result);
+    case WAIT_OBJECT_0:
+        result = ft_setsuccess;
+        break;
+    case WAIT_TIMEOUT:
+        result = ft_timeout;
+        break;
+    default:
+        TRACE(L"%hs!%ls!ret=%lx err=%lu\n", __FUNCTION__, dwRet, GetLastError());
+        m_data->setStatusCond(request_status::cancelled, request_status::active);
+        break;
     }
+
     return result;
 }
-
+// #pragma optimize( "", on )
 /**
 * Assign data from TC to internal structure.
 * Data exchange is guarded in critical section.
 * If TC doesn't provide buffer for output data (compare), a new buffer is created.
 *
 * @param[in]    fileName        full path to PDF document
-* @param[in]    fieldIndex      index of the field
-* @param[in]    unitIndex       index of the unit, -1 for fiText field when searched string is found
-* @param[in]    fieldValue      buffer for retrieved data
-* @param[in]    cbfieldValue    sizeof buffer in bytes
+* @param[in]    field           index of the field
+* @param[in]    unit            index of the unit, -1 for fiText field when searched string is found
 * @param[in]    flags           TC flags
 * @param[in]    timeout         producer timeout (in text extraction)
 * @return       ft_fieldempty if data cannot be set, ft_setsuccess if successfuly set
 */
-int PDFExtractor::initData(const wchar_t* fileName, int fieldIndex, int unitIndex, void* fieldValue, int cbfieldValue, int flags, DWORD timeout)
+int PDFExtractor::initData(const wchar_t* fileName, int field, int unit, int flags, DWORD timeout)
 {
-    auto status = InterlockedOr(&m_data->request.status, 0);
+    int retval{ ft_fieldempty };
 
-    if (   (status == request_status::canceled)                                                 // extraction is cancelled, but PDFDoc isn't closed yet
-        || ((status == request_status::active)   && (unitIndex == 0))                           // previous extraction is still active
-        || ((status == request_status::closed)   && (unitIndex > 0) && (fieldIndex == fiText))  // extraction is closed but TC wants next text block
-        || ((status == request_status::complete) && (unitIndex > 0) && (fieldIndex == fiText))  // extraction is completed but TC wants next text block
-        )
+    // check if previous extraction is still active, try to stop it
+    if ((field == fiText) && (unit <= 0))
     {
-        return ft_fieldempty;
+        stop();
+        if (unit == -1)
+            return retval;
     }
+    else if (m_data->getStatus() == request_status::cancelled)       // extraction has been cancelled, but PDFDoc isn't closed yet, wait for it
+        m_data->waitForConsumer(CONSUMER_TIMEOUT);
 
-    EnterCriticalSection(&m_data->lock);
+    const auto status{ m_data->getStatus() };
+    if (!(  (status == request_status::cancelled)
+        || ((status == request_status::closed)   && (unit > 0) && (field == fiText))  // extraction is closed but TC wants next text block
+        || ((status == request_status::complete) && (unit > 0) && (field == fiText))  // extraction is completed but TC wants next text block
+       ))
     {
-        // TC didn't provide output buffer, probably compare function
-        if (!fieldValue)
-        {
-            // output buffer wasn't created yet
-            if (!m_data->request.allocated)
-            {
-                // create one
-                m_data->request.fieldValue = new char[DEFAULT_FIELD_CB];
-                m_data->request.allocated = true;
-            }
-            cbfieldValue = DEFAULT_FIELD_CB;
-        }
-        else
-        {
-            // TC provided output buffer, but we also created one
-            if (m_data->request.allocated)
-            {
-                // release alocated buffer
-                m_data->request.allocated = false;
-                delete[] static_cast<char*>(m_data->request.fieldValue);
-            }
-            // assign request buffer
-            m_data->request.fieldValue = fieldValue;
-        }
-        m_data->request.fileName = fileName;
-        m_data->request.fieldIndex = fieldIndex;
-        m_data->request.unitIndex = unitIndex;
-        m_data->request.ptr = m_data->request.fieldValue;   // set string end to begining of buffer
-        m_data->request.cbfieldValue = cbfieldValue;
-        m_data->request.flags = flags;
-        m_data->request.result = ft_fieldempty;
-        m_data->request.timeout = timeout;
+        retval = m_data->initRequest(fileName, field, unit, flags, timeout);
     }
-    LeaveCriticalSection(&m_data->lock);
-
-    return ft_setsuccess;
+    TRACE(L"%hs!%ls!status=%ld retval=%d\n", __FUNCTION__, fileName, status, retval);
+    return retval;
 }
 
 /**
@@ -884,40 +773,107 @@ int PDFExtractor::initData(const wchar_t* fileName, int fieldIndex, int unitInde
 * Producer timeout is set to low value, because producer is TC. It should respond in short time.
 *
 * @param[in]    fileName        full path to PDF document
-* @param[in]    fieldIndex      index of the field
-* @param[in]    unitIndex       index of the unit, -1 for fiText field when searched string is found
-* @param[out]   fieldValue      buffer for retrieved data
-* @param[in]    cbfieldValue    sizeof buffer in bytes
+* @param[in]    field           index of the field, where to search
+* @param[in]    unit            index of the unit, -1 for fiText field when searched string is found
+* @param[out]   dst             buffer for retrieved data
+* @param[in]    dstSize         sizeof dst buffer in bytes (NUL char for stringw and fulltextw included)
 * @param[in]    flags           TC flags
 * @return       result of an extraction
 */
-int PDFExtractor::extract(const wchar_t* fileName, int fieldIndex, int unitIndex, void* fieldValue, int cbfieldValue, int flags)
+int PDFExtractor::extract(const wchar_t* fileName, int field, int unit, void* dst, int dstSize, int flags)
 {
-    int result = initData(fileName, fieldIndex, unitIndex, fieldValue, cbfieldValue, flags, PRODUCER_TIMEOUT);
-    if (result != ft_setsuccess)
-        return result;
-
-    InterlockedCompareExchange(&m_data->request.status, request_status::active, request_status::complete);
-    if (fieldIndex == fiText)
+    auto result{ initData(fileName, field, unit, flags, PRODUCER_TIMEOUT) };
+    if (result != ft_fieldempty)
     {
-        if (unitIndex == -1)
+        if (field == fiText)
         {
-            stop();
-            result = ft_fieldempty;
-        }
-        else if (unitIndex == 0)
-        {
-            if (startWorkerThread())
-                result = waitForConsumer();
+            if (unit == 0)
+            {
+                m_data->setStatusCond(request_status::active, request_status::complete);
+                if (startWorkerThread())
+                    result = waitForConsumer(PRODUCER_TIMEOUT);
+            }
+            else if (result == ft_setsuccess)
+                result = waitForConsumer(PRODUCER_TIMEOUT);
+
+            if (dst)
+            {
+                // if producer thread is slow, send anything what is extracted
+                if ((result == ft_timeout) || (result == ft_setsuccess))
+                {
+                    result = ft_fulltextw;
+                    std::lock_guard lock(m_data->mutex);
+                    auto src{ m_data->getRequestBuffer() };
+                    if (src == m_data->getRequestPtr())
+                    {
+                        TRACE(L"%hs!dstSize=%d SPACE\n", __FUNCTION__, dstSize);
+                        StringCbCopyW(static_cast<wchar_t*>(dst), dstSize, L" ");
+                    }
+                    else
+                    {
+                        dstSize &= ~1; // round to 2
+                        const auto srcLen{ static_cast<char*>(m_data->getRequestPtr()) - static_cast<char*>(src) };
+                        const auto srcLeft{ srcLen - dstSize + sizeOfWchar};
+
+                        // wchar_t* dstEnd{ nullptr };
+                        // size_t dstLeft{ 0 };
+                        // StringCbCopyExW(static_cast<wchar_t*>(dst), dstSize, static_cast<const wchar_t*>(src), &dstEnd, &dstLeft, 0);
+                        StringCbCopyW(static_cast<wchar_t*>(dst), dstSize, static_cast<const wchar_t*>(src));
+
+                        // TRACE(L"%hs!srcLen=%lld srcLeft=%lld, dstSize=%d dstLeft=%llu\n", __FUNCTION__, srcLen, srcLeft, dstSize, dstLeft);
+                        TRACE(L"%hs!srcLen=%lld srcLeft=%lld, dstSize=%d\n", __FUNCTION__, srcLen, srcLeft, dstSize);
+                        if (srcLeft > 0)
+                        {
+                            memmove(src, static_cast<char*>(src) + dstSize - sizeOfWchar, srcLeft + sizeOfWchar);
+                            m_data->setRequestPtr(static_cast<char*>(src) + srcLeft);
+                        }
+                        else
+                        {
+                            m_data->setRequestPtr(src);
+                            *(static_cast<int64_t*>(src)) = 0;
+                        }
+                    }
+                }
+            }
+            else
+                result = ft_nosuchfield;
         }
         else
-            result = waitForConsumer();
+        {
+            m_data->setStatusCond(request_status::active, request_status::complete);
+            if (startWorkerThread())
+                result = waitForConsumer(CONSUMER_TIMEOUT);
+
+            // if producer thread is slow, send empty field
+            if (result == ft_timeout)
+                result = ft_fieldempty;
+            else if ((result == ft_setsuccess) && dst)
+            {
+                std::lock_guard lock(m_data->mutex);
+                auto src{ m_data->getRequestBuffer() };
+                result = m_data->getRequestResult();
+                switch (result)
+                {
+                case ft_numeric_32:
+                case ft_boolean:
+                    memcpy(dst, src, sizeof(int32_t));
+                    break;
+                case ft_numeric_floating:
+                case ft_datetime:
+                    memcpy(dst, src, sizeof(int64_t));
+                    break;
+                case ft_stringw:
+                case ft_fulltextw:
+                    dstSize &= ~1; // round to 2
+                    StringCbCopyW(static_cast<wchar_t*>(dst), dstSize, static_cast<const wchar_t*>(src));
+                    m_data->setRequestPtr(src);
+                    *(static_cast<int64_t*>(src)) = 0I64;
+                    break;
+                }
+            }
+        }
     }
-    else
-    {
-        if (startWorkerThread())
-            result = waitForConsumer();
-    }
+    TRACE(L"%hs!%ls!result=%d\n", __FUNCTION__, fileName, result);
     return result;
 }
 
@@ -927,28 +883,7 @@ int PDFExtractor::extract(const wchar_t* fileName, int fieldIndex, int unitIndex
 */
 void PDFExtractor::abort()
 {
-    // if thread is active, mark it as inactice
-    if (InterlockedCompareExchange(&m_data->active, FALSE, TRUE))
-    {
-        // if extraction is active, mark it as cancelled
-        InterlockedCompareExchange(&m_data->request.status, request_status::canceled, request_status::active);
-        EnterCriticalSection(&m_data->lock);
-        {
-            m_data->request.fileName = nullptr;
-        }
-        LeaveCriticalSection(&m_data->lock);
-        if (m_data->handles[PRODUCER_HANDLE] && m_data->handles[THREAD_HANDLE])
-        {
-            TRACE(L"%hs\n", __FUNCTION__);
-            // raise producer event to wake thread up, and wait until thread exits
-            SignalObjectAndWait(m_data->handles[PRODUCER_HANDLE], m_data->handles[THREAD_HANDLE], PRODUCER_TIMEOUT, FALSE);
-        }
-    }
-    if (m_data->handles[THREAD_HANDLE])
-    {
-        CloseHandle(m_data->handles[THREAD_HANDLE]);
-        m_data->handles[THREAD_HANDLE] = nullptr;
-    }
+    m_data->abort();
 
     if (m_search)
         m_search->abort();
@@ -956,44 +891,23 @@ void PDFExtractor::abort()
 
 /**
 * Notify text extracting threads that eh state of requests is changed.
-* Threads should return back to idle point in waitForProducer and close PdfDocs.
+* Threads should return back to idle point in #waitForProducer and close PdfDocs.
 */
 void PDFExtractor::stop()
 {
     // if extraction is active, mark it as cancelled
-    auto status = InterlockedCompareExchange(&m_data->request.status, request_status::canceled, request_status::active);
-    if (status == request_status::active)
-    {
-        EnterCriticalSection(&m_data->lock);
-        {
-            m_data->request.fileName = nullptr;
-        }
-        LeaveCriticalSection(&m_data->lock);
-        if (InterlockedOr(&m_data->active, 0) && m_data->handles[PRODUCER_HANDLE] && m_data->handles[CONSUMER_HANDLE])
-        {
-            TRACE(L"%hs\n", __FUNCTION__);
-            SignalObjectAndWait(m_data->handles[PRODUCER_HANDLE], m_data->handles[CONSUMER_HANDLE], CONSUMER_TIMEOUT, FALSE);
-        }
-    }
+    m_data->stop();
     if (m_search)
         m_search->stop();
 }
 
 /**
-* Notifiy text extracting threads that the state of requests is changed.
+* Notifiy text extracting threads that the state of requests has changed.
 * Threads should return back to idle point in #waitForProducer without closing PdfDocs.
 */
 void PDFExtractor::done()
 {
-    auto status = InterlockedCompareExchange(&m_data->request.status, request_status::complete, request_status::active);
-    if (status == request_status::active)
-    {
-        if (InterlockedOr(&m_data->active, 0) && m_data->handles[PRODUCER_HANDLE] && m_data->handles[CONSUMER_HANDLE])
-        {
-            TRACE(L"%hs\n", __FUNCTION__);
-            SignalObjectAndWait(m_data->handles[PRODUCER_HANDLE], m_data->handles[CONSUMER_HANDLE], CONSUMER_TIMEOUT, FALSE);
-        }
-    }
+    m_data->done();
     if (m_search)
         m_search->done();
 }
@@ -1001,142 +915,141 @@ void PDFExtractor::done()
 /**
 * Start data extraction and compare extracted data from two PDF documents.
 * If extracted data is binary identical, function returns #ft_compare_eq.
-* If data are not binary identical, delimiters are removed and text is compared case-insensitive.
-* If data are textualy identical, function returns ft_compare_eq_txt.
+* If data is not binary identical, delimiters are removed and text is compared case-insensitive.
+* If data is textualy identical, function returns ft_compare_eq_txt.
 * If both data fields are empty, function returns #ft_compare_eq.
 * 
 * @param[in]    progresscallback    pointer to callback function to inform the calling program about the compare progress
 * @param[in]    fileName1           first file name to be compared
 * @param[in]    fileName2           second file name to be compared
-* @param[in]    compareIndex        field data to compare
+* @param[in]    field               field data to compare
 * @return result of comparision
 */
-int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* fileName1, const wchar_t* fileName2, int compareIndex)
+int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* fileName1, const wchar_t* fileName2, int field)
 {
-    static const wchar_t delims[] = L" \r\n\b\f\t\v\x00a0\x202f\x2007\x2009\x2060";
-    auto bytesProcessed = 0;
-    auto eq_txt = false;
+    static const wchar_t delims[]{ L" \r\n\b\f\t\v\x00a0\x202f\x2007\x2009\x2060" };
+    auto bytesProcessed{ 0 };
+    auto eq_txt{ false };
 
     // set timeout to long wait, because it waits for another extraction thread
-    auto result = initData(fileName1, compareIndex, 0, nullptr, 0, 0, CONSUMER_TIMEOUT);
+    auto result{ initData(fileName1, field, 0, 0, CONSUMER_TIMEOUT) };
     if (result != ft_setsuccess)
         return ft_compare_next;
 
     if (!m_search)
-        m_search = new PDFExtractor();
+        m_search = std::make_unique<PDFExtractor>();
 
     // set timeout to long wait, because it waits for another extraction thread to complete
-    result = m_search->initData(fileName2, compareIndex, 0, nullptr, 0, 0, CONSUMER_TIMEOUT);
+    result = m_search->initData(fileName2, field, 0, 0, CONSUMER_TIMEOUT);
     if (result != ft_setsuccess)
         return ft_compare_next;
-
-    // change status from complete to active
-    InterlockedCompareExchange(&m_data->request.status, request_status::active, request_status::complete);
-    InterlockedCompareExchange(&m_search->m_data->request.status, request_status::active, request_status::complete);
 
     // start threads
     if (startWorkerThread() && m_search->startWorkerThread())
     {
+        // change status from complete to active
+        m_data->setStatusCond(request_status::active, request_status::complete);
+        m_search->m_data->setStatusCond(request_status::active, request_status::complete);
+
         // get start time
-        auto startCounter = GetTickCount64();
+#if _WIN32_WINNT >= _WIN32_WINNT_VISTA
+        auto startCounter{ GetTickCount64() };
+#else
+        auto startCounter{ GetTickCount() };
+#endif
         do
         {
             // wait for consumers to extract data
-            result = waitForConsumers();
+            result = m_data->compareWaitForConsumers(m_search->m_data.get(), CONSUMER_TIMEOUT);
             // time spent in extraction = now - start
-            auto now = GetTickCount64();
+#if _WIN32_WINNT >= _WIN32_WINNT_VISTA
+            const auto now{ GetTickCount64() };
+#else
+            const auto now{ GetTickCount() };
+#endif
             if (result > 0)
             {
                 // extraction completed successfuly, mark result as not equal
                 result = ft_compare_not_eq;
 
-                // protect data from both threads
-                EnterCriticalSection(&m_data->lock);
-                {
-                    EnterCriticalSection(&m_search->m_data->lock);
-                    {
-                        // cast from void* to wchar_t*
-                        auto start1 = static_cast<wchar_t*>(m_data->request.fieldValue);
-                        auto len1 =  lstrlenW(start1);
+                // protect data from both threads, std::scoped_lock needs C++17
+                std::scoped_lock lock(m_data->mutex, m_search->m_data->mutex);
 
-                        auto start2 = static_cast<wchar_t*>(m_search->m_data->request.fieldValue);
-                        auto len2 = lstrlenW(start2);
-                        // string len to compare
-                        auto min_len = len1 < len2 ? len1 : len2;
+                // cast from void* to wchar_t*
+                auto start1{ static_cast<wchar_t*>(m_data->getRequestBuffer()) };
+                size_t len1{ 0 };
+                StringCchLengthW(start1, REQUEST_BUFFER_SIZE / sizeof(wchar_t), &len1);
+
+                auto start2{ static_cast<wchar_t*>(m_search->m_data->getRequestBuffer()) };
+                size_t len2{ 0 };
+                StringCchLengthW(start2, REQUEST_BUFFER_SIZE / sizeof(wchar_t), &len2);
+
+                // string len to compare
+                const auto min_len{ len1 < len2 ? len1 : len2 };
                     
-                        if (min_len > 0)
+                if (min_len)
+                {
+                    // compare binary
+                    if (!wmemcmp(start1, start2, min_len))
+                    {
+                        TRACE(L"%hs!binary!%Iu wchars equal\n", __FUNCTION__, min_len);
+                        bytesProcessed += min_len;
+                        result = ft_compare_eq;
+                    }
+                    else
+                    {
+                        // remove delimiters, spaces
+                        const auto len1X{ removeDelimiters(start1, len1, delims) };
+                        const auto len2X{ removeDelimiters(start2, len2, delims) };
+                        // string len to compare
+                        const auto min_lenX{ len1X < len2X ? len1X : len2X };
+                        if (min_lenX)
                         {
-                            // compare binary
-                            if (!wmemcmp(start1, start2, min_len))
+                            // compare as text, case-insensitive, using locale specific information
+                            if (!_wcsnicoll_l(start1, start2, min_lenX, m_locale.get()))
                             {
-                                TRACE(L"%hs!binary!%Iu wchars equal\n", __FUNCTION__, min_len);
-                                bytesProcessed += min_len;
+                                TRACE(L"%hs!text!%Iu wchars equal\n", __FUNCTION__, min_lenX);
+                                bytesProcessed += min_lenX;
                                 result = ft_compare_eq;
+                                eq_txt = true;
                             }
                             else
                             {
-                                // remove delimiters, spaces
-                                auto len1X = removeDelimiters(start1, len1, delims);
-                                auto len2X = removeDelimiters(start2, len2, delims);
-                                // string len to compare
-                                auto min_lenX = len1X < len2X ? len1X : len2X;
-                                if (min_lenX > 0)
-                                {
-                                    // compare as text, case-insensitive, using locale specific information
-                                    if (!_wcsnicoll_l(start1, start2, min_lenX, m_locale))
-                                    {
-                                        TRACE(L"%hs!text!%Iu wchars equal\n", __FUNCTION__, min_lenX);
-                                        bytesProcessed += min_lenX;
-                                        result = ft_compare_eq;
-                                        eq_txt = true;
-                                    }
-                                    else
-                                    {
-                                        // text is not equal, abort
-                                        TRACE(L"%hs!not equal!'%ls' != '%ls'\n", __FUNCTION__, start1, start2);
-                                        LeaveCriticalSection(&m_data->lock);
-                                        LeaveCriticalSection(&m_search->m_data->lock);
-
-                                        break;
-                                    }
-                                }
-                                else if (len1X == len2X)
-                                {
-                                    TRACE(L"%hs!empty text\n", __FUNCTION__);
-                                    result = ft_compare_eq;
-                                    eq_txt = true;
-                                }
+                                // text is not equal, abort
+                                TRACE(L"%hs!not equal!'%ls' != '%ls'\n", __FUNCTION__, start1, start2);
+                                break;
                             }
                         }
-                        else if (len1 == len2)
+                        else if (len1X == len2X)
                         {
-                            TRACE(L"%hs!no data\n", __FUNCTION__);
+                            TRACE(L"%hs!empty text\n", __FUNCTION__);
                             result = ft_compare_eq;
+                            eq_txt = true;
                         }
-
-                        if ((result == ft_compare_eq) && (min_len > 0) && ((len1 > min_len) || (len2 > min_len)))
-                        {
-                            // discard compared data
-                            if (len1 >= min_len)
-                                wmemmove(start1, start1 + min_len, len1 - min_len);
-
-                            if (len2 >= min_len)
-                                wmemmove(start2, start2 + min_len, len2 - min_len);
-
-                            // part of a string was equal, compare rest
-                            result = ft_compare_not_eq;
-                        }
-
-                        // adjust string end pointer and remaining buffer size
-                        m_data->request.ptr = start1 + len1 - min_len;
-                        m_data->request.cbfieldValue += (min_len * sizeOfWchar);
-
-                        m_search->m_data->request.ptr = start2 + len2 - min_len;
-                        m_search->m_data->request.cbfieldValue += (min_len * sizeOfWchar);
                     }
-                    LeaveCriticalSection(&m_search->m_data->lock);
                 }
-                LeaveCriticalSection(&m_data->lock);
+                else if (len1 == len2)
+                {
+                    TRACE(L"%hs!no data\n", __FUNCTION__);
+                    result = ft_compare_eq;
+                }
+
+                if ((result == ft_compare_eq) && min_len && ((len1 > min_len) || (len2 > min_len)))
+                {
+                    // discard compared data
+                    if (len1 >= min_len)
+                        wmemmove(start1, start1 + min_len, len1 - min_len);
+
+                    if (len2 >= min_len)
+                        wmemmove(start2, start2 + min_len, len2 - min_len);
+
+                    // part of a string was equal, compare rest
+                    result = ft_compare_not_eq;
+                }
+
+                // adjust string end pointer and remaining buffer size
+                m_data->setRequestPtr(start1 + len1 - min_len);
+                m_search->m_data->setRequestPtr(start2 + len2 - min_len);
             }
             else
             {
@@ -1168,10 +1081,9 @@ int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* 
                 bytesProcessed = 0;
                 startCounter = now;
             }
-
         } 
-        while (   (request_status::active == InterlockedOr(&m_data->request.status, 0)) 
-               && (request_status::active == InterlockedOr(&m_search->m_data->request.status, 0))
+        while (   (request_status::active == m_data->getStatus())
+               && (request_status::active == m_search->m_data->getStatus())
               );
 
         // if data was once compared as text, it is not binary equal
@@ -1180,64 +1092,10 @@ int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* 
 
         // don't close PDFDocs, they may be used again
         done();
-        m_search->done();
     }
     else
     {
         TRACE(L"%hs!unable to start threads\n", __FUNCTION__);
-    }
-    return result;
-}
-
-/**
-* Trigger data extraction in open PDF documents.
-* Wait until both threads return data.
-*
-* @return result of extraction
-*/
-int PDFExtractor::waitForConsumers()
-{
-    auto result = ft_fileerror;
-    auto result1 = ft_fileerror;
-    auto result2 = ft_fileerror;
-
-    if (InterlockedOr(&m_data->active, 0) && InterlockedOr(&m_search->m_data->active, 0)
-        && m_data->handles[PRODUCER_HANDLE] && m_data->handles[CONSUMER_HANDLE]
-        && m_search->m_data->handles[PRODUCER_HANDLE] && m_search->m_data->handles[CONSUMER_HANDLE])
-    {
-        HANDLE consumers[] = { m_data->handles[CONSUMER_HANDLE] , m_search->m_data->handles[CONSUMER_HANDLE] };
-
-        SetEvent(m_data->handles[PRODUCER_HANDLE]);
-        SetEvent(m_search->m_data->handles[PRODUCER_HANDLE]);
-
-        // wait unitl both threads signal that they completed extraction
-        auto dwRet = WaitForMultipleObjects(ARRAYSIZE(consumers), consumers, TRUE, CONSUMER_TIMEOUT);
-        switch (dwRet)
-        {
-        case WAIT_OBJECT_0:
-            EnterCriticalSection(&m_data->lock);
-            {
-                result1 = m_data->request.result;
-            }
-            LeaveCriticalSection(&m_data->lock);
-            EnterCriticalSection(&m_search->m_data->lock);
-            {
-                result2 = m_search->m_data->request.result;
-            }
-            LeaveCriticalSection(&m_search->m_data->lock);
-
-            // compare results
-            result = (result1 == result2) ? result1 : ft_compare_not_eq;
-            break;
-        case WAIT_TIMEOUT:
-            result = ft_compare_abort;
-            break;
-        default:
-            result = ft_compare_abort;
-            break;
-        }
-
-        TRACE(L"%hs!consumers!dw=%lu result=%d\n", __FUNCTION__, dwRet, result);
     }
     return result;
 }

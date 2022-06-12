@@ -1,6 +1,6 @@
 #make
 DEFS = -DWIN32 -D_WIN32 -DCONSOLE -DNDEBUG -D_WIN32_WINNT=0x0601 -DWINVER=0x0601 -DNTDDI_VERSION=0x06010000 -D_WIN32_IE=0x0800 -DWIN32_LEAN_AND_MEAN -DMINGW_HAS_SECURE_API -DSTRSAFE_NO_DEPRECATE -D__MINGW_USE_VC2005_COMPAT 
-INCLUDES=-I./xpdf-4.01 -I./xpdf-4.01/fofi -I./xpdf-4.01/xpdf -I./xpdf-4.01/goo -I./xpdf-4.01/splash -I./xpdf-4.01 -I./common -I.
+INCLUDES=-I./xpdf-4.04 -I./xpdf-4.04/fofi -I./xpdf-4.04/xpdf -I./xpdf-4.04/goo -I./xpdf-4.04/splash -I./xpdf-4.04 -I./common -I.
 WARNINGS = -Wall -Wextra -Wno-format -Wno-missing-braces -Wno-unknown-pragmas -Wno-missing-field-initializers -Wno-unused-parameter -Wno-multichar
 CFLAGS = $(DEFS) $(INCLUDES) -O2 -static -fno-strict-aliasing $(WARNINGS) -mms-bitfields -fms-extensions -municode -std=c++11
 CXXFLAGS = $(CFLAGS) -fno-exceptions
@@ -11,7 +11,7 @@ EXEEXT = .wdx
 LINK = g++.exe -std=c++11 -mwindows -municode -mdll -static
 LDFLAGS = -Wl,--dynamicbase,--nxcompat,--kill-at,--major-os-version=6,--minor-os-version=1,--major-subsystem-version=6,--minor-subsystem-version=1 -flto=4 -fuse-linker-plugin -static-libgcc -static-libstdc++
 LIBS = 
-VPATH= ./xpdf-4.01/fofi:./xpdf-4.01/goo:./xpdf-4.01/xpdf
+VPATH= ./xpdf-4.04/fofi:./xpdf-4.04/goo:./xpdf-4.04/xpdf
 SRCCXX = FoFiBase.cc FoFiEncodings.cc FoFiIdentifier.cc FoFiTrueType.cc FoFiType1.cc FoFiType1C.cc \
         gfile.cc GHash.cc GList.cc gmem.cc GString.cc \
         AcroForm.cc Annot.cc Array.cc BuiltinFont.cc BuiltinFontTables.cc Catalog.cc CharCodeToUnicode.cc CMap.cc \

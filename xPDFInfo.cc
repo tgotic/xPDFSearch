@@ -1,25 +1,25 @@
-#include "xPDFInfo.h"
+#include "xPDFInfo.hh"
 #include <wchar.h>
-#include "PDFExtractor.h"
+#include "PDFExtractor.hh"
 #include <GlobalParams.h>
 #include <strsafe.h>
 
 /**
 * @file 
 * TotalCommander context plugin (wdx, wdx64) for PDF data extraction and comparision.
-* Based on xPDF v4.01 from Glyph & Cog, LLC.
+* Based on xPDF v4.04 from Glyph & Cog, LLC.
 */
 
 /** enableDateTimeField is used to indicate if date time fields are supported by currently used Total Commander version. */
-static auto enableDateTimeField = false;
+static auto enableDateTimeField{ false };
 /** enableCompareFields is used to indicate if compare fields are supported by currently used Total Commander version. */
-static auto enableCompareFields = false;
+static auto enableCompareFields{ false };
 
 /**
 * Names of fields returned to TC.
 * Names are grouped by field types.
 */
-static const char* fieldNames[FIELD_COUNT] =
+static constexpr const char* fieldNames[FIELD_COUNT]
 {
     "Title", "Subject", "Keywords", "Author", "Application", "PDF Producer", "Document Start", "First Row",
     "Number Of Pages",
@@ -31,7 +31,7 @@ static const char* fieldNames[FIELD_COUNT] =
 };
 
 /** Array used to simplify fieldType returning. */
-const int fieldTypes[FIELD_COUNT] =
+constexpr int fieldTypes[FIELD_COUNT]
 {
     ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw,
     ft_numeric_32,
@@ -42,7 +42,7 @@ const int fieldTypes[FIELD_COUNT] =
     ft_fulltext
 };
 /** Supported field flags, special value for attributes */
-const int fieldFlags[FIELD_COUNT] =
+constexpr int fieldFlags[FIELD_COUNT]
 {
     0, 0, 0, 0, 0, 0, 0, 0, 
     0,
@@ -59,7 +59,7 @@ __declspec(thread)
 #else
 thread_local
 #endif
-static PDFExtractor* g_extractor = nullptr;
+static PDFExtractor* g_extractor{ nullptr };
 
 #ifdef _DEBUG
 /** Writes debug trace.
@@ -72,8 +72,8 @@ static PDFExtractor* g_extractor = nullptr;
 bool __cdecl _trace(const wchar_t *format, ...)
 {
     wchar_t buffer[1024];
-    wchar_t* end = nullptr;
-    size_t remaining = 0;
+    wchar_t* end{ nullptr };
+    size_t remaining{ 0 };
     SYSTEMTIME now;
 
     GetLocalTime(&now);
@@ -147,60 +147,60 @@ BOOL WINAPI DllMain(HINSTANCE hDLL, DWORD reason, LPVOID)
 }
 /**
 * Returns PDF detection string.
-* @param[out]    DetectString    detection buffer
+* @param[out]    detectString    detection buffer
 * @param[in]     maxlen          detection buffer size in chars
 * @return 0     unused
 */
-int __stdcall ContentGetDetectString(char* DetectString, int maxlen)
+int __stdcall ContentGetDetectString(char* detectString, int maxlen)
 {
     // PDF files are all we can handle.
-    StringCchCopyA(DetectString, maxlen, "EXT=\"PDF\"");
+    StringCchCopyA(detectString, maxlen, "EXT=\"PDF\"");
     return 0;
 }
 
 /**
 * See "Content Plugin Interface" document
-* xpdfsearch supports indexes in ranges 0 to 25 and 10000 to 10025.
-* Range above 10000 is reserved for directory synchronization functions
-* @param[in]    FieldIndex     index
-* @param[out]   FieldName      name of requested FieldIndex
-* @param[in]    Units          "mm|cm|in|pt" for FieldIndex=fiPageWidth and fiPageHeight
+* xpdfsearch supports indexes in ranges 0-25 and 10000-10025.
+* Range above 10000 is reserved for directory synchronization functions.
+* @param[in]    fieldIndex     index
+* @param[out]   fieldName      name of requested FieldIndex
+* @param[in]    units          "mm|cm|in|pt" for FieldIndex=fiPageWidth and fiPageHeight
 * @param[in]    maxlen         size of Units and FieldName in chars
 * @return type of requested field
 */
-int __stdcall ContentGetSupportedField(int FieldIndex, char* FieldName, char* Units, int maxlen)
+int __stdcall ContentGetSupportedField(int fieldIndex, char* fieldName, char* units, int maxlen)
 {
-    TRACE(L"%hs!index=%d\n", __FUNCTION__, FieldIndex);
+    TRACE(L"%hs!index=%d\n", __FUNCTION__, fieldIndex);
 
     // clear units
-    Units[0] = 0;
+    units[0] = 0;
 
     // set field names for compare indexes
-    if ((FieldIndex >= ft_comparebaseindex) && (FieldIndex < ft_comparebaseindex + FIELD_COUNT))
+    if ((fieldIndex >= ft_comparebaseindex) && (fieldIndex < ft_comparebaseindex + FIELD_COUNT))
     {
         if (enableCompareFields)
         {
-            StringCchPrintfA(FieldName, maxlen, "Compare %s", fieldNames[FieldIndex - ft_comparebaseindex]);
+            StringCchPrintfA(fieldName, maxlen, "Compare %s", fieldNames[fieldIndex - ft_comparebaseindex]);
             return ft_comparecontent;
         }
         return ft_nomorefields;
     }
 
     // Exclude date time fields in older TC versions.
-    if ((FieldIndex < 0) || (FieldIndex >= FIELD_COUNT) ||
-        (!enableDateTimeField && ((FieldIndex == fiCreationDate) || (FieldIndex == fiLastModifiedDate))))
+    if ((fieldIndex < 0) || (fieldIndex >= FIELD_COUNT) ||
+        (!enableDateTimeField && ((fieldIndex == fiCreationDate) || (fieldIndex == fiLastModifiedDate))))
     {
         return ft_nomorefields;
     }
 
     // set field names
-    StringCchCopyA(FieldName, maxlen, fieldNames[FieldIndex]);
+    StringCchCopyA(fieldName, maxlen, fieldNames[fieldIndex]);
 
     //set units names
-    if ((FieldIndex == fiPageWidth) || (FieldIndex == fiPageHeight))
-        StringCchCopyA(Units, maxlen, "mm|cm|in|pt");
+    if ((fieldIndex == fiPageWidth) || (fieldIndex == fiPageHeight))
+        StringCchCopyA(units, maxlen, "mm|cm|in|pt");
 
-    return fieldTypes[FieldIndex];
+    return fieldTypes[fieldIndex];
 }
 /**
 * Plugin state change.
@@ -278,8 +278,8 @@ void __stdcall ContentSetDefaultParams(ContentDefaultParamStruct* dps)
 {
     TRACE(L"%hs\n", __FUNCTION__);
     // Check content plugin interface version to enable fields of type datetime.
-    enableDateTimeField = ((dps->PluginInterfaceVersionHi == 1) && (dps->PluginInterfaceVersionLow >= 2)) || (dps->PluginInterfaceVersionHi > 1);
-    enableCompareFields = ((dps->PluginInterfaceVersionHi == 2) && (dps->PluginInterfaceVersionLow >= 10)) || (dps->PluginInterfaceVersionHi > 2);
+    enableDateTimeField = ((dps->pluginInterfaceVersionHi == 1) && (dps->pluginInterfaceVersionLow >= 2)) || (dps->pluginInterfaceVersionHi > 1);
+    enableCompareFields = ((dps->pluginInterfaceVersionHi == 2) && (dps->pluginInterfaceVersionLow >= 10)) || (dps->pluginInterfaceVersionHi > 2);
 }
 
 /**
@@ -311,16 +311,16 @@ void __stdcall ContentStopGetValueW(const wchar_t* fileName)
 * See "Content Plugin Interface" document.
 * Only "PDF Attributes" fields has non-default flag.
 * 
-* @param[in]    FieldIndex  index of the field for which flags should be returned
+* @param[in]    fieldIndex  index of the field for which flags should be returned
 * @return flags for selected field
 */
-int __stdcall ContentGetSupportedFieldFlags(int FieldIndex)
+int __stdcall ContentGetSupportedFieldFlags(int fieldIndex)
 {
-    if (FieldIndex == -1)
+    if (fieldIndex == -1)
         return contflags_substmask;
 
-    if ((FieldIndex >= fiTitle) && (FieldIndex <= fiText))
-        return fieldFlags[FieldIndex];
+    if ((fieldIndex >= fiTitle) && (fieldIndex <= fiText))
+        return fieldFlags[fieldIndex];
 
     return 0;
 }
@@ -329,23 +329,23 @@ int __stdcall ContentGetSupportedFieldFlags(int FieldIndex)
 * xPDFsearch provides option to compare content of all exposed fields.
 * Content of field for each file is extracted in it's own thread.
 * 
-* @param[in] progresscallback   callback function to inform the calling program about the compare progress
-* @param[in] compareindex       field to compare, staring with 10000
-* @param[in] filename1          first name to be compared
-* @param[in] filename2          second name to be compated
-* @param[in] filedetails        not used
-* @return result of comparision. For values see "Content Plugin Interface" document.
+* @param[in] progressCallback   callback function to inform the calling program about the compare progress
+* @param[in] compareIndex       field to compare, staring with 10000
+* @param[in] fileName1          name of first file to be compared
+* @param[in] fileName2          name of second file to be compated
+* @param[in] fileDetails        not used
+* @return result of comparison. For values see "Content Plugin Interface" document.
 */
-int __stdcall ContentCompareFilesW(PROGRESSCALLBACKPROC progresscallback, int compareindex, WCHAR* filename1, WCHAR* filename2, FileDetailsStruct* filedetails)
+int __stdcall ContentCompareFilesW(PROGRESSCALLBACKPROC progressCallback, int compareIndex, WCHAR* fileName1, wchar_t* fileName2, FileDetailsStruct* fileDetails)
 {
-    if ((compareindex < ft_comparebaseindex) || (compareindex >= ft_comparebaseindex + FIELD_COUNT))
+    if ((compareIndex < ft_comparebaseindex) || (compareIndex >= ft_comparebaseindex + FIELD_COUNT))
         return ft_compare_next;
 
     if (!g_extractor)
         g_extractor = new PDFExtractor();
 
     if (g_extractor)
-        return g_extractor->compare(progresscallback, filename1, filename2, compareindex - ft_comparebaseindex);
+        return g_extractor->compare(progressCallback, fileName1, fileName2, compareIndex - ft_comparebaseindex);
 
     return ft_compare_next;
 }
