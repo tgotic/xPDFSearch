@@ -135,7 +135,9 @@ bool PDFExtractor::open()
             requestFileName.assign(fileName);
         }
         else
+        {
             TRACE(L"%hs!nullptr\n", __FUNCTION__);
+        }
     }
     if (requestFileName.empty())
     {
@@ -867,7 +869,7 @@ int PDFExtractor::extract(const wchar_t* fileName, int field, int unit, void* ds
                     dstSize &= ~1; // round to 2
                     StringCbCopyW(static_cast<wchar_t*>(dst), dstSize, static_cast<const wchar_t*>(src));
                     m_data->setRequestPtr(src);
-                    *(static_cast<int64_t*>(src)) = 0I64;
+                    *(static_cast<int64_t*>(src)) = 0LL;
                     break;
                 }
             }

@@ -17,13 +17,13 @@
 * @param[in,out]    cbDst   size of dst in bytes!!!
 * @return number of wchars copied to dst
 */
-static ptrdiff_t convertToUTF16(const char* src, ptrdiff_t cchSrc, wchar_t* dst, ptrdiff_t *cbDst)
+static ptrdiff_t convertToUTF16(const char* src, const ptrdiff_t cchSrc, wchar_t* dst, ptrdiff_t *cbDst)
 {
     const auto start{ dst };
-    for (size_t i{ 0 }; (i < cchSrc) && (*cbDst > sizeOfWchar); i += sizeOfWchar)
+    for (ptrdiff_t i{ 0 }; (i < cchSrc) && (*cbDst > sizeOfWchar); i += sizeOfWchar)
     {
         // swap bytes
-        *dst = (*(src + i + 1U) & 0xFF) | ((*(src + i) << 8U) & 0xFF00);
+        *dst = (*(src + i + 1) & 0xFF) | ((*(src + i) << 8U) & 0xFF00);
         // filter NUL, \b and \f
         if (*dst && (*dst != L'\b') && (*dst != L'\f'))
         {

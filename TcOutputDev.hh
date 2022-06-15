@@ -6,6 +6,7 @@
 
 #pragma once
 #include "ThreadData.hh"
+#include <memory>
 
 /**
 * Class for text extraction from PDF to TC.

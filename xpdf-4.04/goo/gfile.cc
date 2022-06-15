@@ -12,11 +12,13 @@
 
 #ifdef _WIN32
 #  undef WIN32_LEAN_AND_MEAN
+#if defined(__MINGW32__) || defined (__MINGW64__)
+#  include <initguid.h>
+#endif
 #  include <windows.h>
 #  include <time.h>
 #  include <direct.h>
 #  include <shobjidl.h>
-#  include <shlguid.h>
 #else
 #  if !defined(ACORN)
 #    include <sys/types.h>
@@ -45,7 +47,7 @@
 #endif
 
 #ifdef _WIN32
-inline bool
+bool
 IsWindowsPlatformIdOrGreater(DWORD dwPlatformId)
 {
     OSVERSIONINFOEXW osvi = { sizeof(osvi), 0, 0, 0, 0, {0}, 0, 0, 0, 0, 0 };
