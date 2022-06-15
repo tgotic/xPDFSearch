@@ -189,7 +189,9 @@
     <ClCompile Include="xpdf-4.04\xpdf\XFAScanner.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="ThreadData.cc" />
+    <ClCompile Include="ThreadData.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="aconf.h">
@@ -198,10 +200,18 @@
     <ClInclude Include=".\common\contentplug.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PDFExtractor.hh" />
-    <ClInclude Include="TcOutputDev.hh" />
-    <ClInclude Include="ThreadData.hh" />
-    <ClInclude Include="xPDFInfo.hh" />
+    <ClInclude Include="PDFExtractor.hh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TcOutputDev.hh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadData.hh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="xPDFInfo.hh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="xPDFSearch.rc">
