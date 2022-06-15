@@ -300,10 +300,11 @@ ThreadData::~ThreadData()
 * @param[in]    field           index of the field
 * @param[in]    unit            index of the unit
 * @param[in]    flags           TC flags
+* @param[in]    options         options from ini file
 * @param[in]    timeout         producer timeout (in text extraction)
 * @return       ft_setsuccess if there is no available data to read, ft_timeout if consumer should get data
 */
-int ThreadData::initRequest(const wchar_t* fileName, int field, int unit, int flags, DWORD timeout)
+int ThreadData::initRequest(const wchar_t* fileName, int field, int unit, int flags, int options, DWORD timeout)
 {
     int result{ ft_setsuccess };
     std::lock_guard lock(mutex);
@@ -311,6 +312,7 @@ int ThreadData::initRequest(const wchar_t* fileName, int field, int unit, int fl
     request.field = field;
     request.unit = unit;
     request.flags = flags;
+    request.options = options;
     request.timeout = timeout;
     // for continuous full text search, don't move ptr to the beginning, it may point to extracted data
     if (!((field == fiText) && (unit > 0)))

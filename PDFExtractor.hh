@@ -39,8 +39,8 @@ public:
     PDFExtractor(const PDFExtractor&) = delete;
     PDFExtractor& operator=(const PDFExtractor&) = delete;
     ~PDFExtractor();
-    int extract(const wchar_t* fileName, int field, int unit, void* dst, int dstSize, int flags);
-    int compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* fileName1, const wchar_t* fileName2, int field);
+    int extract(const wchar_t* fileName, int field, int unit, void* dst, int dstSize, int flags, int options);
+    int compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* fileName1, const wchar_t* fileName2, int field, int options);
     void abort();
     void stop();
     void waitForProducer();
@@ -59,7 +59,7 @@ private:
     static size_t removeDelimiters(wchar_t* str, size_t cchStr, const wchar_t* delims);
     static void appendHexValue(wchar_t* dst, size_t cbDst, int value);
     static wchar_t nibble2wchar(char nibble);
-    int initData(const wchar_t* fileName, int field, int unit, int flags, DWORD timeout);
+    int initData(const wchar_t* fileName, int field, int unit, int flags, int options, DWORD timeout);
 
     unsigned int startWorkerThread();
     int waitForConsumer(DWORD timeout);

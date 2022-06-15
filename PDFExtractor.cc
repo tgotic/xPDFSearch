@@ -646,8 +646,13 @@ void PDFExtractor::waitForProducer()
             m_data->setStatusCond(request_status::complete, request_status::active);
             // change status from cancelled to closed
             status = m_data->setStatusCond(request_status::closed, request_status::cancelled);
-            if (status == request_status::cancelled)
+            if ((status == request_status::cancelled)
+                || (m_data->getRequestOptions() & OPTION_NO_CACHE)      // no cache in options, close file
+                // || (m_data->getRequestFlags() & CONTENT_NO_CACHE)    // TODO request is marked as non cached, close file
+                ) 
+            {
                 close();
+            }
 
             // inform consumer that extraction is complete or closed
             TRACE(L"%hs!status=%ld!TC notified\n", __FUNCTION__, status);
@@ -741,9 +746,10 @@ int PDFExtractor::waitForConsumer(DWORD timeout)
 * @param[in]    unit            index of the unit, -1 for fiText field when searched string is found
 * @param[in]    flags           TC flags
 * @param[in]    timeout         producer timeout (in text extraction)
+* @param[in]    options         options from ini file
 * @return       ft_fieldempty if data cannot be set, ft_setsuccess if successfuly set
 */
-int PDFExtractor::initData(const wchar_t* fileName, int field, int unit, int flags, DWORD timeout)
+int PDFExtractor::initData(const wchar_t* fileName, int field, int unit, int flags, int options, DWORD timeout)
 {
     int retval{ ft_fieldempty };
 
@@ -763,7 +769,7 @@ int PDFExtractor::initData(const wchar_t* fileName, int field, int unit, int fla
         || ((status == request_status::complete) && (unit > 0) && (field == fiText))  // extraction is completed but TC wants next text block
        ))
     {
-        retval = m_data->initRequest(fileName, field, unit, flags, timeout);
+        retval = m_data->initRequest(fileName, field, unit, flags, options, timeout);
     }
     TRACE(L"%hs!%ls!status=%ld retval=%d\n", __FUNCTION__, fileName, status, retval);
     return retval;
@@ -780,11 +786,12 @@ int PDFExtractor::initData(const wchar_t* fileName, int field, int unit, int fla
 * @param[out]   dst             buffer for retrieved data
 * @param[in]    dstSize         sizeof dst buffer in bytes (NUL char for stringw and fulltextw included)
 * @param[in]    flags           TC flags
+* @param[in]    options         options from ini file
 * @return       result of an extraction
 */
-int PDFExtractor::extract(const wchar_t* fileName, int field, int unit, void* dst, int dstSize, int flags)
+int PDFExtractor::extract(const wchar_t* fileName, int field, int unit, void* dst, int dstSize, int flags, int options)
 {
-    auto result{ initData(fileName, field, unit, flags, PRODUCER_TIMEOUT) };
+    auto result{ initData(fileName, field, unit, flags, options, PRODUCER_TIMEOUT) };
     if (result != ft_fieldempty)
     {
         if (field == fiText)
@@ -924,16 +931,17 @@ void PDFExtractor::done()
 * @param[in]    fileName1           first file name to be compared
 * @param[in]    fileName2           second file name to be compared
 * @param[in]    field               field data to compare
+* @param[in]    options             options from ini file
 * @return result of comparision
 */
-int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* fileName1, const wchar_t* fileName2, int field)
+int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* fileName1, const wchar_t* fileName2, int field, int options)
 {
     static const wchar_t delims[]{ L" \r\n\b\f\t\v\x00a0\x202f\x2007\x2009\x2060" };
     auto bytesProcessed{ 0 };
     auto eq_txt{ false };
 
     // set timeout to long wait, because it waits for another extraction thread
-    auto result{ initData(fileName1, field, 0, 0, CONSUMER_TIMEOUT) };
+    auto result{ initData(fileName1, field, 0, 0, options, CONSUMER_TIMEOUT) };
     if (result != ft_setsuccess)
         return ft_compare_next;
 
@@ -941,7 +949,7 @@ int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* 
         m_search = std::make_unique<PDFExtractor>();
 
     // set timeout to long wait, because it waits for another extraction thread to complete
-    result = m_search->initData(fileName2, field, 0, 0, CONSUMER_TIMEOUT);
+    result = m_search->initData(fileName2, field, 0, 0, options, CONSUMER_TIMEOUT);
     if (result != ft_setsuccess)
         return ft_compare_next;
 

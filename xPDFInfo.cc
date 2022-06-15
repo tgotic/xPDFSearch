@@ -15,6 +15,10 @@
 static auto enableDateTimeField{ false };
 /** enableCompareFields is used to indicate if compare fields are supported by currently used Total Commander version. */
 static auto enableCompareFields{ false };
+/** Use PDF file caching for faster data fetching. 
+* Disable caching to enable file renaming and changing of file (not PDF) attributes.
+*/
+static auto options{ 0 };
 
 /**
 * Names of fields returned to TC.
@@ -259,7 +263,7 @@ int __stdcall ContentGetValueW(const wchar_t* fileName, int fieldIndex, int unit
             g_extractor = new PDFExtractor();
 
         if (g_extractor)
-            return g_extractor->extract(fileName, fieldIndex, unitIndex, fieldValue, cbfieldValue, flags);
+            return g_extractor->extract(fileName, fieldIndex, unitIndex, fieldValue, cbfieldValue, flags, options);
         
         return ft_fileerror;
     }
@@ -272,6 +276,7 @@ int __stdcall ContentGetValueW(const wchar_t* fileName, int fieldIndex, int unit
 * Check for version of currently used Total Commander / version of plugin interface.
 * If plugin interface is lower than 1.2, PDF date and time fields are not supported.
 * If plugin interface is lower than 2.1, compare by content fields are not supported.
+* Load options from ini file.
 *
 * @param[in]    dps see ContentDefaultParamStruct in "Content Plugin Interface" document.
 */
@@ -281,6 +286,8 @@ void __stdcall ContentSetDefaultParams(ContentDefaultParamStruct* dps)
     // Check content plugin interface version to enable fields of type datetime.
     enableDateTimeField = ((dps->pluginInterfaceVersionHi == 1) && (dps->pluginInterfaceVersionLow >= 2)) || (dps->pluginInterfaceVersionHi > 1);
     enableCompareFields = ((dps->pluginInterfaceVersionHi == 2) && (dps->pluginInterfaceVersionLow >= 10)) || (dps->pluginInterfaceVersionHi > 2);
+    if (GetPrivateProfileIntA("xPDFSearch", "NoCache", 0, dps->defaultIniName))
+        options |= OPTION_NO_CACHE;
 }
 
 /**
@@ -346,7 +353,7 @@ int __stdcall ContentCompareFilesW(PROGRESSCALLBACKPROC progressCallback, int co
         g_extractor = new PDFExtractor();
 
     if (g_extractor)
-        return g_extractor->compare(progressCallback, fileName1, fileName2, compareIndex - ft_comparebaseindex);
+        return g_extractor->compare(progressCallback, fileName1, fileName2, compareIndex - ft_comparebaseindex, options);
 
     return ft_compare_next;
 }

@@ -60,6 +60,7 @@ struct Request
     int field{ 0 };                     /**< field index to extract */
     int unit{ 0 };                      /**< unit index */
     int flags{ 0 };                     /**< flags from TC */
+    int options{ 0 };                   /**< request options */
     int result{ 0 };                    /**< result of an extraction */
     DWORD timeout{ 0 };                 /**< time to wait in text extraction procedure */
     std::atomic<request_status> status{ request_status::closed };   /**< request status, @see request_status */
@@ -101,18 +102,20 @@ public:
     inline bool isActive() const { return active; }
     inline bool setActive(bool state) { return active.exchange(state); }
     inline request_status getStatus() const { return request.status; }
-    inline auto setStatus(request_status s) { return request.status.exchange(s); }
-    auto setStatusCond(request_status ns, request_status cs)
+    inline auto setStatus(request_status new_status) { return request.status.exchange(new_status); }
+    auto setStatusCond(request_status new_status, request_status current_status)
     {
-        auto expected{ cs };
-        request.status.compare_exchange_strong(expected, ns);
+        auto expected{ current_status };
+        request.status.compare_exchange_strong(expected, new_status);
         return expected;
     }
-    int initRequest(const wchar_t* fileName, int field, int unit, int flags, DWORD timeout);
+    int initRequest(const wchar_t* fileName, int field, int unit, int flags, int options, DWORD timeout);
 
     template<typename T> void setValue(T value, int type);
 
     auto getRequestField() const { return request.field; }
+    auto getRequestFlags() const { return request.flags; }
+    auto getRequestOptions() const { return request.options; }
     auto getRequestUnit() const { return request.unit; }
     auto getRequestResult() const { return request.result; }
     auto getRequestBuffer() const { return request.buffer; }

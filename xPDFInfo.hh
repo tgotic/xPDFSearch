@@ -19,6 +19,8 @@ enum SizeUnits
     suPoints        /**< points */
 };
 
+constexpr auto OPTION_NO_CACHE{ 1 };   /**< Don't cache data for this ContentGetValue call, close file after returning data */
+
 /**
 * The fieldIndexes enumeration is used simplify access to fields. 
 */
