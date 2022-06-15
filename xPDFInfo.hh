@@ -1,11 +1,12 @@
+/**
+* @file
+*
+* Declaration of enumerations used in extraction
+*/
+
 #pragma once
 #include "contentplug.h"
 #include <tchar.h>
-
-/**
-* @file
-* Declaration of enumerations used in extraction
-*/
 
 /**
 * PDF page units 

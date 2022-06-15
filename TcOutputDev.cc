@@ -1,3 +1,9 @@
+/**
+* @file
+*
+* PDF text extraction class and callback functions.
+*/
+
 #include "TcOutputDev.hh"
 #include "xPDFInfo.hh"
 
@@ -18,14 +24,14 @@ static GBool abortExtraction(void* stream)
 }
 
 /**
-* Callback function used in PdfDoc::displayPage used to copy extracted text to request structure.
+* Callback function used in PdfDoc::displayPage to copy extracted text to request structure.
 * For #fiFirstRow field, text is extracted up to first EOL.
 * For #fiDocStart field, #REQUEST_BUFFER_SIZE bytes is extracted.
 * For #fiText field, data is extracted until TC responds that search string is found.
 * To be able to continue to extract text, threading has been used. When block of text has been extracted,
-* calling thread is woken up to send data to TC. This thread goes to sleep. TC compares data and sends back result.
-* This thread wakes up and continues text extraction or canceles if string has been found.
-* TcOutputDev.c has been modified to speedup extraction cancelation when string is found.
+* calling thread is woken up to send data to TC and caller thread goes to sleep. TC compares data and sends back result.
+* This wakes thread up and continues text extraction or cancels if string has been found.
+* TcOutputDev.c has been modified to speedup extraction cancelation when string has been found.
 * Extracted text is converted to UTF-16 and stored to #Request::buffer buffer.
 * This callback function may be called multiple times before #Request::buffer is filled up, or line ending has been found.
 * 
@@ -56,7 +62,7 @@ TcOutputDev::TcOutputDev()
 }
 
 /**
-* Starts text extraction.
+* Start text extraction.
 * Extraction goes through all document pages until search string is found.
 *
 * @param[in]        doc     pointer to xPDF PdcDoc instance

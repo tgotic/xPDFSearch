@@ -1,14 +1,15 @@
+/**
+* @file 
+*
+* TotalCommander context plugin (wdx, wdx64) for PDF data extraction and comparision.
+* Based on xPDF v4.04 from Glyph & Cog, LLC.
+*/
+
 #include "xPDFInfo.hh"
 #include <wchar.h>
 #include "PDFExtractor.hh"
 #include <GlobalParams.h>
 #include <strsafe.h>
-
-/**
-* @file 
-* TotalCommander context plugin (wdx, wdx64) for PDF data extraction and comparision.
-* Based on xPDF v4.04 from Glyph & Cog, LLC.
-*/
 
 /** enableDateTimeField is used to indicate if date time fields are supported by currently used Total Commander version. */
 static auto enableDateTimeField{ false };
@@ -268,7 +269,7 @@ int __stdcall ContentGetValueW(const wchar_t* fileName, int fieldIndex, int unit
     return ft_nomorefields;
 }
 /**
-* Checks for version of currently used Total Commander / version of plugin interface.
+* Check for version of currently used Total Commander / version of plugin interface.
 * If plugin interface is lower than 1.2, PDF date and time fields are not supported.
 * If plugin interface is lower than 2.1, compare by content fields are not supported.
 *
@@ -283,7 +284,7 @@ void __stdcall ContentSetDefaultParams(ContentDefaultParamStruct* dps)
 }
 
 /**
-* Plugin is beeing unloaded. Close extraction thread.
+* Plugin is being unloaded. Close extraction thread.
 * This function is called only form main GUI thread.
 * Don't free globalParams form here, because other worker threads
 * may be using it.
@@ -336,7 +337,7 @@ int __stdcall ContentGetSupportedFieldFlags(int fieldIndex)
 * @param[in] fileDetails        not used
 * @return result of comparison. For values see "Content Plugin Interface" document.
 */
-int __stdcall ContentCompareFilesW(PROGRESSCALLBACKPROC progressCallback, int compareIndex, WCHAR* fileName1, wchar_t* fileName2, FileDetailsStruct* fileDetails)
+int __stdcall ContentCompareFilesW(PROGRESSCALLBACKPROC progressCallback, int compareIndex, wchar_t* fileName1, wchar_t* fileName2, FileDetailsStruct* fileDetails)
 {
     if ((compareIndex < ft_comparebaseindex) || (compareIndex >= ft_comparebaseindex + FIELD_COUNT))
         return ft_compare_next;

@@ -1,10 +1,11 @@
-#pragma once
-#include "ThreadData.hh"
-
 /**
 * @file
+*
 * TcOutputDev class declaration.
 */
+
+#pragma once
+#include "ThreadData.hh"
 
 /**
 * Class for text extraction from PDF to TC.

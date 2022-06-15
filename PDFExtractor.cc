@@ -9,6 +9,7 @@
 
 /**
 * @file
+*
 * PDF metadata and text extraction class.
 * 
 * PDF document is open on a first call to #PDFExtractor::extract or #PDFExtractor::compare functions.
@@ -88,7 +89,7 @@ static constexpr const char* metaDataFields[] =
 
 /**
 * Destructor, free allocated resources.
-* Don't call abort() function from destructor.
+* Don't call #abort() function from destructor.
 */
 PDFExtractor::~PDFExtractor()
 {
@@ -182,7 +183,7 @@ bool PDFExtractor::open()
 }
 
 /**
-* Converts string from PDF Unicode to wchar_t.
+* Convert string from PDF Unicode to wchar_t.
 * 
 * @param[out]       dst     converted string
 * @param[in,out]    cbDst   size of dst in bytes
@@ -207,7 +208,7 @@ ptrdiff_t PDFExtractor::UnicodeToUTF16(wchar_t* dst, int *cbDst, const Unicode* 
 }
 
 /**
-* Removes characters from input string.
+* Remove characters from input string.
 * 
 * @param[in,out]    str     string to be cleaned up
 * @param[in]        cchStr  count of characters in string
@@ -237,7 +238,7 @@ size_t PDFExtractor::removeDelimiters(wchar_t* str, size_t cchStr, const wchar_t
 }
 
 /**
-* Converts nibble value to hex character.
+* Convert nibble value to hex character.
 *
 * @param[in]    nibble   nibble to convert
 * @return converted hex character
@@ -254,7 +255,7 @@ wchar_t PDFExtractor::nibble2wchar(char nibble)
 }
 
 /**
-* Converts binary value to hex string and appends to destination.
+* Convert binary value to hex string and appends to destination.
 *
 * @param[out]   dst     destination string
 * @param[in]    cbDst   size of dst in bytes
@@ -273,7 +274,7 @@ void PDFExtractor::appendHexValue(wchar_t* dst, size_t cbDst, int value)
 
 /**
 * Extract metadata information from PDF and convert to wchar_t.
-* Data exchange is guarded in critical section.
+* Data exchange is guarded with mutex.
 * 
 * @param[in]    doc     pointer to PDFDoc object
 * @param[in]    key     one of values from #metaDataFields
@@ -334,9 +335,9 @@ BOOL PDFExtractor::hasSignature(PDFDoc* doc)
 }
 
 /**
-* Extracts PDF file identifier. 
+* Extract PDF file identifier. 
 * This value should be two MD5 strings.
-* Data exchange is guarded in critical section.
+* Data exchange is guarded with mutex.
 *
 * @param[in]    doc     pointer to PDFDoc object
 */
@@ -400,7 +401,7 @@ BOOL PDFExtractor::isTagged(PDFDoc* doc)
 
 /**
 * "PDF Attribute" field data extraction.
-* Data exchange is guarded in critical section.
+* Data exchange is guarded with mutex.
 *
 * @param[in]    doc     pointer to PDFDoc object
 */
@@ -427,8 +428,8 @@ void PDFExtractor::getMetadataAttrStr(PDFDoc* doc)
 
 /**
 * "Created" and "Modified" fields data extraction.
-* Converts PDF date and time to FILETIME structure.
-* Data exchange is guarded in critical section.
+* Convert PDF date and time to FILETIME structure.
+* Data exchange is guarded with mutex.
 *
 * @param[in]    doc     pointer to PDFDoc object
 * @param[in]    key     "CreationDate" or "ModDate"
@@ -517,7 +518,7 @@ void PDFExtractor::getMetadataDate(PDFDoc* doc, const char* key)
 }
 
 /** 
-* Converts a given point value to the unit given in unit.
+* Convert a given point value to the unit given in unit.
 *
 * @param[in]    units   units index
 * @return units conversion ratio, 0 for unknown units
@@ -544,7 +545,7 @@ double PDFExtractor::getPaperSize(int units)
 }
 
 /**
-* Calls specific extraction functions.
+* Call specific extraction functions.
 */
 void PDFExtractor::doWork()
 {
@@ -624,7 +625,7 @@ void PDFExtractor::doWork()
 /**
 * Extractor thread main function.
 * To start extraction, set request params and raise producer event from TC thread.
-* When extraction is complete, raises consumer event to wake TC thread up.
+* When extraction is complete, it raises consumer event to wake TC thread up.
 * To exit thread, TC must set active to 0 and raise producer event.
 */
 void PDFExtractor::waitForProducer()
@@ -731,7 +732,6 @@ int PDFExtractor::waitForConsumer(DWORD timeout)
 // #pragma optimize( "", on )
 /**
 * Assign data from TC to internal structure.
-* Data exchange is guarded in critical section.
 * If TC doesn't provide buffer for output data (compare), a new buffer is created.
 *
 * @param[in]    fileName        full path to PDF document
@@ -768,7 +768,7 @@ int PDFExtractor::initData(const wchar_t* fileName, int field, int unit, int fla
 }
 
 /**
-* Starts data extraction form PDF document.
+* Start data extraction form PDF document.
 * Thread state is changed from complete to active to enable new request.
 * Producer timeout is set to low value, because producer is TC. It should respond in short time.
 *
@@ -884,7 +884,6 @@ int PDFExtractor::extract(const wchar_t* fileName, int field, int unit, void* ds
 void PDFExtractor::abort()
 {
     m_data->abort();
-
     if (m_search)
         m_search->abort();
 }

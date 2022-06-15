@@ -1,3 +1,9 @@
+/**
+* @file
+*
+* PDFExtractor header file.
+*/
+
 #pragma once
 
 #include "contentplug.h"
@@ -6,11 +12,6 @@
 #include <Object.h>
 #include "TcOutputDev.hh"
 #include <string>
-
-/**
-* @file 
-* PDFExtractor header file.
-*/
 
 /**
 * RAII wrapper for collate category of locale ANSI Code Page 

@@ -160,7 +160,7 @@ extern "C" {
     __declspec(dllexport) void __stdcall ContentSendStateInformationW(int state, const wchar_t* path);
 
     __declspec(dllexport) int __stdcall ContentCompareFiles(PROGRESSCALLBACKPROC progressCallback, int compareIndex, char* fileName1, char* fileName2, FileDetailsStruct* fileDetails);
-    __declspec(dllexport) int __stdcall ContentCompareFilesW(PROGRESSCALLBACKPROC progressCallback, int compareIndex, WCHAR* fileName1, wchar_t* fileName2, FileDetailsStruct* fileDetails);
+    __declspec(dllexport) int __stdcall ContentCompareFilesW(PROGRESSCALLBACKPROC progressCallback, int compareIndex, wchar_t* fileName1, wchar_t* fileName2, FileDetailsStruct* fileDetails);
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

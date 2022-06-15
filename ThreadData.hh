@@ -1,3 +1,9 @@
+/**
+* @file
+*
+* Declarations of constants and structures used in threads 
+*/
+
 #pragma once
 
 #include <Windows.h>
@@ -6,11 +12,6 @@
 #include <PDFDoc.h>
 #include <mutex>
 #include <atomic>
-
-/**
-* @file
-* Declarations of constants and structures used in threads 
-*/
 
 /**
 * @defgroup handles ThreadData::handles indexes
@@ -29,7 +30,7 @@ constexpr auto PRODUCER_TIMEOUT{ 100UL };
 * wait for 10 s for producer to produce data (form PDF)
 * wait for 100 ms for consumer (TC) to consume data and ask for more,
 * on timeout close PDF file
-* it is a bad idea to wait for infinite
+* it is a bad idea to have infinite wait
 */
 
 constexpr auto CONSUMER_TIMEOUT{ 10000UL };  /**< time for one data extraction */
@@ -139,7 +140,7 @@ private:
 
 /**
 * Sets simple result values (BOOL, int and double) to output buffer.
-* Data exchange is guarded in critical section.
+* Data exchange is guarded with mutex.
 *
 * @tparam       T       typedef of value
 * @param        value   value to be set to output buffer

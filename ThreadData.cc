@@ -1,13 +1,15 @@
+/**
+* @file
+*
+* PDF text extraction class and callback functions.
+*/
+
 #include "ThreadData.hh"
 #include "xPDFInfo.hh"
 
 /**
-* @file
-* PDF text extraction class and callback functions.
-*/
-/**
-* Converts input string to UTF-16 used for wchar_t, changes byte endianess.
-* It filters out \\f and \\b delimiters.
+* Convert PDF string to UTF-16 wide string (wchar_t), change byte endianess.
+* Filter out \\f and \\b delimiters.
 *
 * @param[in]        src     string to be converted
 * @param[in]        cchSrc  number of chars in src
@@ -34,7 +36,7 @@ static ptrdiff_t convertToUTF16(const char* src, ptrdiff_t cchSrc, wchar_t* dst,
     return (dst - start);
 }
 /**
-* Creates event that triggers producer action. 
+* Create event that triggers producer action. 
 * Event has automatic reset, initialy unlocked.
 */
 void ThreadData::createProducer()
@@ -52,7 +54,7 @@ void ThreadData::createConsumer()
         handles[CONSUMER_HANDLE] = CreateEventW(nullptr, FALSE, FALSE, nullptr);
 }
 /**
-* Waits until producer event is raised or timeout expires.
+* Wait until producer event is raised or timeout expires.
 * @param[in]    timeout     timeout in miliseconds
 * @return 1 if producer event is not created; for other return values check MSDN WaitForSingleObject
 */
@@ -65,7 +67,7 @@ DWORD ThreadData::waitForProducer(DWORD timeout)
 }
 
 /**
-* Waits until consumer event is raised or timeout expires.
+* Wait until consumer event is raised or timeout expires.
 * @param[in]    timeout     timeout in miliseconds
 * @return 1 if consumer event is not created; for other return values check MSDN WaitForSingleObject
 */
@@ -78,7 +80,7 @@ DWORD ThreadData::waitForConsumer(DWORD timeout)
 }
 
 /**
-* Raises producer event and waits for thread to exit or timeout expires.
+* Raise producer event and waits for thread to exit or timeout expires.
 * Event is raised if producer thread is running.
 *
 * @param[in]    timeout     timeout in miliseconds
@@ -92,7 +94,7 @@ DWORD ThreadData::notifyProducerAndWait(DWORD timeout)
     return 1UL;
 }
 /**
-* Raises producer event and waits for consumer event or timeout expires.
+* Raise producer event and waits for consumer event or timeout expires.
 * Event is raised if producer thread is marked as active (#abort() has not been called).
 * If timeout expires, producer event is reset.
 *
@@ -118,7 +120,7 @@ DWORD ThreadData::notifyProducerWaitForConsumer(DWORD timeout)
 
 /**
 * Used in comparision.
-* Waits for both consumers to get data form its producers.
+* Wait for both consumers to get data form its producers.
 *
 * @param[in]    searcher    second instance of #ThreadData class
 * @param[in]    timeout     timeout in miliseconds
@@ -169,8 +171,8 @@ int ThreadData::compareWaitForConsumers(ThreadData* searcher, DWORD timeout)
 }
 
 /**
-* Creates extraction (producer) thread.
-* Creates producer and consumer events if they don't already exist.
+* Create extraction (producer) thread.
+* Create producer and consumer events if they don't already exist.
 *
 * @param[in]    func    pointer to thread function
 * @param[in]    args    parameter for thread function
@@ -209,8 +211,8 @@ unsigned int ThreadData::start(_beginthreadex_proc_type func, void* args)
     return 0;
 }
 /**
-* Stops data extraction and closes PDF.
-* Raises producer event to wake producer up, and waits until producer sends signal that PDF has been closed.
+* Stop data extraction and closes PDF.
+* Raise producer event to wake producer up, and waits until producer sends signal that PDF has been closed.
 * Doesn't exit extraction thread.
 */
 void ThreadData::stop()
@@ -226,8 +228,8 @@ void ThreadData::stop()
 }
 
 /**
-* Stops data extraction without closing PDF.
-* Raises producer event to wake producer up, and waits until producer sends consumer event that extraction has been completed.
+* Stop data extraction without closing PDF.
+* Raise producer event to wake producer up, and waits until producer sends consumer event that extraction has been completed.
 */
 void ThreadData::done()
 {
@@ -242,8 +244,8 @@ void ThreadData::done()
 }
 
 /**
-* Stops data extraction, closes PDF and exits thread.
-* Raises producer event to wake producer up, and waits until thread exists or timeout.
+* Stop data extraction, close PDF and exits thread.
+* Raise producer event to wake producer up, and wait until thread exists or timeout.
 */
 void ThreadData::abort()
 {
@@ -270,7 +272,7 @@ void ThreadData::abort()
 
 /**
 * Destructor
-* Closes handles and deletes #Request::buffer
+* Close handles and delete #Request::buffer
 */
 ThreadData::~ThreadData()
 {
@@ -328,7 +330,7 @@ int ThreadData::initRequest(const wchar_t* fileName, int field, int unit, int fl
     return result;
 }
 /**
-* Converts data from PDF text extraction to TC output buffer.
+* Convert data from PDF text extraction to TC output buffer.
 * Used for #fiFirstRow, #fiDocStart and #fiText.
 * Data is collected until output buffer is full or end-of-line (EOL) is found (for #fiFirstRow).
 * For #fiFirstRow and #fiDocStart request is marked as complete (#Request::status=#complete).
