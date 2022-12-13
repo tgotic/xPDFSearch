@@ -191,7 +191,11 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
 3\. System requirements
 -----------------------
 
-You need Total Commander 6.50 or higher for this plugin. To use the Created and Modified fields Total Commander 6.53 or higher is required.
+You need Total Commander 6.50 or higher for this plugin.
+To use the Created and Modified fields Total Commander 6.53 or higher is required.
+
+Plugin requires [Microsoft Visual C++ Redistributable for Visual Studio 2015-2022](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170) package.
+XP version of the plugin doesn't require this package.
 
 4\. Use
 -------
