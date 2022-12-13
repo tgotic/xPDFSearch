@@ -36,7 +36,6 @@
 * WDX>>TC [label="fieldValue"];
 * ...;
 * PRODUCER=>PRODUCER [label="close"];
-* 
 * @endmsc
 *
 * Similar principle has been used in text extraction. Data offset that TC sends in unit
@@ -185,31 +184,6 @@ bool PDFExtractor::open()
 }
 
 /**
-* Convert string from PDF Unicode to wchar_t.
-* 
-* @param[out]       dst     converted string
-* @param[in,out]    cbDst   size of dst in bytes
-* @param[in]        src     string to convert
-* @param[in]        cchSrc  number of unicode characters
-* @return number of characters in dst, 0 if error
-*/
-ptrdiff_t PDFExtractor::UnicodeToUTF16(wchar_t* dst, int *cbDst, const Unicode* src, int cchSrc)
-{
-    if (src && dst && cbDst)
-    {
-        const auto start{ dst };
-        for (auto i{ 0 }; (i < cchSrc) && (*cbDst > sizeOfWchar); i++)
-        {
-            *dst++ = *src++ & 0xFFFF;
-            *cbDst -= sizeOfWchar;
-        }
-        *dst = 0;
-        return (dst - start);
-    }
-    return 0;
-}
-
-/**
 * Remove characters from input string.
 * 
 * @param[in,out]    str     string to be cleaned up
@@ -265,12 +239,10 @@ wchar_t PDFExtractor::nibble2wchar(char nibble)
 */
 void PDFExtractor::appendHexValue(wchar_t* dst, size_t cbDst, int value)
 {
-    wchar_t tmp[2]{ 0 };
+    wchar_t tmp[3]{ 0 };
 
     tmp[0] = nibble2wchar((value >> 4) & 0x0F);
-    StringCbCatW(dst, cbDst, tmp);
-
-    tmp[0] = nibble2wchar(value & 0x0F);
+    tmp[1] = nibble2wchar(value & 0x0F);
     StringCbCatW(dst, cbDst, tmp);
 }
 
@@ -291,11 +263,15 @@ void PDFExtractor::getMetadataString(PDFDoc* doc, const char* key)
         if (dict->lookup(key, &obj)->isString())
         {
             TextString ts(obj.getString());
-            int len{ REQUEST_BUFFER_SIZE };
+            if (ts.getLength())
+            {
+                ptrdiff_t len{ REQUEST_BUFFER_SIZE };
 
-            std::lock_guard lock(m_data->mutex);
-            if (UnicodeToUTF16(static_cast<wchar_t*>(m_data->getRequestBuffer()), &len, ts.getUnicode(), ts.getLength()))
-                m_data->setRequestResult(ft_stringw);
+                std::lock_guard lock(m_data->mutex);
+                UnicodeToUTF16(ts.getUnicode(), ts.getLength(), static_cast<wchar_t*>(m_data->getRequestBuffer()), &len);
+                if (len != REQUEST_BUFFER_SIZE)
+                    m_data->setRequestResult(ft_stringw);
+            }
         }
         obj.free();
     }
@@ -309,9 +285,9 @@ void PDFExtractor::getMetadataString(PDFDoc* doc, const char* key)
 * @param[in]    doc     pointer to PDFDoc object
 * @return true if SigFlags value > 0
 */
-BOOL PDFExtractor::hasSignature(PDFDoc* doc)
+bool PDFExtractor::hasSignature(PDFDoc* doc)
 {
-    BOOL ret{ FALSE };
+    bool ret{ false };
     const auto catalog{ doc->getCatalog() };
     if (catalog)
     {
@@ -327,13 +303,75 @@ BOOL PDFExtractor::hasSignature(PDFDoc* doc)
                     // verify only bit position 1; 
                     // bit position 2 informs that signature will be invalidated
                     // if document is not saved as incremental
-                    ret = static_cast<BOOL>(obj.getInt() & 0x01);
+                    ret = static_cast<bool>(obj.getInt() & 0x01);
                 }
                 obj.free();
             }
         }
     }
     return ret;
+}
+
+/**
+* PDF document has outlines (bookmarks).
+* It is not verified if document outline has titles (labels).
+*
+* @param[in]    doc     pointer to PDFDoc object
+* @return true if document has outlines
+*/
+bool PDFExtractor::hasOutlines(PDFDoc* doc)
+{
+    const auto outline{ doc->getOutline() };
+    if (outline && outline->getItems())
+    {
+        return true;
+    }
+    return false;
+}
+
+/**
+* Traverse recursively through document's outlines (bookmarks).
+*
+* @param[in]    node    pointer to GList node
+* @return false - continue with extraction, true - abort
+*/
+bool PDFExtractor::getOulinesTitles(GList* node)
+{
+    int done{ false };
+    if (node)
+    {
+        for (auto n{ 0 }; (!done) && (n < node->getLength()); n++)
+        {
+            const auto item{ static_cast<OutlineItem*>(node->get(n)) };
+            const auto titleLen{ item->getTitleLength() };
+            if (titleLen)
+            {
+                if (m_data->output(reinterpret_cast<const char*>(item->getTitle()), titleLen, true))
+                    return true;
+            }
+            if (item->hasKids())
+            {
+                item->open();
+                done = getOulinesTitles(item->getKids());
+                item->close();
+            }
+        }
+    }
+    return done;
+}
+
+/**
+* Extract document outline.
+*
+* @param[in]    doc     pointer to PDFDoc object
+*/
+void PDFExtractor::getOulines(PDFDoc* doc)
+{
+    const auto outline{ doc->getOutline() };
+    if (outline)
+    {
+        getOulinesTitles(outline->getItems());
+    }
 }
 
 /**
@@ -378,27 +416,27 @@ void PDFExtractor::getDocID(PDFDoc* doc)
 }
 
 /**
-* PDF document was updated incrementally without rewriting the entire file. 
+* PDF document was updated incrementally without rewriting the entire file.
 *
 * @param[in]    doc     pointer to PDFDoc object
 * @return true if PDF is incremental
 */
-BOOL PDFExtractor::isIncremental(PDFDoc* doc)
+bool PDFExtractor::isIncremental(PDFDoc* doc)
 {
-    return (doc->getXRef()->getNumXRefTables() > 1) ? TRUE : FALSE;
+    return (doc->getXRef()->getNumXRefTables() > 1) ? true : false;
 }
 
 /**
-* From Portable document format - Part 1: PDF 1.7, 
+* From Portable document format - Part 1: PDF 1.7
 * 14.8 Tagged PDF
 * "Tagged PDF (PDF 1.4) is a stylized use of PDF that builds on the logical structure framework described in 14.7, "Logical Structure""
 *
 * @param[in]    doc     pointer to PDFDoc object
 * @return true if PDF is tagged
 */
-BOOL PDFExtractor::isTagged(PDFDoc* doc)
+bool PDFExtractor::isTagged(PDFDoc* doc)
 {
-    return doc->getStructTreeRoot()->isDict() ? TRUE : FALSE;
+    return doc->getStructTreeRoot()->isDict() ? true : false;
 }
 
 /**
@@ -409,23 +447,34 @@ BOOL PDFExtractor::isTagged(PDFDoc* doc)
 */
 void PDFExtractor::getMetadataAttrStr(PDFDoc* doc)
 {
+    wchar_t attrs[]{ L"----------" };
+
+    if (doc->okToPrint())
+        attrs[0] = L'P';
+    if (doc->okToCopy())
+        attrs[1] = L'C';
+    if (doc->okToChange())
+        attrs[2] = L'M';
+    if (doc->okToAddNotes())
+        attrs[3] = L'N';
+    if (isIncremental(doc))
+        attrs[4] = L'I';
+    if (isTagged(doc))
+        attrs[5] = L'T';
+    if (doc->isLinearized())
+        attrs[6] = L'L';
+    if (doc->isEncrypted())
+        attrs[7] = L'E';
+    if (hasSignature(doc))
+        attrs[8] = L'S';
+    if (hasOutlines(doc))
+        attrs[9] = L'O';
+
     auto len{ REQUEST_BUFFER_SIZE };
     std::lock_guard lock(m_data->mutex);
     auto dst{ static_cast<wchar_t*>(m_data->getRequestBuffer()) };
-    *dst = 0;
-
-    StringCbCatW(dst, len, doc->okToPrint()    ? L"P" : L"-");
-    StringCbCatW(dst, len, doc->okToCopy()     ? L"C" : L"-");
-    StringCbCatW(dst, len, doc->okToChange()   ? L"M" : L"-");
-    StringCbCatW(dst, len, doc->okToAddNotes() ? L"N" : L"-");
-    StringCbCatW(dst, len, isIncremental(doc)  ? L"I" : L"-");
-    StringCbCatW(dst, len, isTagged(doc)       ? L"T" : L"-");
-    StringCbCatW(dst, len, doc->isLinearized() ? L"L" : L"-");
-    StringCbCatW(dst, len, doc->isEncrypted()  ? L"E" : L"-");
-    StringCbCatW(dst, len, hasSignature(doc)   ? L"S" : L"-");
-
-    if (*dst)
-        m_data->setRequestResult(ft_stringw);
+    StringCbCopyW(dst, len, attrs);
+    m_data->setRequestResult(ft_stringw);
 }
 
 /**
@@ -618,6 +667,9 @@ void PDFExtractor::doWork()
     case fiAttributesString:
         getMetadataAttrStr(m_doc.get());
         break;
+    case fiOutlines:
+        getOulines(m_doc.get());
+        break;
     default:
         break;
     }
@@ -647,9 +699,9 @@ void PDFExtractor::waitForProducer()
             // change status from cancelled to closed
             status = m_data->setStatusCond(request_status::closed, request_status::cancelled);
             if ((status == request_status::cancelled)
-                || (m_data->getRequestOptions() & OPTION_NO_CACHE)      // no cache in options, close file
+                || (globalOptionsFromIni.noCache)                       // no cache in options, close file
                 // || (m_data->getRequestFlags() & CONTENT_NO_CACHE)    // TODO request is marked as non cached, close file
-                ) 
+                )
             {
                 close();
             }
@@ -709,6 +761,7 @@ unsigned int PDFExtractor::startWorkerThread()
 }
 
 // #pragma optimize( "", off )
+
 /**
 * Raise producer event to start extraction and wait for consumer event.
 * If consumer doesn't respond in time, function returns #ft_timeout.
@@ -718,7 +771,7 @@ unsigned int PDFExtractor::startWorkerThread()
 */
 int PDFExtractor::waitForConsumer(DWORD timeout)
 {
-    int result{ ft_fileerror };
+    auto result{ ft_fileerror };
     const auto dwRet{ m_data->notifyProducerWaitForConsumer(timeout) };
     switch (dwRet)
     {
@@ -737,24 +790,24 @@ int PDFExtractor::waitForConsumer(DWORD timeout)
     return result;
 }
 // #pragma optimize( "", on )
+
 /**
 * Assign data from TC to internal structure.
 * If TC doesn't provide buffer for output data (compare), a new buffer is created.
 *
 * @param[in]    fileName        full path to PDF document
 * @param[in]    field           index of the field
-* @param[in]    unit            index of the unit, -1 for fiText field when searched string is found
+* @param[in]    unit            index of the unit, -1 for fiText and fiOutlines fields when searched string is found
 * @param[in]    flags           TC flags
 * @param[in]    timeout         producer timeout (in text extraction)
-* @param[in]    options         options from ini file
 * @return       ft_fieldempty if data cannot be set, ft_setsuccess if successfuly set
 */
-int PDFExtractor::initData(const wchar_t* fileName, int field, int unit, int flags, int options, DWORD timeout)
+int PDFExtractor::initData(const wchar_t* fileName, int field, int unit, int flags, DWORD timeout)
 {
-    int retval{ ft_fieldempty };
-
+    auto retval{ ft_fieldempty };
+    const auto fiTextOrOutlines{ (field == fiText) || (field == fiOutlines) };
     // check if previous extraction is still active, try to stop it
-    if ((field == fiText) && (unit <= 0))
+    if (fiTextOrOutlines && (unit <= 0))
     {
         stop();
         if (unit == -1)
@@ -765,11 +818,11 @@ int PDFExtractor::initData(const wchar_t* fileName, int field, int unit, int fla
 
     const auto status{ m_data->getStatus() };
     if (!(  (status == request_status::cancelled)
-        || ((status == request_status::closed)   && (unit > 0) && (field == fiText))  // extraction is closed but TC wants next text block
-        || ((status == request_status::complete) && (unit > 0) && (field == fiText))  // extraction is completed but TC wants next text block
+        || ((status == request_status::closed)   && (unit > 0) && fiTextOrOutlines)  // extraction is closed but TC wants next text block
+        || ((status == request_status::complete) && (unit > 0) && fiTextOrOutlines)  // extraction is completed but TC wants next text block
        ))
     {
-        retval = m_data->initRequest(fileName, field, unit, flags, options, timeout);
+        retval = m_data->initRequest(fileName, field, unit, flags, timeout);
     }
     TRACE(L"%hs!%ls!status=%ld retval=%d\n", __FUNCTION__, fileName, status, retval);
     return retval;
@@ -782,19 +835,19 @@ int PDFExtractor::initData(const wchar_t* fileName, int field, int unit, int fla
 *
 * @param[in]    fileName        full path to PDF document
 * @param[in]    field           index of the field, where to search
-* @param[in]    unit            index of the unit, -1 for fiText field when searched string is found
+* @param[in]    unit            index of the unit, -1 for fiText and fiOutlines fields when searched string is found
 * @param[out]   dst             buffer for retrieved data
 * @param[in]    dstSize         sizeof dst buffer in bytes (NUL char for stringw and fulltextw included)
 * @param[in]    flags           TC flags
-* @param[in]    options         options from ini file
 * @return       result of an extraction
 */
-int PDFExtractor::extract(const wchar_t* fileName, int field, int unit, void* dst, int dstSize, int flags, int options)
+int PDFExtractor::extract(const wchar_t* fileName, int field, int unit, void* dst, int dstSize, int flags)
 {
-    auto result{ initData(fileName, field, unit, flags, options, PRODUCER_TIMEOUT) };
+    auto result{ initData(fileName, field, unit, flags, PRODUCER_TIMEOUT) };
     if (result != ft_fieldempty)
     {
-        if (field == fiText)
+        const auto fiTextOrOutlines{ (field == fiText) || (field == fiOutlines) };
+        if (fiTextOrOutlines)
         {
             if (unit == 0)
             {
@@ -813,7 +866,9 @@ int PDFExtractor::extract(const wchar_t* fileName, int field, int unit, void* ds
                     result = ft_fulltextw;
                     std::lock_guard lock(m_data->mutex);
                     auto src{ m_data->getRequestBuffer() };
-                    if (src == m_data->getRequestPtr())
+                    const auto end{ m_data->getRequestPtr() };
+                    const auto srcLen{ static_cast<char*>(end) - static_cast<char*>(src) };
+                    if (srcLen == 0)
                     {
                         TRACE(L"%hs!dstSize=%d SPACE\n", __FUNCTION__, dstSize);
                         StringCbCopyW(static_cast<wchar_t*>(dst), dstSize, L" ");
@@ -821,7 +876,6 @@ int PDFExtractor::extract(const wchar_t* fileName, int field, int unit, void* ds
                     else
                     {
                         dstSize &= ~1; // round to 2
-                        const auto srcLen{ static_cast<char*>(m_data->getRequestPtr()) - static_cast<char*>(src) };
                         const auto srcLeft{ srcLen - dstSize + sizeOfWchar};
 
                         // wchar_t* dstEnd{ nullptr };
@@ -931,17 +985,16 @@ void PDFExtractor::done()
 * @param[in]    fileName1           first file name to be compared
 * @param[in]    fileName2           second file name to be compared
 * @param[in]    field               field data to compare
-* @param[in]    options             options from ini file
 * @return result of comparision
 */
-int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* fileName1, const wchar_t* fileName2, int field, int options)
+int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* fileName1, const wchar_t* fileName2, int field)
 {
     static const wchar_t delims[]{ L" \r\n\b\f\t\v\x00a0\x202f\x2007\x2009\x2060" };
-    auto bytesProcessed{ 0 };
+    size_t bytesProcessed{ 0U };
     auto eq_txt{ false };
 
     // set timeout to long wait, because it waits for another extraction thread
-    auto result{ initData(fileName1, field, 0, 0, options, CONSUMER_TIMEOUT) };
+    auto result{ initData(fileName1, field, 0, 0, CONSUMER_TIMEOUT) };
     if (result != ft_setsuccess)
         return ft_compare_next;
 
@@ -949,7 +1002,7 @@ int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* 
         m_search = std::make_unique<PDFExtractor>();
 
     // set timeout to long wait, because it waits for another extraction thread to complete
-    result = m_search->initData(fileName2, field, 0, 0, options, CONSUMER_TIMEOUT);
+    result = m_search->initData(fileName2, field, 0, 0, CONSUMER_TIMEOUT);
     if (result != ft_setsuccess)
         return ft_compare_next;
 
@@ -1079,7 +1132,7 @@ int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* 
             if (progresscallback && (now - startCounter > PRODUCER_TIMEOUT))
             {
                 // inform TC about progress
-                if (progresscallback(bytesProcessed))
+                if (progresscallback(static_cast<int>(bytesProcessed)))
                 {
                     // abort by user
                     TRACE(L"%hs!user abort\n", __FUNCTION__);
@@ -1087,7 +1140,7 @@ int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* 
                     break;
                 }
                 // reset counter
-                bytesProcessed = 0;
+                bytesProcessed = 0U;
                 startCounter = now;
             }
         } 

@@ -1,5 +1,5 @@
 /**
-* @file 
+* @file
 *
 * TotalCommander context plugin (wdx, wdx64) for PDF data extraction and comparision.
 * Based on xPDF v4.04 from Glyph & Cog, LLC.
@@ -13,12 +13,12 @@
 
 /** enableDateTimeField is used to indicate if date time fields are supported by currently used Total Commander version. */
 static auto enableDateTimeField{ false };
+
 /** enableCompareFields is used to indicate if compare fields are supported by currently used Total Commander version. */
 static auto enableCompareFields{ false };
-/** Use PDF file caching for faster data fetching. 
-* Disable caching to enable file renaming and changing of file (not PDF) attributes.
-*/
-static auto options{ 0 };
+
+/** Options from ini file, global */
+options_t globalOptionsFromIni;
 
 /**
 * Names of fields returned to TC.
@@ -32,7 +32,7 @@ static constexpr const char* fieldNames[FIELD_COUNT]
     "Copying Allowed", "Printing Allowed", "Adding Comments Allowed", "Changing Allowed", "Encrypted", "Tagged", "Linearized", "Incremental", "Signature Field",
     "Created", "Modified",
     "ID", "PDF Attributes",
-    "Text"
+    "Outlines", "Text"
 };
 
 /** Array used to simplify fieldType returning. */
@@ -44,8 +44,9 @@ constexpr int fieldTypes[FIELD_COUNT]
     ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean,
     ft_datetime, ft_datetime,
     ft_stringw, ft_stringw,
-    ft_fulltext
+    ft_fulltext, ft_fulltext
 };
+
 /** Supported field flags, special value for attributes */
 constexpr int fieldFlags[FIELD_COUNT]
 {
@@ -55,7 +56,7 @@ constexpr int fieldFlags[FIELD_COUNT]
     0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0,
     0, contflags_substattributestr,
-    0
+    0, 0
 };
 
 /**< Only one instance of PDFExtractor per thread. */
@@ -167,6 +168,7 @@ int __stdcall ContentGetDetectString(char* detectString, int maxlen)
 * See "Content Plugin Interface" document
 * xpdfsearch supports indexes in ranges 0-25 and 10000-10025.
 * Range above 10000 is reserved for directory synchronization functions.
+*
 * @param[in]    fieldIndex     index
 * @param[out]   fieldName      name of requested FieldIndex
 * @param[in]    units          "mm|cm|in|pt" for FieldIndex=fiPageWidth and fiPageHeight
@@ -211,6 +213,7 @@ int __stdcall ContentGetSupportedField(int fieldIndex, char* fieldName, char* un
 * Plugin state change.
 * See "Content Plugin Interface" document.
 * When TC reads new directory or re-reads current one, close open PDF.
+*
 * @param[in]    state   state value.
 * @param[in]    path    current path
 */
@@ -263,7 +266,7 @@ int __stdcall ContentGetValueW(const wchar_t* fileName, int fieldIndex, int unit
             g_extractor = new PDFExtractor();
 
         if (g_extractor)
-            return g_extractor->extract(fileName, fieldIndex, unitIndex, fieldValue, cbfieldValue, flags, options);
+            return g_extractor->extract(fileName, fieldIndex, unitIndex, fieldValue, cbfieldValue, flags);
         
         return ft_fileerror;
     }
@@ -276,7 +279,7 @@ int __stdcall ContentGetValueW(const wchar_t* fileName, int fieldIndex, int unit
 * Check for version of currently used Total Commander / version of plugin interface.
 * If plugin interface is lower than 1.2, PDF date and time fields are not supported.
 * If plugin interface is lower than 2.1, compare by content fields are not supported.
-* Load options from ini file.
+* Load options from TC content plugin ini file.
 *
 * @param[in]    dps see ContentDefaultParamStruct in "Content Plugin Interface" document.
 */
@@ -286,8 +289,16 @@ void __stdcall ContentSetDefaultParams(ContentDefaultParamStruct* dps)
     // Check content plugin interface version to enable fields of type datetime.
     enableDateTimeField = ((dps->pluginInterfaceVersionHi == 1) && (dps->pluginInterfaceVersionLow >= 2)) || (dps->pluginInterfaceVersionHi > 1);
     enableCompareFields = ((dps->pluginInterfaceVersionHi == 2) && (dps->pluginInterfaceVersionLow >= 10)) || (dps->pluginInterfaceVersionHi > 2);
-    if (GetPrivateProfileIntA("xPDFSearch", "NoCache", 0, dps->defaultIniName))
-        options |= OPTION_NO_CACHE;
+
+    globalOptionsFromIni.noCache = GetPrivateProfileIntA("xPDFSearch", "NoCache", 0, dps->defaultIniName);
+    globalOptionsFromIni.discardInvisibleText = GetPrivateProfileIntA("xPDFSearch", "DiscardInvisibleText", 1, dps->defaultIniName);
+    globalOptionsFromIni.discardDiagonalText = GetPrivateProfileIntA("xPDFSearch", "DiscardDiagonalText", 1, dps->defaultIniName);
+    globalOptionsFromIni.discardClippedText = GetPrivateProfileIntA("xPDFSearch", "DiscardClippedText", 1, dps->defaultIniName);
+    globalOptionsFromIni.marginLeft = GetPrivateProfileIntA("xPDFSearch", "MarginLeft", 0, dps->defaultIniName);
+    globalOptionsFromIni.marginRight = GetPrivateProfileIntA("xPDFSearch", "MarginRight", 0, dps->defaultIniName);
+    globalOptionsFromIni.marginTop = GetPrivateProfileIntA("xPDFSearch", "MarginTop", 0, dps->defaultIniName);
+    globalOptionsFromIni.marginBottom = GetPrivateProfileIntA("xPDFSearch", "MarginBottom", 0, dps->defaultIniName);
+    globalOptionsFromIni.textOutputMode = static_cast<TextOutputMode>(GetPrivateProfileIntA("xPDFSearch", "TextOutputMode", 0, dps->defaultIniName) % (textOutRawOrder + 1));
 }
 
 /**
@@ -306,6 +317,7 @@ void __stdcall ContentPluginUnloading()
 /**
 * Directory change has occurred, stop extraction.
 * See "Content Plugin Interface" document.
+*
 * @param[in]  fileName      not used
 */
 void __stdcall ContentStopGetValueW(const wchar_t* fileName)
@@ -353,7 +365,7 @@ int __stdcall ContentCompareFilesW(PROGRESSCALLBACKPROC progressCallback, int co
         g_extractor = new PDFExtractor();
 
     if (g_extractor)
-        return g_extractor->compare(progressCallback, fileName1, fileName2, compareIndex - ft_comparebaseindex, options);
+        return g_extractor->compare(progressCallback, fileName1, fileName2, compareIndex - ft_comparebaseindex);
 
     return ft_compare_next;
 }

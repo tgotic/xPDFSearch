@@ -191,7 +191,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <Version>1.350</Version>
+      <Version>1.360</Version>
       <SetChecksum>true</SetChecksum>
       <ProgramDatabaseFile />
       <MinimumRequiredVersion>6.01</MinimumRequiredVersion>
@@ -224,7 +224,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <Version>1.350</Version>
+      <Version>1.360</Version>
       <SetChecksum>true</SetChecksum>
       <ProgramDatabaseFile>
       </ProgramDatabaseFile>
@@ -256,7 +256,7 @@
       <MinimumRequiredVersion>6.01</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.350</Version>
+      <Version>1.360</Version>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_WIN64</PreprocessorDefinitions>
@@ -326,7 +326,7 @@
       <MinimumRequiredVersion>6.01</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.350</Version>
+      <Version>1.360</Version>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <SetChecksum>true</SetChecksum>
@@ -365,7 +365,7 @@
       <MinimumRequiredVersion>5.02</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.350</Version>
+      <Version>1.360</Version>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <SetChecksum>true</SetChecksum>
@@ -411,6 +411,7 @@
     <ClCompile Include="xpdf-4.04\xpdf\NameToCharCode.cc" />
     <ClCompile Include="xpdf-4.04\xpdf\Object.cc" />
     <ClCompile Include="xpdf-4.04\xpdf\OptionalContent.cc" />
+    <ClCompile Include="xpdf-4.04\xpdf\Outline.cc" />
     <ClCompile Include="xpdf-4.04\xpdf\OutputDev.cc" />
     <ClCompile Include="xpdf-4.04\xpdf\Page.cc" />
     <ClCompile Include="xpdf-4.04\xpdf\Parser.cc" />

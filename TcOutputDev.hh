@@ -14,7 +14,7 @@
 class TcOutputDev
 {
 public:
-    explicit TcOutputDev();
+    explicit TcOutputDev() { };
     TcOutputDev(const TcOutputDev&) = delete;
     TcOutputDev& operator=(const TcOutputDev&) = delete;
 

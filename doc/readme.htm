@@ -1,0 +1,280 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <title>xPDFSearch</title>
+</head>
+<body>
+  <div id="content">
+    <h1>xPDFSearch</h1>
+    <p>xPDFSearch is a content plugin for Total Commander.</p>
+    <h2>Content</h2>
+    <ol>
+      <li><a href="#description">Plugin description</a></li>
+      <li><a href="#field_descriptions">Field descriptions</a></li>
+      <li><a href="#requirements">System requirements</a></li>
+      <li><a href="#use">Use</a></li>
+      <li><a href="#configuration">Configuration</a></li>
+      <li><a href="#contact">Author contact</a></li>
+      <li><a href="#license">License</a></li>
+    </ol>
+    <h2>1. Plugin description<a name="description" id="description"></a></h2>
+    <p>xPDFSearch can be used to perform full text search in PDF files. In addition xPDFSearch
+    provides meta data information from PDF files. It's possible to display title, subject,
+    keywords, author, application, PDF producer, number of pages, PDF version, created and
+    modified.</p>
+    <p>Plugin can be used in Synchronize Directories to compare content of PDF files.</p>
+    <h2>2. Field descriptions<a name="field_descriptions" id="field_descriptions"></a></h2>
+    <table>
+      <tbody>
+        <tr>
+          <td>Title</td>
+          <td>The document tile.</td>
+        </tr>
+        <tr>
+          <td>Subject</td>
+          <td>The doucment subject.</td>
+        </tr>
+        <tr>
+          <td>Keywords</td>
+          <td>Keywords describing the document.</td>
+        </tr>
+        <tr>
+          <td>Author</td>
+          <td>The document author.</td>
+        </tr>
+        <tr>
+          <td>Application</td>
+          <td>The application which has been used to create the document.</td>
+        </tr>
+        <tr>
+          <td>PDF Producer</td>
+          <td>The component which has been used to perform the conversion to PDF.</td>
+        </tr>
+        <tr>
+          <td>Document Start</td>
+          <td>The first approximately 1000 characters of the PDF document.</td>
+        </tr>
+        <tr>
+          <td>First Row</td>
+          <td>First row of the PDF document.</td>
+        </tr>
+        <tr>
+          <td>Number Of Pages</td>
+          <td>The number of pages of the document.</td>
+        </tr>
+        <tr>
+          <td>PDF Version</td>
+          <td>The PDF version of the document.</td>
+        </tr>
+        <tr>
+          <td>Page Width</td>
+          <td>The width of the first page.</td>
+        </tr>
+        <tr>
+          <td>Page Height</td>
+          <td>The height of the first page.</td>
+        </tr>
+        <tr>
+          <td>Copying Allowed</td>
+          <td>Indicates if copying text from the PDF document is allowed.</td>
+        </tr>
+        <tr>
+          <td>Printing Allowed</td>
+          <td>Indicates if it's allowed to print the PDF document.</td>
+        </tr>
+        <tr>
+          <td>Adding Comments Allowed</td>
+          <td>Indicates if adding comments to the PDF document is allowed.</td>
+        </tr>
+        <tr>
+          <td>Changing Allowed</td>
+          <td>Indicates if changing the PDF document is allowed.</td>
+        </tr>
+        <tr>
+          <td>Encrypted</td>
+          <td>Indicates if the PDF document is encrypted.</td>
+        </tr>
+        <tr>
+          <td>Tagged</td>
+          <td>Indicates if the PDF document is tagged.</td>
+        </tr>
+        <tr>
+          <td>Linearized</td>
+          <td>Indicates if the first page of the PDF can be displayed without loading the whole
+          file.</td>
+        </tr>
+        <tr>
+          <td>Incremental</td>
+          <td>Indicates if the PDF document has been modified by appending data.</td>
+        </tr>
+        <tr>
+          <td>Signature field</td>
+          <td>Indicates if the PDF document has Signature field set. This may indicate that the
+          document is digitally signed.</td>
+        </tr>
+        <tr>
+          <td>Created</td>
+          <td>The creation date of the document.</td>
+        </tr>
+        <tr>
+          <td>Modified</td>
+          <td>The date were the document has been modified.</td>
+        </tr>
+        <tr>
+          <td>ID</td>
+          <td>The PDF document ID</td>
+        </tr>
+        <tr>
+          <td>PDF Attributes</td>
+          <td>
+            <table>
+              <tbody>
+                <tr>
+                  <td>PDF indicators displayed as attributes</td>
+                </tr>
+                <tr>
+                  <td>P</td>
+                  <td>Printing allowed</td>
+                </tr>
+                <tr>
+                  <td>C</td>
+                  <td>Copying allowed</td>
+                </tr>
+                <tr>
+                  <td>M</td>
+                  <td>Changing (<b>M</b>odifying) allowed</td>
+                </tr>
+                <tr>
+                  <td>N</td>
+                  <td>Adding Comments (<b>N</b>otes) Allowed</td>
+                </tr>
+                <tr>
+                  <td>I</td>
+                  <td>Incremental</td>
+                </tr>
+                <tr>
+                  <td>T</td>
+                  <td>Tagged</td>
+                </tr>
+                <tr>
+                  <td>L</td>
+                  <td>Linearized</td>
+                </tr>
+                <tr>
+                  <td>E</td>
+                  <td>Encrypted</td>
+                </tr>
+                <tr>
+                  <td>S</td>
+                  <td>Signature</td>
+                </tr>
+                <tr>
+                  <td>O</td>
+                  <td>Outlines/Bookmarks</td>
+                </tr>
+              </tbody>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td>Outlines</td>
+          <td>The Outlines (bookmarks) search is available in the search and compare functions of Total Commander.</td>
+        </tr>
+        <tr>
+          <td>Text</td>
+          <td>The fulltext search is available in the search and compare functions of Total Commander.</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2>3. System requirements<a name="requirements" id="requirements"></a></h2>
+    <p>You need Total Commander 6.50 or higher for this plugin. To use the Created and Modified
+    fields Total Commander 6.53 or higher is required.</p>
+    <h2>4. Use <a name="use" id="use"></a></h2>
+    <h3>Start a full text search</h3>
+    <ol>
+      <li>In menu click Commands/Search.</li>
+      <li>Now activate the tab "Plugins".</li>
+      <li>Select Plugin in the Plugin combobox. The other comboboxes Property (=Text) and OP
+      (=contains) are already set to appropriate values for full text search.</li>
+      <li>Enter the search text in the value field.</li>
+      <li>Press start search button.</li>
+    </ol>
+    <p>Of course it's possible to search for the other fields as well.</p>
+    <table id="image">
+      <tbody>
+        <tr>
+          <td id="image"><img src="./images/text_search_eng.png" height="249" width="539"></td>
+        </tr>
+        <tr>
+          <td id="image_caption">Search for all PDF documents containing the word bicyle.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>The other fields can be additionally used in files by file type, custom columns,
+    tooltips, and thumbnail view.</p>
+    <h3>Compare two or more files</h3>
+    <ol>
+      <li>Open Synchronize Directiories</li>
+      <li>Click on a small >> button to activate "User-defined compare functions by file type"</li>
+      <li>Check Use plugin compare functions</li>
+      <li>Click Add.. to add PDF file type</li>
+      <li>Specify *.pdf as file type and click OK</li>
+      <li>Select xPDFSearch plugin and one of its properties, e.g. Compare Text</li>
+      <li>Close dialogs with OK, OK, OK</li>
+      <li>Click Compare</li>
+    </ol>
+    <table id="image">
+      <tbody>
+        <tr>
+          <td id="image"><img src="./images/compare.jpg"></td>
+        </tr>
+        <tr>
+          <td id="image_caption">Define xPDFSearch as compare plugin</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2>5. Configuration<a name="configuration" id="configuration"></a></h2>
+    <p>xPDFSearch plugin can be configured via TC content plugin ini file.</p>
+    <p>
+    <ul>[xPDFSearch]
+    <li>NoCache=0
+      <ul>
+        <li>0=file caching disabled, fast reading of fields, unable to rename or alter attributes of the open PDF file 
+        <li>1=disables file caching, slower reading of fields, allows renaming PDF file with values form xPDFSearch and changing PDF file attributes (not content of PDF file)</li>
+      </ul>
+    <li>DiscardInvisibleText=1 discard all invisible characters</li>
+    <li>DiscardDiagonalText=1 discard all text that's not close to 0/90/180/270 degrees</li>
+    <li>DiscardClippedText=1 discard all clipped characters</li>
+    <li>MarginLeft=0 discard all characters left of mediaBox + marginLeft</li>
+    <li>MarginRight=0 discard all characters right of mediaBox - marginRight</li>
+    <li>MarginTop=0 discard all characters above of mediaBox - marginTop</li>
+    <li>MarginBottom=0 discard all characters bellow of mediaBox + marginBottom</li>
+    <li>TextOutputMode=0 text formatting mode: 
+      <ul>
+        <li>0=reading order</li>
+        <li>1=original physical layout</li>
+        <li>2=simple one-column</li>
+        <li>3=simple one-column2</li>
+        <li>4=optimized for tables</li>
+        <li>5=fixed-pitch/height layout</li>
+        <li>6=keep text in content stream order</li>
+      </ul>
+    </li>
+    </ul>
+    </p>
+    <p>
+    xPDFSearch plugin uses slightly modified <a href="http://www.xpdfreader.com/about.html">Xpdf library</a>. 
+    Xpdf can be configured via <a href="http://www.xpdfreader.com/xpdfrc-man.html">xpdfrc file</a>. 
+    </p>
+    <h2>6. Author contact<a name="contact" id="contact"></a></h2>
+    <p>There is a <a href="http://www.ghisler.ch/board/viewtopic.php?t=7423">thread</a> in the
+    <a href="http://www.ghisler.ch/">Total Commander forum</a> which can be used to discuss
+    problems, bugs and suggestions.</p>
+    <h2>7. License<a name="license" id="license"></a></h2>
+    <p>This Total Commander Plugin is licensed under the General Public License (GPL). The license
+    can be found in the file GPL.txt.</p>
+  </div>
+</body>
+</html>

@@ -114,6 +114,6 @@
 #define NO_JPX_STREAM       /**< don't extract JPG2000 images */
 #define NO_BARCODE          /**< don't create/parse bacodes */
 #define NO_EMBEDDED_CONTENT /**< don't extract embedded files */
-#define DISABLE_OUTLINE     /**< don't extract outline structures */
+// #define DISABLE_OUTLINE     /**< don't extract outline structures */
 
 #endif

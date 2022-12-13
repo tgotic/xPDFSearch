@@ -138,6 +138,9 @@
     <ClCompile Include="xpdf-4.04\xpdf\OptionalContent.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
+    <ClCompile Include="xpdf-4.04\xpdf\Outline.cc">
+      <Filter>xpdf\xpdf</Filter>
+    </ClCompile>
     <ClCompile Include="xpdf-4.04\xpdf\OutputDev.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>

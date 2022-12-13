@@ -39,8 +39,8 @@ public:
     PDFExtractor(const PDFExtractor&) = delete;
     PDFExtractor& operator=(const PDFExtractor&) = delete;
     ~PDFExtractor();
-    int extract(const wchar_t* fileName, int field, int unit, void* dst, int dstSize, int flags, int options);
-    int compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* fileName1, const wchar_t* fileName2, int field, int options);
+    int extract(const wchar_t* fileName, int field, int unit, void* dst, int dstSize, int flags);
+    int compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* fileName1, const wchar_t* fileName2, int field);
     void abort();
     void stop();
     void waitForProducer();
@@ -52,14 +52,16 @@ private:
     void getDocID(PDFDoc* doc);
 
     static double getPaperSize(int units);
-    static BOOL isIncremental(PDFDoc* doc);
-    static BOOL isTagged(PDFDoc* doc);
-    static BOOL hasSignature(PDFDoc* doc);
-    static ptrdiff_t UnicodeToUTF16(wchar_t* dst, int *cbDst, const Unicode* src, int cchSrc);
+    static bool isIncremental(PDFDoc* doc);
+    static bool isTagged(PDFDoc* doc);
+    static bool hasSignature(PDFDoc* doc);
+    static bool hasOutlines(PDFDoc* doc);
     static size_t removeDelimiters(wchar_t* str, size_t cchStr, const wchar_t* delims);
     static void appendHexValue(wchar_t* dst, size_t cbDst, int value);
     static wchar_t nibble2wchar(char nibble);
-    int initData(const wchar_t* fileName, int field, int unit, int flags, int options, DWORD timeout);
+    int initData(const wchar_t* fileName, int field, int unit, int flags, DWORD timeout);
+    void getOulines(PDFDoc* doc);
+    bool getOulinesTitles(GList* node);
 
     unsigned int startWorkerThread();
     int waitForConsumer(DWORD timeout);

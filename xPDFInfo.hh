@@ -7,9 +7,10 @@
 #pragma once
 #include "contentplug.h"
 #include <tchar.h>
+#include <TextOutputDev.h>
 
 /**
-* PDF page units 
+* PDF page units
 */
 enum SizeUnits
 {
@@ -18,11 +19,26 @@ enum SizeUnits
     suInches,       /**< inches */
     suPoints        /**< points */
 };
+/**
+* Options from ini file.
+*/
+typedef struct options_s
+{
+    bool noCache{ false };              /**< Don't cache data for this ContentGetValue call, close file after returning data */
+    bool discardInvisibleText{ true };  /**< discard all invisible characters */
+    bool discardDiagonalText{ true };   /**< discard all text that's not close to 0/90/180/270 degrees */
+    bool discardClippedText{ true };    /**< discard all clipped characters */
+    TextOutputMode textOutputMode{ textOutReadingOrder }; /**< text formatting mode, see TextOutputControl in TextOutputDev.h */
+    int marginLeft{ 0 };                /**< discard all characters left of mediaBox + marginLeft */
+    int marginRight{ 0 };               /**< discard all characters right of mediaBox - marginRight */
+    int marginTop{ 0 };                 /**< discard all characters above of mediaBox - marginTop */
+    int marginBottom{ 0 };              /**< discard all characters bellow of mediaBox + marginBottom */
+} options_t;
 
-constexpr auto OPTION_NO_CACHE{ 1 };   /**< Don't cache data for this ContentGetValue call, close file after returning data */
+extern options_t globalOptionsFromIni;
 
 /**
-* The fieldIndexes enumeration is used simplify access to fields. 
+* The fieldIndexes enumeration is used simplify access to fields.
 */
 enum fieldIndexes
 {
@@ -32,10 +48,11 @@ enum fieldIndexes
     fiCopyingAllowed, fiPrintingAllowed, fiAddCommentsAllowed, fiChangingAllowed, fiEncrypted, fiTagged, fiLinearized, fiIncremental, fiSignature,
     fiCreationDate, fiLastModifiedDate, 
     fiID, fiAttributesString,
-    fiText
+    fiOutlines, fiText
 };
+
 /**< used to globally set the number of supported fields. */
-constexpr auto FIELD_COUNT{ 26 };
+constexpr auto FIELD_COUNT{ 27 };
 
 #ifdef _DEBUG
 extern bool __cdecl _trace(const wchar_t *format, ...);

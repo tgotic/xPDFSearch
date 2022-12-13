@@ -142,9 +142,9 @@ PDFDoc::PDFDoc(const wchar_t *fileNameA, size_t fileNameLen, GString *ownerPassw
   // try to open file
   // NB: _wfopen is only available in NT
   if (IsWindowsPlatformIdOrGreater(VER_PLATFORM_WIN32_NT)) {
-    file = _wfsopen(fileNameU, wfopenReadMode, _SH_DENYNO);
+    file = _wfsopen(fileNameU, wfopenReadMode, _SH_DENYWR);
   } else {
-    file = _fsopen(fileName->getCString(), fopenReadMode, _SH_DENYNO);
+    file = _fsopen(fileName->getCString(), fopenReadMode, _SH_DENYWR);
   }
   if (!file) {
     error(errIO, -1, "Couldn't open file '{0:t}'", fileName);
@@ -188,9 +188,9 @@ PDFDoc::PDFDoc(char *fileNameA, GString *ownerPassword,
 
   // NB: _wfopen is only available in NT
   if (IsWindowsPlatformIdOrGreater(VER_PLATFORM_WIN32_NT)) {
-      file = _wfsopen(fileNameU, wfopenReadMode, _SH_DENYNO);
+      file = _wfsopen(fileNameU, wfopenReadMode, _SH_DENYWR);
   } else {
-    file = _fsopen(fileName->getCString(), fopenReadMode, _SH_DENYNO);
+    file = _fsopen(fileName->getCString(), fopenReadMode, _SH_DENYWR);
   }
 #elif defined(VMS)
   file = fopen(fileName->getCString(), fopenReadMode, "ctx=stm");

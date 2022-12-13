@@ -46,19 +46,9 @@ static int outputFunction(void *stream, const char *text, int len)
     auto data{ static_cast<ThreadData*>(stream) };
     if (data && (request_status::active == data->getStatus()) && text && (len > 0))
     {
-        return data->output(text, len);
+        return data->output(text, len, false);
     }
     return 0;
-}
-/**
-* TcOutputDev constructor.
-* Sets values for TextOutputControl structure used in text extraction.
-*/
-TcOutputDev::TcOutputDev()
-{
-    toc.discardDiagonalText = gTrue;
-    toc.discardInvisibleText = gTrue;
-    toc.discardClippedText = gTrue;
 }
 
 /**
@@ -74,6 +64,15 @@ void TcOutputDev::output(PDFDoc* doc, ThreadData* data)
     {
         if (!m_dev)
         {
+            toc.discardInvisibleText = globalOptionsFromIni.discardInvisibleText;
+            toc.discardDiagonalText = globalOptionsFromIni.discardDiagonalText;
+            toc.discardClippedText = globalOptionsFromIni.discardClippedText;
+            toc.marginBottom = globalOptionsFromIni.marginBottom;
+            toc.marginTop = globalOptionsFromIni.marginTop;
+            toc.marginLeft = globalOptionsFromIni.marginLeft;
+            toc.marginRight = globalOptionsFromIni.marginRight;
+            toc.mode = globalOptionsFromIni.textOutputMode;
+
             // register #outputFunction as a callback function for text extraction
             m_dev = std::make_unique<TextOutputDev>(&outputFunction, data, &toc);
         }

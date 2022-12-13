@@ -2,6 +2,7 @@
 * @file
 * Contents of file contplug.h version 2.11
 */
+
 #pragma once
 #include <Windows.h>
 
@@ -83,6 +84,9 @@
 
 #define editflags_initialize        1   /**< The data passed to the plugin may be used to  initialize the edit dialog*/
 
+/**
+* @defgroup CONTENT ContentGetValue flags values
+* @{ */
 #define CONTENT_DELAYIFSLOW         1   /**< ContentGetValue called in foreground    */
 /**
 * If requested via contflags_passthrough_size_float: The size
@@ -90,6 +94,7 @@
 * from the given units value, and optionally a text string
 */
 #define CONTENT_PASSTHROUGH         2
+/** @} */
 
 /**
 * Used in ContentSetDefaultParams to inform the plugin about the current plugin interface version and ini file location.

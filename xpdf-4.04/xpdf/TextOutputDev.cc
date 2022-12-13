@@ -972,9 +972,15 @@ TextLine::TextLine(GList *wordsA, double xMinA, double yMinA,
     }
   }
   text = (Unicode *)gmallocn(len, sizeof(Unicode));
+  if (!text)
+      return;
   edge = (double *)gmallocn(len + 1, sizeof(double));
+  if (!edge) {
+      gfree(text);
+      return;
+  }
   j = 0;
-  for (i = 0; i < words->getLength(); ++i) {
+  for (i = 0; (i < words->getLength()) && (j < len); ++i) {
     word = (TextWord *)words->get(i);
     if (i == 0) {
       rot = word->rot;
@@ -992,7 +998,8 @@ TextLine::TextLine(GList *wordsA, double xMinA, double yMinA,
     }
   }
   //~ need to check for other Unicode chars used as hyphens
-  hyphenated = text[len - 1] == (Unicode)'-';
+  if (len)
+    hyphenated = text[len - 1] == (Unicode)'-';
 }
 
 TextLine::~TextLine() {

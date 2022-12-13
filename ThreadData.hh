@@ -1,7 +1,7 @@
 /**
 * @file
 *
-* Declarations of constants and structures used in threads 
+* Declarations of constants and structures used in threads
 */
 
 #pragma once
@@ -9,6 +9,8 @@
 #include <Windows.h>
 #include <process.h>
 #include <TextOutputDev.h>
+#include <GList.h>
+#include <Outline.h>
 #include <PDFDoc.h>
 #include <mutex>
 #include <atomic>
@@ -16,7 +18,7 @@
 /**
 * @defgroup handles ThreadData::handles indexes
 * @{ */
-constexpr auto THREAD_HANDLE{ 0U };     /**< thread handle index in #ThreadData::handles[] */
+constexpr auto WORKER_HANDLE{ 0U };     /**< worker thread handle index in #ThreadData::handles[] */
 constexpr auto CONSUMER_HANDLE{ 1U };   /**< consumer event handle index in #ThreadData::handles[] */
 constexpr auto PRODUCER_HANDLE{ 2U };   /**< producer event handle index in #ThreadData::handles[] */
 constexpr auto MAX_THREAD_HANDLES{ 3U }; /**< max ThreadData handles */
@@ -37,7 +39,7 @@ constexpr auto CONSUMER_TIMEOUT{ 10000UL };  /**< time for one data extraction *
 constexpr auto PRODUCER_TIMEOUT{ 100UL };    /**< extractor waits for next request from TC, or closes PDF document */
 #endif
 
-constexpr auto REQUEST_BUFFER_SIZE{ 2048U };/**< size of Request.buffer, if not provided form TC */
+constexpr auto REQUEST_BUFFER_SIZE{ 2048U };    /**< size of Request.buffer, if not provided form TC */
 
 constexpr auto sizeOfWchar{ static_cast<int>(sizeof(wchar_t)) };/**< sizeof wchar_t */
 
@@ -60,14 +62,14 @@ struct Request
     int field{ 0 };                     /**< field index to extract */
     int unit{ 0 };                      /**< unit index */
     int flags{ 0 };                     /**< flags from TC */
-    int options{ 0 };                   /**< request options */
     int result{ 0 };                    /**< result of an extraction */
     DWORD timeout{ 0 };                 /**< time to wait in text extraction procedure */
     std::atomic<request_status> status{ request_status::closed };   /**< request status, @see request_status */
     void* buffer{ new char[REQUEST_BUFFER_SIZE] };                  /**< extracted data buffer */
     void* ptr{ buffer };                                            /**< pointer to end of extracted data, offset pointer to buffer */
     const wchar_t* fileName{ nullptr }; /**< name of PDF document */
-    auto remaining() const { return (REQUEST_BUFFER_SIZE - (static_cast<char*>(ptr) - static_cast<char*>(buffer))); }
+    auto remaining() const { return (buffer ? (REQUEST_BUFFER_SIZE - (static_cast<char*>(ptr) - static_cast<char*>(buffer))) : 0); }
+    void release() { delete[] static_cast<char*>(buffer); buffer = nullptr; ptr = nullptr; }
 };
 
 /**
@@ -98,7 +100,7 @@ public:
     void abort();
     void done();
     void stop();
-    int output(const char* text, int len);
+    int output(const char* text, ptrdiff_t len, bool textIsUnicode);
     inline bool isActive() const { return active; }
     inline bool setActive(bool state) { return active.exchange(state); }
     inline request_status getStatus() const { return request.status; }
@@ -109,13 +111,12 @@ public:
         request.status.compare_exchange_strong(expected, new_status);
         return expected;
     }
-    int initRequest(const wchar_t* fileName, int field, int unit, int flags, int options, DWORD timeout);
+    int initRequest(const wchar_t* fileName, int field, int unit, int flags, DWORD timeout);
 
     template<typename T> void setValue(T value, int type);
 
     auto getRequestField() const { return request.field; }
     auto getRequestFlags() const { return request.flags; }
-    auto getRequestOptions() const { return request.options; }
     auto getRequestUnit() const { return request.unit; }
     auto getRequestResult() const { return request.result; }
     auto getRequestBuffer() const { return request.buffer; }
@@ -123,9 +124,9 @@ public:
     auto getRequestFileName() const { return request.fileName; }
 
     void setRequestResult(int result) { request.result = result; }
-    void setRequestPtr(void* ptr) 
+    void setRequestPtr(void* ptr)
     { 
-        if ((ptr >= request.buffer) && (ptr < static_cast<char*>(request.buffer) + REQUEST_BUFFER_SIZE))
+        if (request.buffer && (ptr >= request.buffer) && (ptr < static_cast<char*>(request.buffer) + REQUEST_BUFFER_SIZE))
             request.ptr = ptr;
     }
 
@@ -135,7 +136,11 @@ private:
     HANDLE handles[MAX_THREAD_HANDLES]{ nullptr };  /**< thread, producer and consumer event handles */
     void createProducer();
     void createConsumer();
-    inline auto isStarted() const { return (handles[THREAD_HANDLE] != nullptr); }
+    uint32_t createWorker(_beginthreadex_proc_type func, void* args);
+    void closeProducer();
+    void closeConsumer();
+    void closeWorker();
+    inline auto hasWorker() const { return (handles[WORKER_HANDLE] != nullptr); }
     inline void notifyProducer() { SetEvent(handles[PRODUCER_HANDLE]); }
     inline void resetConsumer() { ResetEvent(handles[CONSUMER_HANDLE]); }
 
@@ -156,3 +161,6 @@ void ThreadData::setValue(T value, int type)
     *(static_cast<T*>(request.buffer)) = value;
     request.result = type;
 }
+
+extern ptrdiff_t PdfTxtToUTF16(const char* src, const ptrdiff_t cchSrc, wchar_t* dst, ptrdiff_t *cbDst);
+extern ptrdiff_t UnicodeToUTF16(const Unicode* src, ptrdiff_t cchSrc, wchar_t* dst, ptrdiff_t *cbDst);
