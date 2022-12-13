@@ -1,0 +1,16 @@
+EXPORTS
+    ContentGetDetectString
+    ContentGetSupportedField
+    ContentGetValue
+    ContentGetValueW
+
+    ContentSetDefaultParams
+    ContentPluginUnloading
+
+    ContentStopGetValueW
+    ContentGetSupportedFieldFlags
+
+    ContentSendStateInformationW
+
+    ContentCompareFilesW
+
