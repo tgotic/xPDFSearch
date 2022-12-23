@@ -7,7 +7,7 @@
 #include "ThreadData.hh"
 #include "xPDFInfo.hh"
 #include <GlobalParams.h>
-#include <strsafe.h>
+
 /**
 * Convert PDF string to UTF-16 wide string (wchar_t), change byte endianess.
 * Filter out \\f and \\b delimiters.
@@ -18,7 +18,7 @@
 * @param[in,out]    cbDst   [in] size of dst in bytes, [out] remaining dst size in bytes
 * @return number of src chars converted to dst
 */
-ptrdiff_t PdfTxtToUTF16(const char* src, const ptrdiff_t cchSrc, wchar_t* dst, ptrdiff_t *cbDst)
+static ptrdiff_t PdfTxtToUTF16(const char* src, const ptrdiff_t cchSrc, wchar_t* dst, ptrdiff_t *cbDst)
 {
     ptrdiff_t i{ 0 };
     for (; (i < cchSrc) && (*cbDst > sizeOfWchar + 1); i += sizeOfWchar)
@@ -46,7 +46,7 @@ ptrdiff_t PdfTxtToUTF16(const char* src, const ptrdiff_t cchSrc, wchar_t* dst, p
 * @param[in,out]    cbDst   [in] size of dst in bytes, [out] remaining dst size in bytes
 * @return number of src Unicode characters converted to dst
 */
-ptrdiff_t UnicodeToUTF16(const Unicode* src, ptrdiff_t cchSrc, wchar_t* dst, ptrdiff_t *cbDst)
+ptrdiff_t ThreadData::UnicodeToUTF16(const Unicode* src, ptrdiff_t cchSrc, wchar_t* dst, ptrdiff_t *cbDst)
 {
     ptrdiff_t i{ 0 };
     if (src && dst && cbDst)
@@ -100,16 +100,23 @@ uint32_t ThreadData::createWorker(_beginthreadex_proc_type func, void* args)
             // wait a little bit for thread to start...
             const auto dwRet{ WaitForSingleObject(handles[WORKER_HANDLE], 10UL) };
             if (dwRet != WAIT_TIMEOUT)
+            {
+                TRACE(L"%hs!new thread %x ended prematurely\n", __FUNCTION__, handles[WORKER_HANDLE]);
                 threadID = 0;
+            }
         }
-#if 0
         else
         {
-            // get running thread ID
-            threadID = GetThreadId(handles[THREAD_HANDLE]);
+            TRACE(L"%hs!unable to start new thread\n", __FUNCTION__);
         }
-#endif
     }
+#if 0
+    else
+    {
+        // get running thread ID
+        threadID = GetThreadId(handles[WORKER_HANDLE]);
+    }
+#endif
     return threadID;
 }
 
@@ -277,7 +284,7 @@ int ThreadData::compareWaitForConsumers(ThreadData* searcher, DWORD timeout)
 * @param[in]    args    parameter for thread function
 * @return thread ID if worker thread has been successfully created or already running, 0 if error.
 */
-unsigned int ThreadData::start(_beginthreadex_proc_type func, void* args)
+uint32_t ThreadData::start(_beginthreadex_proc_type func, void* args)
 {
     createConsumer();
     createProducer();
@@ -296,8 +303,8 @@ unsigned int ThreadData::start(_beginthreadex_proc_type func, void* args)
 */
 void ThreadData::stop()
 {
-    const auto status{ setStatusCond(request_status::cancelled, request_status::active) };
-    if ((status == request_status::active) || (status == request_status::complete))
+    const auto status{ setStatusCond(requestStatus::cancelled, requestStatus::active) };
+    if ((status == requestStatus::active) || (status == requestStatus::complete))
     {
         // reset consumer event that producer might have set
         resetConsumer();
@@ -312,8 +319,8 @@ void ThreadData::stop()
 */
 void ThreadData::done()
 {
-    const auto status{ setStatusCond(request_status::complete, request_status::active) };
-    if (status == request_status::active)
+    const auto status{ setStatusCond(requestStatus::complete, requestStatus::active) };
+    if (status == requestStatus::active)
     {
         // reset consumer event that producer might have set
         resetConsumer();
@@ -332,7 +339,7 @@ void ThreadData::abort()
     if (setActive(false))
     {
         // mark request as cancelled
-        setStatus(request_status::cancelled);
+        setStatus(requestStatus::cancelled);
         {
             std::lock_guard lock(mutex);
             request.fileName = nullptr;
@@ -374,8 +381,8 @@ int ThreadData::initRequest(const wchar_t* fileName, int field, int unit, int fl
     request.field = field;
     request.unit = unit;
     request.flags = flags;
-
     request.timeout = timeout;
+
     // for continuous full text search, don't move ptr to the beginning, it may point to extracted data
     if (!(((field == fiText) || (field == fiOutlines)) && (unit > 0)))
         request.ptr = request.buffer;   // set string end to begining of buffer
@@ -383,7 +390,7 @@ int ThreadData::initRequest(const wchar_t* fileName, int field, int unit, int fl
     if (request.ptr == request.buffer)
     {
         request.result = ft_fieldempty;
-        *(static_cast<int64_t*>(request.ptr)) = 0;
+        memset(request.ptr, 0, sizeof(int64_t) + sizeof(wchar_t)); // clear additional wchar_t for ft_numeric_floating
     }
     else
     {
@@ -427,10 +434,10 @@ int ThreadData::output(const char *text, ptrdiff_t len, bool textIsUnicode)
                 // wait for TC to get data
                 if (waitForProducer(timeout) != WAIT_OBJECT_0)
                 {
-                    setStatusCond(request_status::cancelled, request_status::active);
+                    setStatusCond(requestStatus::cancelled, requestStatus::active);
                     return 1;
                 }
-                if (getStatus() != request_status::active)
+                if (getStatus() != requestStatus::active)
                     return 1;
 
                 lock.lock();
@@ -521,7 +528,7 @@ int ThreadData::output(const char *text, ptrdiff_t len, bool textIsUnicode)
         {
             if ((field == fiText) || (field == fiOutlines))
             {
-                if (getStatus() == request_status::active)
+                if (getStatus() == requestStatus::active)
                 {
                     notifyConsumer();
                     TRACE(L"%hs!TC notified!%d b\n", __FUNCTION__, REQUEST_BUFFER_SIZE - cbDstW);
@@ -532,7 +539,7 @@ int ThreadData::output(const char *text, ptrdiff_t len, bool textIsUnicode)
             else
             {
                 // extraction is complete
-                setStatusCond(request_status::complete, request_status::active);
+                setStatusCond(requestStatus::complete, requestStatus::active);
                 return 1;
             }
         }

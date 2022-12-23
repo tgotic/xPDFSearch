@@ -6,7 +6,6 @@
 
 #pragma once
 #include "contentplug.h"
-#include <tchar.h>
 #include <TextOutputDev.h>
 
 /**
@@ -28,6 +27,7 @@ typedef struct options_s
     bool discardInvisibleText{ true };  /**< discard all invisible characters */
     bool discardDiagonalText{ true };   /**< discard all text that's not close to 0/90/180/270 degrees */
     bool discardClippedText{ true };    /**< discard all clipped characters */
+    bool appendExtensionLevel{ true };   /**< append PDF Extension Level to PDF version, e.g. 1.7 extension level 3 = 1.73 */
     TextOutputMode textOutputMode{ textOutReadingOrder }; /**< text formatting mode, see TextOutputControl in TextOutputDev.h */
     int marginLeft{ 0 };                /**< discard all characters left of mediaBox + marginLeft */
     int marginRight{ 0 };               /**< discard all characters right of mediaBox - marginRight */
@@ -47,12 +47,12 @@ enum fieldIndexes
     fiPDFVersion, fiPageWidth, fiPageHeight,
     fiCopyingAllowed, fiPrintingAllowed, fiAddCommentsAllowed, fiChangingAllowed, fiEncrypted, fiTagged, fiLinearized, fiIncremental, fiSignature,
     fiCreationDate, fiLastModifiedDate, 
-    fiID, fiAttributesString,
+    fiID, fiAttributesString, fiConformance,
     fiOutlines, fiText
 };
 
 /**< used to globally set the number of supported fields. */
-constexpr auto FIELD_COUNT{ 27 };
+constexpr auto FIELD_COUNT{ 28 };
 
 #ifdef _DEBUG
 extern bool __cdecl _trace(const wchar_t *format, ...);

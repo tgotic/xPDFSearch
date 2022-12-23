@@ -1,10 +1,8 @@
 #include "PDFExtractor.hh"
 #include <CharTypes.h>
-#include <TextString.h>
 #include "xPDFInfo.hh"
 #include <locale.h>
 #include <wchar.h>
-#include <strsafe.h>
 #include <charconv>
 
 /**
@@ -100,7 +98,7 @@ PDFExtractor::~PDFExtractor()
 */
 void PDFExtractor::closeDoc()
 {
-    m_data->setStatus(request_status::closed);
+    m_data->setStatus(requestStatus::closed);
     m_doc.reset();
 }
 
@@ -162,7 +160,7 @@ bool PDFExtractor::open()
         closeDoc();
         if (!m_fileName.empty())
         {
-            m_data->setStatus(request_status::active);
+            m_data->setStatus(requestStatus::active);
             m_doc = std::make_unique<PDFDoc>(m_fileName.c_str(), m_fileName.size());
             TRACE(L"%hs!%ls\n", __FUNCTION__, m_fileName.c_str());
         }
@@ -262,16 +260,7 @@ void PDFExtractor::getMetadataString(PDFDoc* doc, const char* key)
         const auto dict{ objDocInfo.getDict() };
         if (dict->lookup(key, &obj)->isString())
         {
-            TextString ts(obj.getString());
-            if (ts.getLength())
-            {
-                ptrdiff_t len{ REQUEST_BUFFER_SIZE };
-
-                std::lock_guard lock(m_data->mutex);
-                UnicodeToUTF16(ts.getUnicode(), ts.getLength(), static_cast<wchar_t*>(m_data->getRequestBuffer()), &len);
-                if (len != REQUEST_BUFFER_SIZE)
-                    m_data->setRequestResult(ft_stringw);
-            }
+            m_data->setValue(obj.getString(), ft_stringw);
         }
         obj.free();
     }
@@ -337,10 +326,10 @@ bool PDFExtractor::hasOutlines(PDFDoc* doc)
 */
 bool PDFExtractor::getOulinesTitles(GList* node)
 {
-    int done{ false };
+    int outlinesDone{ false };
     if (node)
     {
-        for (auto n{ 0 }; (!done) && (n < node->getLength()); n++)
+        for (auto n{ 0 }; (!outlinesDone) && (n < node->getLength()); n++)
         {
             const auto item{ static_cast<OutlineItem*>(node->get(n)) };
             const auto titleLen{ item->getTitleLength() };
@@ -352,12 +341,12 @@ bool PDFExtractor::getOulinesTitles(GList* node)
             if (item->hasKids())
             {
                 item->open();
-                done = getOulinesTitles(item->getKids());
+                outlinesDone = getOulinesTitles(item->getKids());
                 item->close();
             }
         }
     }
-    return done;
+    return outlinesDone;
 }
 
 /**
@@ -470,17 +459,31 @@ void PDFExtractor::getMetadataAttrStr(PDFDoc* doc)
     if (hasOutlines(doc))
         attrs[9] = L'O';
 
-    auto len{ REQUEST_BUFFER_SIZE };
-    std::lock_guard lock(m_data->mutex);
-    auto dst{ static_cast<wchar_t*>(m_data->getRequestBuffer()) };
-    StringCbCopyW(dst, len, attrs);
-    m_data->setRequestResult(ft_stringw);
+    m_data->setValue(attrs, ft_stringw);
+}
+
+/**
+* Convert parts of Acrobat Date to uint16_t.
+* Used to check if conversion is successful.
+*
+* param[in] date    pointer to start of the string to convert
+* param[in] len     number of chars to convert
+* param[out] result result of conversion
+* return true - conversion success, false - conversion failed
+*/
+bool PDFExtractor::dateToInt(const char* date, uint8_t len, uint16_t& result)
+{
+    auto conv{ std::from_chars(date, date + len, result) };
+    if ((conv.ec == std::errc()) && (conv.ptr == date + len))
+    {
+        return true;
+    }
+    return false;
 }
 
 /**
 * "Created" and "Modified" fields data extraction.
 * Convert PDF date and time to FILETIME structure.
-* Data exchange is guarded with mutex.
 *
 * @param[in]    doc     pointer to PDFDoc object
 * @param[in]    key     "CreationDate" or "ModDate"
@@ -494,70 +497,94 @@ void PDFExtractor::getMetadataDate(PDFDoc* doc, const char* key)
         const auto dict{ objDocInfo.getDict() };
         if (dict->lookup(key, &obj)->isString())
         {
-            const auto acrobatDateTimeString{ obj.getString()->getCString() };
-            if (acrobatDateTimeString && (acrobatDateTimeString[0] == 'D') && (acrobatDateTimeString[1] == ':'))
+            std::unique_ptr<GString> dateTimeSting(TextString(obj.getString()).toUTF8());
+            auto const* acrobatDateTimeString{ dateTimeSting->getCString() };
+            auto len{ dateTimeSting->getLength() };
+            if (acrobatDateTimeString && (len >= 4))    // YYYY is minimum
             {
                 // D:20080918111951
                 // D:20080918111951Z
                 // D:20080918111951-07'00'
-                const auto len{ strlen(acrobatDateTimeString) };
-                SYSTEMTIME sysTime{ };
-                int hours{ 0 }, minutes{ 0 }, offset{ 0 };
-                if (len >= 6U)  // D:YYYY is minimum
+                if ((acrobatDateTimeString[0] == 'D') && (acrobatDateTimeString[1] == ':'))
                 {
-                    // default values for hours and minutes, PDF 1.7
-                    sysTime.wHour = 1;
-                    sysTime.wMinute = 1;
+                    acrobatDateTimeString += 2U;
+                    len -= 2;
+                }
 
-                    std::from_chars(acrobatDateTimeString + 2U, acrobatDateTimeString + 6U, sysTime.wYear);
-                    if (len >= 8U)
+                SYSTEMTIME sysTime{ };
+                uint16_t hours{ 0 }, minutes{ 0 };
+                int offset{ 0 };
+                if (len >= 4)
+                {
+                    // default values, PDF 1.7
+                    sysTime.wMonth = 1;
+                    sysTime.wDay = 1;
+
+                    SYSTEMTIME now{ };
+                    GetSystemTime(&now);
+
+                    // check if first conversion is successful and year is valid (PDF1.0 is released in 1993.)
+                    if (dateToInt(acrobatDateTimeString, 4U, sysTime.wYear))
                     {
-                        std::from_chars(acrobatDateTimeString + 6U, acrobatDateTimeString + 8U, sysTime.wMonth);
-                        if (len >= 10U)
+                        // from gpdf/poppler, y2k bug in Distiller
+                        // CCYYYMMDDHHmmSS
+                        // CC - century = 19
+                        if ((sysTime.wYear < 1930) && (len > 14))
                         {
-                            std::from_chars(acrobatDateTimeString + 8U, acrobatDateTimeString + 10U, sysTime.wDay);
-                            if (len >= 12U)
+                            acrobatDateTimeString += 2U; // skip century
+                            if (dateToInt(acrobatDateTimeString, 3U, sysTime.wYear))
                             {
-                                std::from_chars(acrobatDateTimeString + 10U, acrobatDateTimeString + 12U, sysTime.wHour);
-                                if (len >= 14U)
+                                sysTime.wYear += 1900;
+                                acrobatDateTimeString += 3U;
+                                len -= 5U;
+                            }
+                            else
+                                sysTime.wYear = 0;
+                        }
+                        else
+                        {
+                            acrobatDateTimeString += 4U;
+                            len -= 4;
+                        }
+                        if ((sysTime.wYear > 1992) && (sysTime.wYear <= now.wYear) && (len >= 2))
+                        {
+                            if (dateToInt(acrobatDateTimeString, 2U, sysTime.wMonth) && (len >= 4))
+                            {
+                                if (dateToInt(acrobatDateTimeString + 2U, 2U, sysTime.wDay) && (len >= 6))
                                 {
-                                    std::from_chars(acrobatDateTimeString + 12U, acrobatDateTimeString + 14U, sysTime.wMinute);
-                                    if (len >= 16U)
+                                    if (dateToInt(acrobatDateTimeString + 4U, 2U, sysTime.wHour) && (len >= 8))
                                     {
-                                        std::from_chars(acrobatDateTimeString + 14U, acrobatDateTimeString + 16U, sysTime.wSecond);
-                                        if (len >= 19U)
+                                        if (dateToInt(acrobatDateTimeString + 6U, 2U, sysTime.wMinute) && (len >= 10))
                                         {
-                                            std::from_chars(acrobatDateTimeString + 17U, acrobatDateTimeString + 19U, hours);
-                                            if (len >= 22U)
+                                            if (dateToInt(acrobatDateTimeString + 8U, 2U, sysTime.wSecond) && (len >= 13))
                                             {
-                                                std::from_chars(acrobatDateTimeString + 20U, acrobatDateTimeString + 22U, minutes);
+                                                if (dateToInt(acrobatDateTimeString + 11U, 2U, hours) && (len >= 16))
+                                                {
+                                                    dateToInt(acrobatDateTimeString + 14U, 2U, minutes);
+                                                }
+                                                offset = hours * 3600 + minutes * 60;
+                                                if (acrobatDateTimeString[10] == '-')
+                                                    offset = 0 - offset;
                                             }
-                                            offset = hours * 3600 + minutes * 60;
-                                            if (acrobatDateTimeString[16] == '-')
-                                                offset = 0 - offset;
                                         }
                                     }
                                 }
                             }
                         }
-                    }
-                    FILETIME fileTime{ };
-                    if (SystemTimeToFileTime(&sysTime, &fileTime))
-                    {
-                        if (offset)
+                        FILETIME fileTime{ };
+                        if (SystemTimeToFileTime(&sysTime, &fileTime))
                         {
-                            LARGE_INTEGER timeValue;
-                            timeValue.HighPart = fileTime.dwHighDateTime;
-                            timeValue.LowPart = fileTime.dwLowDateTime;
-                            timeValue.QuadPart -= offset * 10000000ULL;
-    
-                            fileTime.dwHighDateTime = timeValue.HighPart;
-                            fileTime.dwLowDateTime = timeValue.LowPart;
-                        }
-                        {
-                            std::lock_guard lock(m_data->mutex);
-                            memcpy(m_data->getRequestBuffer(), &fileTime, sizeof(FILETIME));
-                            m_data->setRequestResult(ft_datetime);
+                            if (offset)
+                            {
+                                LARGE_INTEGER timeValue;
+                                timeValue.HighPart = fileTime.dwHighDateTime;
+                                timeValue.LowPart = fileTime.dwLowDateTime;
+                                timeValue.QuadPart -= offset * 10000000ULL;
+
+                                fileTime.dwHighDateTime = timeValue.HighPart;
+                                fileTime.dwLowDateTime = timeValue.LowPart;
+                            }
+                            m_data->setValue(fileTime, ft_datetime);
                         }
                     }
                 }
@@ -568,7 +595,7 @@ void PDFExtractor::getMetadataDate(PDFDoc* doc, const char* key)
     objDocInfo.free();
 }
 
-/** 
+/**
 * Convert a given point value to the unit given in unit.
 *
 * @param[in]    units   units index
@@ -580,19 +607,169 @@ double PDFExtractor::getPaperSize(int units)
     {
     case suMilliMeters:
         return 0.3528;
-        break;
     case suCentiMeters:
         return 0.03528;
-        break;
     case suInches:
         return 0.0139;
-        break;
     case suPoints:
         return 1.0;
-        break;
     default:
         return 0.0;
     }
+}
+
+/**
+* Search for XMP element attribute or child element.
+*
+* @param[in]    elem            pointer to XMP element
+* @param[in]    nodeName        attribute or child element name
+* @param[out]   conformance     append attribute value or child element value to this parameter
+* @param[in]    prefix          prefix to append before value
+* @return true - attribute or child element found, false - not found
+*/
+bool PDFExtractor::getElemOrAttrData(ZxElement* elem, const char* nodeName, GString& conformance, const char* prefix)
+{
+    const auto attr{ elem->findAttr(nodeName) };
+    if (attr)
+    {
+        conformance.append(prefix)->append(attr->getValue());
+        return true;
+    }
+    const ZxNode* child{ elem->findFirstChildElement(nodeName) };
+    if (child && child->isElement())
+    {
+        const auto node{ child->getFirstChild() };
+        if (node && node->isCharData())
+        {
+            conformance.append(prefix)->append(static_cast<ZxCharData*>(node)->getData());
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+* Get PDF conformance value from XMP metadata
+*
+* @param[in]    metadata     pointer to XMP medata string
+* @param[out]   conformance  reference to extracted conformance string
+*/
+void PDFExtractor::getXmpConformance(GString* metadata, GString& conformance)
+{
+    if (metadata)
+    {
+        std::unique_ptr<ZxDoc> xmp(ZxDoc::loadMem(metadata->getCString(), metadata->getLength()));
+        if (xmp)
+        {
+            auto root{ xmp->getRoot() };
+            if (root->isElement("x:xmpmeta"))
+            {
+                root = root->findFirstChildElement("rdf:RDF");
+            }
+            if (root && root->isElement("rdf:RDF"))
+            {
+                for (auto node{ root->getFirstChild() }; node; node = node->getNextChild())
+                {
+                    if (node->isElement("rdf:Description"))
+                    {
+                        const auto elem{ static_cast<ZxElement*>(node) };
+                        if (elem->findAttr("xmlns:pdfaid"))     // PDF/A
+                        {
+                            getElemOrAttrData(elem, "pdfaid:part", conformance, "PDF/A-");
+                            getElemOrAttrData(elem, "pdfaid:conformance", conformance, "");
+                            getElemOrAttrData(elem, "pdfaid:rev", conformance, ":");
+                            break;
+                        }
+                        if (elem->findAttr("xmlns:pdfxid"))    // PDF/X
+                        {
+                            getElemOrAttrData(elem, "pdfxid:GTS_PDFXVersion", conformance, "");
+                            break;
+                        }
+                        if (elem->findAttr("xmlns:pdfx"))    // PDF/X
+                        {
+                            getElemOrAttrData(elem, "pdfx:GTS_PDFXVersion", conformance, "");
+                            break;
+                        }
+                        if (elem->findAttr("xmlns:pdfe"))    // PDF/E
+                        {
+                            getElemOrAttrData(elem, "pdfe:ISO_PDFEVersion", conformance, "");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+* Get PDF conformance value (PDF/A, PDF/X, PDF/E)
+*
+* @param[in]    doc     pointer to PDFDoc object
+*/
+void PDFExtractor::getConformance(PDFDoc* doc)
+{
+    GString conformance;
+    getXmpConformance(doc->readMetadata(), conformance);
+    m_data->setValue(&conformance, ft_stringw);
+}
+
+/**
+* PDF document contains signature fields.
+* It is not verified if document is signed or if signature is valid.
+*
+* @param[in]    doc     pointer to PDFDoc object
+* @return true if SigFlags value > 0
+*/
+int PDFExtractor::getExtensionLevel(PDFDoc* doc)
+{
+    int ret{ -1 };
+    Object catDict, objExt;
+    doc->getXRef()->getCatalog(&catDict);
+    if (catDict.dictLookup("Extensions", &objExt)->isDict())
+    {
+        Object adbeObj;
+        if (objExt.dictLookup("ADBE", &adbeObj)->isDict())
+        {
+            Object obj;
+            const auto adbeDict{ adbeObj.getDict() };
+            if (adbeDict->lookup("ExtensionLevel", &obj)->isInt())
+            {
+                ret = obj.getInt();
+            }
+            obj.free();
+        }
+        adbeObj.free();
+    }
+    objExt.free();
+    catDict.free();
+
+    return ret;
+}
+
+/**
+* Get PDF version
+* If globalOptionsFromIni.appendExtensionLevel=1, try to get PDF Extension Level.
+* Valid for PDF > 1.7
+*
+* @param[in]    doc     pointer to PDFDoc object
+*/
+void PDFExtractor::getVersion(PDFDoc* doc)
+{
+    auto ver{ m_doc->getPDFVersion() };
+    if ((ver >= 1.7) && globalOptionsFromIni.appendExtensionLevel)
+    {
+        auto ext{ getExtensionLevel(doc) };
+        if ((ext > 0) && (ext < 10))
+        {
+            ver += ext / 100.0;
+
+            std::lock_guard lock(m_data->mutex);
+            auto dst{ static_cast<wchar_t*>(m_data->getRequestBuffer()) + sizeof(double) / sizeof(wchar_t) };
+            StringCbPrintfW(dst, REQUEST_BUFFER_SIZE - sizeof(double), L"%.2f", ver);
+        }
+    }
+    m_data->setValue(ver, ft_numeric_floating);
 }
 
 /**
@@ -620,7 +797,7 @@ void PDFExtractor::doWork()
         m_data->setValue(m_doc->getNumPages(), ft_numeric_32);
         break;
     case fiPDFVersion:
-        m_data->setValue(m_doc->getPDFVersion(), ft_numeric_floating);
+        getVersion(m_doc.get());
         break;
     case fiPageWidth:
         m_data->setValue(m_doc->getPageCropWidth(1) * getPaperSize(m_data->getRequestUnit()), ft_numeric_floating);
@@ -670,6 +847,9 @@ void PDFExtractor::doWork()
     case fiOutlines:
         getOulines(m_doc.get());
         break;
+    case fiConformance:
+        getConformance(m_doc.get());
+        break;
     default:
         break;
     }
@@ -685,20 +865,24 @@ void PDFExtractor::doWork()
 void PDFExtractor::waitForProducer()
 {
     m_data->setActive(true);
+    auto timeout{ PRODUCER_TIMEOUT };
+
     while (m_data->isActive())
     {
         // !!! producer idle point !!!
-        const auto dwRet{ m_data->waitForProducer(PRODUCER_TIMEOUT) };
+        const auto dwRet{ m_data->waitForProducer(timeout) };
         if (dwRet == WAIT_OBJECT_0)
         {
             auto status{ m_data->getStatus() };
-            if ((status != request_status::cancelled) && (status != request_status::complete) && open())
+            if ((status != requestStatus::cancelled) && (status != requestStatus::complete) && open())
+            {
                 doWork();
+            }
             // change status from active to complete
-            m_data->setStatusCond(request_status::complete, request_status::active);
+            m_data->setStatusCond(requestStatus::complete, requestStatus::active);
             // change status from cancelled to closed
-            status = m_data->setStatusCond(request_status::closed, request_status::cancelled);
-            if ((status == request_status::cancelled)
+            status = m_data->setStatusCond(requestStatus::closed, requestStatus::cancelled);
+            if ((status == requestStatus::cancelled)
                 || (globalOptionsFromIni.noCache)                       // no cache in options, close file
                 // || (m_data->getRequestFlags() & CONTENT_NO_CACHE)    // TODO request is marked as non cached, close file
                 )
@@ -712,11 +896,14 @@ void PDFExtractor::waitForProducer()
             m_data->resetProducer();
             // notify consumer that producer is ready for new request
             m_data->notifyConsumer();
+
+            timeout = PRODUCER_TIMEOUT;
         }
         else if (dwRet == WAIT_TIMEOUT)
         {
-            // if there are no new requests, close PDFDoc
+            // if there are no new requests, close PDFDoc and wait
             close();
+            timeout = INFINITE;
         }
         else
         {
@@ -739,11 +926,12 @@ void PDFExtractor::waitForProducer()
 unsigned int __stdcall threadFunc(void* param)
 {
     auto extractor{ static_cast<PDFExtractor*>(param) };
+    TRACE(L"%hs!worker thread start\n", __FUNCTION__);
     if (extractor)
     {
         extractor->waitForProducer();
     }
-    TRACE(L"%hs!end thread\n", __FUNCTION__);
+    TRACE(L"%hs!worker thread end\n", __FUNCTION__);
     _endthreadex(0);
 
     return 0;
@@ -755,7 +943,7 @@ unsigned int __stdcall threadFunc(void* param)
 *
 * @return thread ID number
 */
-unsigned int PDFExtractor::startWorkerThread()
+uint32_t PDFExtractor::startWorkerThread()
 {
     return m_data->start(threadFunc, this);
 }
@@ -783,7 +971,7 @@ int PDFExtractor::waitForConsumer(DWORD timeout)
         break;
     default:
         TRACE(L"%hs!%ls!ret=%lx err=%lu\n", __FUNCTION__, dwRet, GetLastError());
-        m_data->setStatusCond(request_status::cancelled, request_status::active);
+        m_data->setStatusCond(requestStatus::cancelled, requestStatus::active);
         break;
     }
 
@@ -813,13 +1001,13 @@ int PDFExtractor::initData(const wchar_t* fileName, int field, int unit, int fla
         if (unit == -1)
             return retval;
     }
-    else if (m_data->getStatus() == request_status::cancelled)       // extraction has been cancelled, but PDFDoc isn't closed yet, wait for it
+    else if (m_data->getStatus() == requestStatus::cancelled)       // extraction has been cancelled, but PDFDoc isn't closed yet, wait for it
         m_data->waitForConsumer(CONSUMER_TIMEOUT);
 
     const auto status{ m_data->getStatus() };
-    if (!(  (status == request_status::cancelled)
-        || ((status == request_status::closed)   && (unit > 0) && fiTextOrOutlines)  // extraction is closed but TC wants next text block
-        || ((status == request_status::complete) && (unit > 0) && fiTextOrOutlines)  // extraction is completed but TC wants next text block
+    if (!(  (status == requestStatus::cancelled)
+        || ((status == requestStatus::closed)   && (unit > 0) && fiTextOrOutlines)  // extraction is closed but TC wants next text block
+        || ((status == requestStatus::complete) && (unit > 0) && fiTextOrOutlines)  // extraction is completed but TC wants next text block
        ))
     {
         retval = m_data->initRequest(fileName, field, unit, flags, timeout);
@@ -851,7 +1039,7 @@ int PDFExtractor::extract(const wchar_t* fileName, int field, int unit, void* ds
         {
             if (unit == 0)
             {
-                m_data->setStatusCond(request_status::active, request_status::complete);
+                m_data->setStatusCond(requestStatus::active, requestStatus::complete);
                 if (startWorkerThread())
                     result = waitForConsumer(PRODUCER_TIMEOUT);
             }
@@ -903,7 +1091,7 @@ int PDFExtractor::extract(const wchar_t* fileName, int field, int unit, void* ds
         }
         else
         {
-            m_data->setStatusCond(request_status::active, request_status::complete);
+            m_data->setStatusCond(requestStatus::active, requestStatus::complete);
             if (startWorkerThread())
                 result = waitForConsumer(CONSUMER_TIMEOUT);
 
@@ -922,6 +1110,17 @@ int PDFExtractor::extract(const wchar_t* fileName, int field, int unit, void* ds
                     memcpy(dst, src, sizeof(int32_t));
                     break;
                 case ft_numeric_floating:
+                {
+                    memcpy(dst, src, sizeof(int64_t));
+                    auto wSrc{ static_cast<wchar_t*>(src) + sizeof(int64_t) / sizeof(wchar_t) };
+                    if (*wSrc)
+                    {
+                        dstSize &= ~1; // round to 2
+                        StringCbCopyW(static_cast<wchar_t*>(dst) + sizeof(int64_t) / sizeof(wchar_t), dstSize - sizeof(int64_t), wSrc);
+                        *wSrc = 0;
+                    }
+                    break;
+                }
                 case ft_datetime:
                     memcpy(dst, src, sizeof(int64_t));
                     break;
@@ -991,7 +1190,7 @@ int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* 
 {
     static const wchar_t delims[]{ L" \r\n\b\f\t\v\x00a0\x202f\x2007\x2009\x2060" };
     size_t bytesProcessed{ 0U };
-    auto eq_txt{ false };
+    auto eqTxt{ false };
 
     // set timeout to long wait, because it waits for another extraction thread
     auto result{ initData(fileName1, field, 0, 0, CONSUMER_TIMEOUT) };
@@ -1010,8 +1209,8 @@ int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* 
     if (startWorkerThread() && m_search->startWorkerThread())
     {
         // change status from complete to active
-        m_data->setStatusCond(request_status::active, request_status::complete);
-        m_search->m_data->setStatusCond(request_status::active, request_status::complete);
+        m_data->setStatusCond(requestStatus::active, requestStatus::complete);
+        m_search->m_data->setStatusCond(requestStatus::active, requestStatus::complete);
 
         // get start time
 #if _WIN32_WINNT >= _WIN32_WINNT_VISTA
@@ -1036,82 +1235,85 @@ int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* 
 
                 // protect data from both threads, std::scoped_lock needs C++17
                 std::scoped_lock lock(m_data->mutex, m_search->m_data->mutex);
-
-                // cast from void* to wchar_t*
-                auto start1{ static_cast<wchar_t*>(m_data->getRequestBuffer()) };
-                size_t len1{ 0 };
-                StringCchLengthW(start1, REQUEST_BUFFER_SIZE / sizeof(wchar_t), &len1);
-
-                auto start2{ static_cast<wchar_t*>(m_search->m_data->getRequestBuffer()) };
-                size_t len2{ 0 };
-                StringCchLengthW(start2, REQUEST_BUFFER_SIZE / sizeof(wchar_t), &len2);
-
-                // string len to compare
-                const auto min_len{ len1 < len2 ? len1 : len2 };
-                    
-                if (min_len)
                 {
-                    // compare binary
-                    if (!wmemcmp(start1, start2, min_len))
+                    // cast from void* to wchar_t*
+                    auto start1{ static_cast<wchar_t*>(m_data->getRequestBuffer()) };
+                    size_t len1{ 0 };
+                    StringCchLengthW(start1, REQUEST_BUFFER_SIZE / sizeof(wchar_t), &len1);
+
+                    auto start2{ static_cast<wchar_t*>(m_search->m_data->getRequestBuffer()) };
+                    size_t len2{ 0 };
+                    StringCchLengthW(start2, REQUEST_BUFFER_SIZE / sizeof(wchar_t), &len2);
+
+                    // string len to compare
+                    const auto minLen{ len1 < len2 ? len1 : len2 };
+
+                    if (minLen)
                     {
-                        TRACE(L"%hs!binary!%Iu wchars equal\n", __FUNCTION__, min_len);
-                        bytesProcessed += min_len;
-                        result = ft_compare_eq;
-                    }
-                    else
-                    {
-                        // remove delimiters, spaces
-                        const auto len1X{ removeDelimiters(start1, len1, delims) };
-                        const auto len2X{ removeDelimiters(start2, len2, delims) };
-                        // string len to compare
-                        const auto min_lenX{ len1X < len2X ? len1X : len2X };
-                        if (min_lenX)
+                        // compare binary
+                        if (!wmemcmp(start1, start2, minLen))
                         {
-                            // compare as text, case-insensitive, using locale specific information
-                            if (!_wcsnicoll_l(start1, start2, min_lenX, m_locale.get()))
-                            {
-                                TRACE(L"%hs!text!%Iu wchars equal\n", __FUNCTION__, min_lenX);
-                                bytesProcessed += min_lenX;
-                                result = ft_compare_eq;
-                                eq_txt = true;
-                            }
-                            else
-                            {
-                                // text is not equal, abort
-                                TRACE(L"%hs!not equal!'%ls' != '%ls'\n", __FUNCTION__, start1, start2);
-                                break;
-                            }
-                        }
-                        else if (len1X == len2X)
-                        {
-                            TRACE(L"%hs!empty text\n", __FUNCTION__);
+                            TRACE(L"%hs!binary!%Iu wchars equal\n", __FUNCTION__, minLen);
+                            bytesProcessed += minLen;
                             result = ft_compare_eq;
-                            eq_txt = true;
+                        }
+                        else
+                        {
+                            // remove delimiters, spaces
+                            const auto len1X{ removeDelimiters(start1, len1, delims) };
+                            const auto len2X{ removeDelimiters(start2, len2, delims) };
+                            // string len to compare
+                            const auto minLenX{ len1X < len2X ? len1X : len2X };
+                            if (minLenX)
+                            {
+                                // compare as text, case-insensitive, using locale specific information
+                                if (!_wcsnicoll_l(start1, start2, minLenX, m_locale.get()))
+                                {
+                                    TRACE(L"%hs!text!%Iu wchars equal\n", __FUNCTION__, minLenX);
+                                    bytesProcessed += minLenX;
+                                    result = ft_compare_eq;
+                                    eqTxt = true;
+                                }
+                                else
+                                {
+                                    // text is not equal, abort
+                                    TRACE(L"%hs!not equal!'%ls' != '%ls'\n", __FUNCTION__, start1, start2);
+                                    break;
+                                }
+                            }
+                            else if (len1X == len2X)
+                            {
+                                TRACE(L"%hs!empty text\n", __FUNCTION__);
+                                result = ft_compare_eq;
+                                eqTxt = true;
+                            }
                         }
                     }
+                    else if (len1 == len2)
+                    {
+                        TRACE(L"%hs!no data\n", __FUNCTION__);
+                        result = ft_compare_eq;
+                        bytesProcessed = 0;
+                    }
+
+                    if ((result == ft_compare_eq) && minLen && ((len1 > minLen) || (len2 > minLen)))
+                    {
+                        // discard compared data
+                        if (len1 >= minLen)
+                            wmemmove(start1, start1 + minLen, len1 - minLen);
+
+                        if (len2 >= minLen)
+                            wmemmove(start2, start2 + minLen, len2 - minLen);
+
+                        // part of a string was equal, compare rest
+                        result = ft_compare_not_eq;
+                    }
+
+                    // adjust string end pointer and remaining buffer size
+                    m_data->setRequestPtr(start1 + len1 - minLen);
+                    m_search->m_data->setRequestPtr(start2 + len2 - minLen);
                 }
-                else if (len1 == len2)
-                {
-                    TRACE(L"%hs!no data\n", __FUNCTION__);
-                    result = ft_compare_eq;
-                }
 
-                if ((result == ft_compare_eq) && min_len && ((len1 > min_len) || (len2 > min_len)))
-                {
-                    // discard compared data
-                    if (len1 >= min_len)
-                        wmemmove(start1, start1 + min_len, len1 - min_len);
-
-                    if (len2 >= min_len)
-                        wmemmove(start2, start2 + min_len, len2 - min_len);
-
-                    // part of a string was equal, compare rest
-                    result = ft_compare_not_eq;
-                }
-
-                // adjust string end pointer and remaining buffer size
-                m_data->setRequestPtr(start1 + len1 - min_len);
-                m_search->m_data->setRequestPtr(start2 + len2 - min_len);
             }
             else
             {
@@ -1144,12 +1346,12 @@ int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* 
                 startCounter = now;
             }
         } 
-        while (   (request_status::active == m_data->getStatus())
-               && (request_status::active == m_search->m_data->getStatus())
+        while (   (requestStatus::active == m_data->getStatus())
+               && (requestStatus::active == m_search->m_data->getStatus())
               );
 
         // if data was once compared as text, it is not binary equal
-        if ((result == ft_compare_eq) && eq_txt)
+        if ((result == ft_compare_eq) && eqTxt)
             result = ft_compare_eq_txt;
 
         // don't close PDFDocs, they may be used again

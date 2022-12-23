@@ -12,8 +12,12 @@
 #include <GList.h>
 #include <Outline.h>
 #include <PDFDoc.h>
+#include <TextString.h>
+
 #include <mutex>
 #include <atomic>
+
+#include <strsafe.h>
 
 /**
 * @defgroup handles ThreadData::handles indexes
@@ -46,7 +50,7 @@ constexpr auto sizeOfWchar{ static_cast<int>(sizeof(wchar_t)) };/**< sizeof wcha
 /** 
 * Request status enumeration 
 */
-enum request_status
+enum requestStatus
 {
     closed,     /**< PDF document is closed */
     active,     /**< data extraction form PDF document in progress */
@@ -64,7 +68,7 @@ struct Request
     int flags{ 0 };                     /**< flags from TC */
     int result{ 0 };                    /**< result of an extraction */
     DWORD timeout{ 0 };                 /**< time to wait in text extraction procedure */
-    std::atomic<request_status> status{ request_status::closed };   /**< request status, @see request_status */
+    std::atomic<requestStatus> status{ requestStatus::closed };   /**< request status, @see request_status */
     void* buffer{ new char[REQUEST_BUFFER_SIZE] };                  /**< extracted data buffer */
     void* ptr{ buffer };                                            /**< pointer to end of extracted data, offset pointer to buffer */
     const wchar_t* fileName{ nullptr }; /**< name of PDF document */
@@ -96,16 +100,16 @@ public:
     DWORD notifyProducerWaitForConsumer(DWORD timeout);
     // DWORD notifyConsumerWaitForProducer(DWORD timeout);
     DWORD notifyProducerAndWait(DWORD timeout);
-    unsigned int start(_beginthreadex_proc_type func, void* args);
+    uint32_t start(_beginthreadex_proc_type func, void* args);
     void abort();
     void done();
     void stop();
     int output(const char* text, ptrdiff_t len, bool textIsUnicode);
     inline bool isActive() const { return active; }
     inline bool setActive(bool state) { return active.exchange(state); }
-    inline request_status getStatus() const { return request.status; }
-    inline auto setStatus(request_status new_status) { return request.status.exchange(new_status); }
-    auto setStatusCond(request_status new_status, request_status current_status)
+    inline requestStatus getStatus() const { return request.status; }
+    inline auto setStatus(requestStatus new_status) { return request.status.exchange(new_status); }
+    auto setStatusCond(requestStatus new_status, requestStatus current_status)
     {
         auto expected{ current_status };
         request.status.compare_exchange_strong(expected, new_status);
@@ -114,7 +118,11 @@ public:
     int initRequest(const wchar_t* fileName, int field, int unit, int flags, DWORD timeout);
 
     template<typename T> void setValue(T value, int type);
-
+#ifdef _MSC_VER
+    // GCC BUG, it doesn't support Explicit specialization in non-namespace scope
+    template<> void setValue<GString*>(GString* value, int type);
+    template<> void setValue<wchar_t*>(wchar_t* value, int type);
+#endif
     auto getRequestField() const { return request.field; }
     auto getRequestFlags() const { return request.flags; }
     auto getRequestUnit() const { return request.unit; }
@@ -144,6 +152,7 @@ private:
     inline void notifyProducer() { SetEvent(handles[PRODUCER_HANDLE]); }
     inline void resetConsumer() { ResetEvent(handles[CONSUMER_HANDLE]); }
 
+    static ptrdiff_t UnicodeToUTF16(const Unicode* src, ptrdiff_t cchSrc, wchar_t* dst, ptrdiff_t *cbDst);
 };
 
 /**
@@ -157,10 +166,87 @@ private:
 template<typename T>
 void ThreadData::setValue(T value, int type)
 {
+#ifndef _MSC_VER
+    ptrdiff_t len{ REQUEST_BUFFER_SIZE };
+    /*
+    https://stackoverflow.com/questions/49707184/explicit-specialization-in-non-namespace-scope-does-not-compile-in-gcc
+    */
+    if constexpr (std::is_same_v<T, GString*>)
+    {
+        if (value && value->getLength())
+        {
+            TextString ts(value);
+            if (ts.getLength())
+            {
+                std::lock_guard lock(mutex);
+                UnicodeToUTF16(ts.getUnicode(), ts.getLength(), static_cast<wchar_t*>(getRequestBuffer()), &len);
+                if (len != REQUEST_BUFFER_SIZE)
+                {
+                    setRequestResult(type);
+                }
+            }
+        }
+        return;
+    }
+    if constexpr (std::is_same_v<T, wchar_t*>)
+    {
+        std::lock_guard lock(mutex);
+        auto dst{ static_cast<wchar_t*>(getRequestBuffer()) };
+        if (SUCCEEDED(StringCbCopyW(dst, len, value)))
+        {
+            setRequestResult(type);
+        }
+        return;
+    }
+#endif
     std::lock_guard lock(mutex);
     *(static_cast<T*>(request.buffer)) = value;
-    request.result = type;
+    setRequestResult(type);
 }
 
-extern ptrdiff_t PdfTxtToUTF16(const char* src, const ptrdiff_t cchSrc, wchar_t* dst, ptrdiff_t *cbDst);
-extern ptrdiff_t UnicodeToUTF16(const Unicode* src, ptrdiff_t cchSrc, wchar_t* dst, ptrdiff_t *cbDst);
+#ifdef _MSC_VER
+/**
+* Template specialization of #setValue for GString.
+* Convert GString to TextString to get Unicode and then convert Unicode to UTF-16.
+*
+* @param        value   value to be set to output buffer
+* @param[in]    type    type of result value
+*/
+template<>
+void ThreadData::setValue<GString*>(GString* value, int type)
+{
+    if (value && value->getLength())
+    {
+        TextString ts(value);
+        if (ts.getLength())
+        {
+            ptrdiff_t len{ REQUEST_BUFFER_SIZE };
+
+            std::lock_guard lock(mutex);
+            UnicodeToUTF16(ts.getUnicode(), ts.getLength(), static_cast<wchar_t*>(getRequestBuffer()), &len);
+            if (len != REQUEST_BUFFER_SIZE)
+            {
+                setRequestResult(type);
+            }
+        }
+    }
+}
+
+/**
+* Template specialization of #setValue for wchar_t*.
+*
+* @param        value   value to be set to output buffer
+* @param[in]    type    type of result value
+*/
+template<>
+void ThreadData::setValue<wchar_t*>(wchar_t* value, int type)
+{
+    auto len{ REQUEST_BUFFER_SIZE };
+    std::lock_guard lock(mutex);
+    auto dst{ static_cast<wchar_t*>(getRequestBuffer()) };
+    if (SUCCEEDED(StringCbCopyW(dst, len, value)))
+    {
+        setRequestResult(type);
+    }
+}
+#endif // _MSC_VER

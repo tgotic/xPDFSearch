@@ -1,28 +1,25 @@
-xPDFSearch
-==========
+# xPDFSearch
 
 xPDFSearch is a content plugin for Total Commander.
 
-Content
--------
+## Content
 
-1.  [Plugin description](#description)
-2.  [Field descriptions](#field_descriptions)
-3.  [System requirements](#requirements)
-4.  [Use](#use)
-5.  [Configuration](#configuration)
-6.  [Author contact](#contact)
-7.  [License](#license)
+1.  [Plugin description](#1)
+2.  [Field descriptions](#2)
+3.  [System requirements](#3)
+4.  [Use](#4)
+5.  [Configuration](#5)
+6.  [Author contact](#6)
+7.  [License](#7)
+8.  [History](history.md)
 
-1\. Plugin description
-----------------------
+## 1\. Plugin descriptionr<a id='1'></a>
 
 xPDFSearch can be used to perform full text search in PDF files. In addition xPDFSearch provides meta data information from PDF files. It's possible to display title, subject, keywords, author, application, PDF producer, number of pages, PDF version, created and modified.
 
 Plugin can be used in Synchronize Directories to compare content of PDF files.
 
-2\. Field descriptions
-----------------------
+## 2\. Field descriptions<a id='2'></a>
 
 <table>
       <tbody>
@@ -177,6 +174,10 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
           </td>
         </tr>
         <tr>
+          <td>Conformance</td>
+          <td>Indicates conformance of the document to the PDF/A, PDF/E or PDF/X standards.</td>
+        </tr>
+        <tr>
           <td>Outlines</td>
           <td>The Outlines (bookmarks) search is available in the search and compare functions of Total Commander.</td>
         </tr>
@@ -188,17 +189,12 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
     </table>
 
 
-3\. System requirements
------------------------
+## 3\. System requirements<a id='3'></a>
 
 You need Total Commander 6.50 or higher for this plugin.
 To use the Created and Modified fields Total Commander 6.53 or higher is required.
 
-Plugin requires [Microsoft Visual C++ Redistributable for Visual Studio 2015-2022](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170) package.
-XP version of the plugin doesn't require this package.
-
-4\. Use
--------
+## 4\. Use<a id='4'></a>
 
 ### Start a full text search
 
@@ -231,11 +227,9 @@ The other fields can be additionally used in files by file type, custom columns,
 
 Define xPDFSearch as compare plugin
 
-5\. Configuration
------------------
+## 5\. Configuration<a id='5'></a>
 
-xPDFSearch plugin can be configured via TC content plugin ini file.
-
+xPDFSearch plugin can be configured in xPDFSearch.ini file:  
 \[xPDFSearch\]
 *   NoCache=0
     *   0=file caching disabled, fast reading of fields, unable to rename or alter attributes of the open PDF file
@@ -255,15 +249,20 @@ xPDFSearch plugin can be configured via TC content plugin ini file.
     *   4=optimized for tables
     *   5=fixed-pitch/height layout
     *   6=keep text in content stream order
+*   AppendExtensionLevel=0 append PDF Extension Level to PDF Version (PDF 1.7 Ext. Level 3 = 1.73)  
+
+If there is no xPDFSearch.ini file located in plugin directory, plugin uses options from TC content ini file.
+Default location of TC content ini file is %COMMANDER_PATH%\contplug.ini.  
+Location of the \[xPDFSearch\] section in TC content ini file can be changed in wincmd.ini file, e.g.:  
+\[ReplaceIniLocation\]
+*   xPDFSearch.wdx=%COMMANDER_PATH%\Plugins\WDX\xPDFSearch\relocated.ini
 
 xPDFSearch plugin uses slightly modified [Xpdf library](http://www.xpdfreader.com/about.html). Xpdf can be configured via [xpdfrc file](http://www.xpdfreader.com/xpdfrc-man.html).
 
-6\. Author contact
-------------------
+## 6\. Author contact<a id='6'></a>
 
 There is a [thread](http://www.ghisler.ch/board/viewtopic.php?t=7423) in the [Total Commander forum](http://www.ghisler.ch/) which can be used to discuss problems, bugs and suggestions.
 
-7\. License
------------
+## 7\. License<a id='7'></a>
 
 This Total Commander Plugin is licensed under the General Public License (GPL). The license can be found in the file GPL.txt.

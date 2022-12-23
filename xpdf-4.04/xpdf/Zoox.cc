@@ -129,7 +129,7 @@ void ZxNode::insertChildAfter(ZxNode *child, ZxNode *prev) {
   child->parent = this;
 }
 
-ZxElement *ZxNode::findFirstElement(const char *type) {
+ZxElement *ZxNode::findFirstElement(const char *type) const {
   ZxNode *child;
   ZxElement *result;
 
@@ -144,7 +144,7 @@ ZxElement *ZxNode::findFirstElement(const char *type) {
   return NULL;
 }
 
-ZxElement *ZxNode::findFirstChildElement(const char *type) {
+ZxElement *ZxNode::findFirstChildElement(const char *type) const {
   ZxNode *child;
 
   for (child = firstChild; child; child = child->next) {
@@ -174,7 +174,7 @@ void ZxNode::findAllElements(const char *type, GList *results) {
   }
 }
 
-GList *ZxNode::findAllChildElements(const char *type) {
+GList *ZxNode::findAllChildElements(const char *type) const {
   GList *results;
   ZxNode *child;
 
@@ -931,11 +931,11 @@ ZxElement::~ZxElement() {
   deleteGHash(attrs, ZxAttr);
 }
 
-bool ZxElement::isElement(const char *typeA) {
+bool ZxElement::isElement(const char *typeA) const {
   return !type->cmp(typeA);
 }
 
-ZxAttr *ZxElement::findAttr(const char *attrName) {
+ZxAttr *ZxElement::findAttr(const char *attrName) const {
   return (ZxAttr *)attrs->lookup(attrName);
 }
 

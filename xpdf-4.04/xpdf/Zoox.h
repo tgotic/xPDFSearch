@@ -36,24 +36,24 @@ public:
   ZxNode();
   virtual ~ZxNode();
 
-  virtual bool isDoc() { return false; }
-  virtual bool isXMLDecl()  { return false; }
-  virtual bool isDocTypeDecl() { return false; }
-  virtual bool isComment() { return false; }
-  virtual bool isPI() { return false; }
-  virtual bool isElement() { return false; }
-  virtual bool isElement(const char *type) { return false; }
-  virtual bool isCharData() { return false; }
-  virtual ZxNode *getFirstChild() { return firstChild; }
-  virtual ZxNode *getNextChild() { return next; }
-  ZxNode *getParent() { return parent; }
+  virtual bool isDoc() const { return false; }
+  virtual bool isXMLDecl()  const { return false; }
+  virtual bool isDocTypeDecl()  const { return false; }
+  virtual bool isComment()  const { return false; }
+  virtual bool isPI()  const { return false; }
+  virtual bool isElement() const { return false; }
+  virtual bool isElement(const char *type) const { return false; }
+  virtual bool isCharData() const { return false; }
+  virtual ZxNode *getFirstChild() const { return firstChild; }
+  virtual ZxNode *getNextChild() const { return next; }
+  ZxNode *getParent() const { return parent; }
   ZxNode *deleteChild(ZxNode *child);
   void appendChild(ZxNode *child);
   void insertChildAfter(ZxNode *child, ZxNode *prev);
-  ZxElement *findFirstElement(const char *type);
-  ZxElement *findFirstChildElement(const char *type);
+  ZxElement *findFirstElement(const char *type) const;
+  ZxElement *findFirstChildElement(const char *type) const;
   GList *findAllElements(const char *type);
-  GList *findAllChildElements(const char *type);
+  GList *findAllChildElements(const char *type) const;
   virtual void addChild(ZxNode *child);
 
   virtual bool write(ZxWriteFunc writeFunc, void *stream) = 0;
@@ -86,10 +86,10 @@ public:
   // Write to disk.  Returns false on error.
   bool writeFile(const char *fileName);
 
-  virtual bool isDoc() { return true; }
-  ZxXMLDecl *getXMLDecl() { return xmlDecl; }
-  ZxDocTypeDecl *getDocTypeDecl() { return docTypeDecl; }
-  ZxElement *getRoot() { return root; }
+  virtual bool isDoc() const { return true; }
+  ZxXMLDecl *getXMLDecl() const { return xmlDecl; }
+  ZxDocTypeDecl *getDocTypeDecl() const { return docTypeDecl; }
+  ZxElement *getRoot() const { return root; }
   virtual void addChild(ZxNode *node);
 
   virtual bool write(ZxWriteFunc writeFunc, void *stream);
@@ -129,10 +129,10 @@ public:
   ZxXMLDecl(GString *versionA, GString *encodingA, bool standaloneA);
   virtual ~ZxXMLDecl();
 
-  virtual bool isXMLDecl() { return true; }
-  GString *getVersion() { return version; }
-  GString *getEncoding() { return encoding; }
-  bool getStandalone() { return standalone; }
+  virtual bool isXMLDecl() const { return true; }
+  GString *getVersion() const { return version; }
+  GString *getEncoding() const { return encoding; }
+  bool getStandalone() const { return standalone; }
 
   virtual bool write(ZxWriteFunc writeFunc, void *stream);
 
@@ -151,8 +151,8 @@ public:
   ZxDocTypeDecl(GString *nameA);
   virtual ~ZxDocTypeDecl();
 
-  virtual bool isDocTypeDecl() { return true; }
-  GString *getName() { return name; }
+  virtual bool isDocTypeDecl() const { return true; }
+  GString *getName() const { return name; }
 
   virtual bool write(ZxWriteFunc writeFunc, void *stream);
 
@@ -169,8 +169,8 @@ public:
   ZxComment(GString *textA);
   virtual ~ZxComment();
 
-  virtual bool isComment() { return true; }
-  GString *getText() { return text; }
+  virtual bool isComment() const { return true; }
+  GString *getText() const { return text; }
 
   virtual bool write(ZxWriteFunc writeFunc, void *stream);
 
@@ -187,9 +187,9 @@ public:
   ZxPI(GString *targetA, GString *textA);
   virtual ~ZxPI();
 
-  virtual bool isPI() { return true; }
-  GString *getTarget() { return target; }
-  GString *getText() { return text; }
+  virtual bool isPI() const { return true; }
+  GString *getTarget() const { return target; }
+  GString *getText() const { return text; }
 
   virtual bool write(ZxWriteFunc writeFunc, void *stream);
 
@@ -210,11 +210,11 @@ public:
 
   virtual ~ZxElement();
 
-  virtual bool isElement() { return true; }
-  virtual bool isElement(const char *typeA);
-  GString *getType() { return type; }
-  ZxAttr *findAttr(const char *attrName);
-  ZxAttr *getFirstAttr() { return firstAttr; }
+  virtual bool isElement() const { return true; }
+  virtual bool isElement(const char *typeA) const;
+  GString *getType() const { return type; }
+  ZxAttr *findAttr(const char *attrName)  const;
+  ZxAttr *getFirstAttr() const { return firstAttr; }
   void addAttr(ZxAttr *attr);
 
   virtual bool write(ZxWriteFunc writeFunc, void *stream);
@@ -236,10 +236,10 @@ public:
   ZxAttr(GString *nameA, GString *valueA);
   ~ZxAttr();
 
-  GString *getName() { return name; }
-  GString *getValue() { return value; }
-  ZxAttr *getNextAttr() { return next; }
-  ZxNode *getParent() { return parent; }
+  GString *getName() const { return name; }
+  GString *getValue() const { return value; }
+  ZxAttr *getNextAttr() const { return next; }
+  ZxNode *getParent() const { return parent; }
 
 private:
 
@@ -259,9 +259,9 @@ public:
   ZxCharData(GString *dataA, bool parsedA);
   virtual ~ZxCharData();
 
-  virtual bool isCharData() { return true; }
-  GString *getData() { return data; }
-  bool isParsed() { return parsed; }
+  virtual bool isCharData() const { return true; }
+  GString *getData() const { return data; }
+  bool isParsed() const { return parsed; }
 
   virtual bool write(ZxWriteFunc writeFunc, void *stream);
 

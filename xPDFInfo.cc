@@ -31,7 +31,7 @@ static constexpr const char* fieldNames[FIELD_COUNT]
     "PDF Version", "Page Width", "Page Height",
     "Copying Allowed", "Printing Allowed", "Adding Comments Allowed", "Changing Allowed", "Encrypted", "Tagged", "Linearized", "Incremental", "Signature Field",
     "Created", "Modified",
-    "ID", "PDF Attributes",
+    "ID", "PDF Attributes", "Conformance",
     "Outlines", "Text"
 };
 
@@ -43,7 +43,7 @@ constexpr int fieldTypes[FIELD_COUNT]
     ft_numeric_floating, ft_numeric_floating, ft_numeric_floating,
     ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean,
     ft_datetime, ft_datetime,
-    ft_stringw, ft_stringw,
+    ft_stringw, ft_stringw, ft_stringw,
     ft_fulltext, ft_fulltext
 };
 
@@ -55,7 +55,7 @@ constexpr int fieldFlags[FIELD_COUNT]
     0, 0, 0, 
     0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0,
-    0, contflags_substattributestr,
+    0, contflags_substattributestr, 0,
     0, 0
 };
 
@@ -66,6 +66,8 @@ __declspec(thread)
 thread_local
 #endif
 static PDFExtractor* g_extractor{ nullptr };
+
+static HMODULE hModule{ nullptr };
 
 #ifdef _DEBUG
 /** Writes debug trace.
@@ -138,12 +140,17 @@ BOOL WINAPI DllMain(HINSTANCE hDLL, DWORD reason, LPVOID)
         globalParams->setTextEncoding("UCS-2");         // extracted text encoding (not for metadata)
         globalParams->setTextPageBreaks(gFalse);        // don't add \f for page breaks
         globalParams->setTextEOL("unix");               // extracted text line endings
+        hModule = static_cast<HMODULE>(hDLL);
         break;
     case DLL_PROCESS_DETACH:
         destroy();              // Release PDFExtractor instance, if any
         TRACE(L"%hs!globalParams\n", __FUNCTION__);
         delete globalParams;    // Clean up
         globalParams = nullptr;
+        hModule = nullptr;
+        break;
+    case DLL_THREAD_ATTACH:
+        TRACE(L"%hs!new TC thread\n", __FUNCTION__);
         break;
     case DLL_THREAD_DETACH:
         destroy();              // Release PDFExtractor instance, if any. Don't clean up globalParams
@@ -263,11 +270,15 @@ int __stdcall ContentGetValueW(const wchar_t* fileName, int fieldIndex, int unit
             return ft_delayed;
 
         if (!g_extractor)
+        {
             g_extractor = new PDFExtractor();
+            TRACE(L"%hs!new extractor\n", __FUNCTION__);
+        }
 
         if (g_extractor)
             return g_extractor->extract(fileName, fieldIndex, unitIndex, fieldValue, cbfieldValue, flags);
-        
+
+        TRACE(L"%hs!unable to create extractor\n", __FUNCTION__);
         return ft_fileerror;
     }
     else if (g_extractor)
@@ -275,6 +286,41 @@ int __stdcall ContentGetValueW(const wchar_t* fileName, int fieldIndex, int unit
 
     return ft_nomorefields;
 }
+
+/**
+* Get ini file name.
+* Search for ini file in wdx directory. Ini file name is equal to wdx file name.
+* If this ini file is not found, use ini file from ContentDefaultParamStruct.
+*
+* param[in]     defaultIniName  default ini from ContentDefaultParamStruct
+* param[out]    iniFileName     ini file name with path
+*/
+static void getIniFileName(const char* defaultIniName, char* iniFileName)
+{
+    bool useDefaultIni{ true };
+    
+    if (GetModuleFileNameA(hModule, iniFileName, MAX_PATH - 1)) // play safe with Windows XP:  The string is truncated to nSize characters and is not null-terminated.
+    {
+        auto dot{ strrchr(iniFileName, '.') };
+        if (dot)
+        {
+            *dot = 0;
+            if (SUCCEEDED(StringCbCatA(iniFileName, MAX_PATH, ".ini")))
+            {
+                auto attr{ GetFileAttributesA(iniFileName) };   // check if file exists
+                if ((attr & FILE_ATTRIBUTE_DIRECTORY) != FILE_ATTRIBUTE_DIRECTORY)
+                {
+                    useDefaultIni = false;
+                }
+            }
+        }
+    }
+    if (useDefaultIni)
+    {
+        StringCbCopyA(iniFileName, MAX_PATH, defaultIniName);
+    }
+}
+
 /**
 * Check for version of currently used Total Commander / version of plugin interface.
 * If plugin interface is lower than 1.2, PDF date and time fields are not supported.
@@ -290,15 +336,19 @@ void __stdcall ContentSetDefaultParams(ContentDefaultParamStruct* dps)
     enableDateTimeField = ((dps->pluginInterfaceVersionHi == 1) && (dps->pluginInterfaceVersionLow >= 2)) || (dps->pluginInterfaceVersionHi > 1);
     enableCompareFields = ((dps->pluginInterfaceVersionHi == 2) && (dps->pluginInterfaceVersionLow >= 10)) || (dps->pluginInterfaceVersionHi > 2);
 
-    globalOptionsFromIni.noCache = GetPrivateProfileIntA("xPDFSearch", "NoCache", 0, dps->defaultIniName);
-    globalOptionsFromIni.discardInvisibleText = GetPrivateProfileIntA("xPDFSearch", "DiscardInvisibleText", 1, dps->defaultIniName);
-    globalOptionsFromIni.discardDiagonalText = GetPrivateProfileIntA("xPDFSearch", "DiscardDiagonalText", 1, dps->defaultIniName);
-    globalOptionsFromIni.discardClippedText = GetPrivateProfileIntA("xPDFSearch", "DiscardClippedText", 1, dps->defaultIniName);
-    globalOptionsFromIni.marginLeft = GetPrivateProfileIntA("xPDFSearch", "MarginLeft", 0, dps->defaultIniName);
-    globalOptionsFromIni.marginRight = GetPrivateProfileIntA("xPDFSearch", "MarginRight", 0, dps->defaultIniName);
-    globalOptionsFromIni.marginTop = GetPrivateProfileIntA("xPDFSearch", "MarginTop", 0, dps->defaultIniName);
-    globalOptionsFromIni.marginBottom = GetPrivateProfileIntA("xPDFSearch", "MarginBottom", 0, dps->defaultIniName);
-    globalOptionsFromIni.textOutputMode = static_cast<TextOutputMode>(GetPrivateProfileIntA("xPDFSearch", "TextOutputMode", 0, dps->defaultIniName) % (textOutRawOrder + 1));
+    char iniFileName[MAX_PATH]{};
+    getIniFileName(dps->defaultIniName, iniFileName);
+
+    globalOptionsFromIni.noCache = GetPrivateProfileIntA("xPDFSearch", "NoCache", 0, iniFileName);
+    globalOptionsFromIni.discardInvisibleText = GetPrivateProfileIntA("xPDFSearch", "DiscardInvisibleText", 1, iniFileName);
+    globalOptionsFromIni.discardDiagonalText = GetPrivateProfileIntA("xPDFSearch", "DiscardDiagonalText", 1, iniFileName);
+    globalOptionsFromIni.discardClippedText = GetPrivateProfileIntA("xPDFSearch", "DiscardClippedText", 1, iniFileName);
+    globalOptionsFromIni.appendExtensionLevel = GetPrivateProfileIntA("xPDFSearch", "AppendExtensionLevel", 1, iniFileName);
+    globalOptionsFromIni.marginLeft = GetPrivateProfileIntA("xPDFSearch", "MarginLeft", 0, iniFileName);
+    globalOptionsFromIni.marginRight = GetPrivateProfileIntA("xPDFSearch", "MarginRight", 0, iniFileName);
+    globalOptionsFromIni.marginTop = GetPrivateProfileIntA("xPDFSearch", "MarginTop", 0, iniFileName);
+    globalOptionsFromIni.marginBottom = GetPrivateProfileIntA("xPDFSearch", "MarginBottom", 0, iniFileName);
+    globalOptionsFromIni.textOutputMode = static_cast<TextOutputMode>(GetPrivateProfileIntA("xPDFSearch", "TextOutputMode", 0, iniFileName) % (textOutRawOrder + 1));
 }
 
 /**
@@ -358,14 +408,19 @@ int __stdcall ContentGetSupportedFieldFlags(int fieldIndex)
 */
 int __stdcall ContentCompareFilesW(PROGRESSCALLBACKPROC progressCallback, int compareIndex, wchar_t* fileName1, wchar_t* fileName2, FileDetailsStruct* fileDetails)
 {
+    TRACE(L"%hs\n", __FUNCTION__);
     if ((compareIndex < ft_comparebaseindex) || (compareIndex >= ft_comparebaseindex + FIELD_COUNT))
         return ft_compare_next;
 
     if (!g_extractor)
+    {
         g_extractor = new PDFExtractor();
+        TRACE(L"%hs!new extractor\n", __FUNCTION__);
+    }
 
     if (g_extractor)
         return g_extractor->compare(progressCallback, fileName1, fileName2, compareIndex - ft_comparebaseindex);
 
+    TRACE(L"%hs!unable to create extractor\n", __FUNCTION__);
     return ft_compare_next;
 }

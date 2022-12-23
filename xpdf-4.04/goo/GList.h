@@ -55,7 +55,7 @@ public:
   void append(void *p);
 
   // Append another list to the end of this one.
-  void append(GList *list);
+  void append(const GList *list);
 
   // Insert an element at index <i>.
   // Assumes 0 <= i <= length.

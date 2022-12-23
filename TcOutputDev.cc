@@ -17,7 +17,7 @@
 static GBool abortExtraction(void* stream)
 {
     const auto data{ static_cast<ThreadData*>(stream) };
-    if (data && (request_status::active == data->getStatus()))
+    if (data && (requestStatus::active == data->getStatus()))
         return gFalse;
 
     return gTrue;
@@ -44,7 +44,7 @@ static int outputFunction(void *stream, const char *text, int len)
 {
     // TRACE(L"%hs!len=%d\n", __FUNCTION__, len);
     auto data{ static_cast<ThreadData*>(stream) };
-    if (data && (request_status::active == data->getStatus()) && text && (len > 0))
+    if (data && (requestStatus::active == data->getStatus()) && text && (len > 0))
     {
         return data->output(text, len, false);
     }
@@ -80,7 +80,7 @@ void TcOutputDev::output(PDFDoc* doc, ThreadData* data)
         if (m_dev && m_dev->isOk())
         {
             // for each page
-            for (int page{ 1 }; (page <= doc->getNumPages()) && (request_status::active == data->getStatus()); ++page) {
+            for (int page{ 1 }; (page <= doc->getNumPages()) && (requestStatus::active == data->getStatus()); ++page) {
                 // extract text from page
                 doc->displayPage(m_dev.get(), page, 72.0, 72.0, 0, gFalse, gTrue, gFalse, abortExtraction, data);
                 // release page resources

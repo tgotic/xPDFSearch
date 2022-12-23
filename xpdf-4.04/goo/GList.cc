@@ -57,7 +57,7 @@ void GList::append(void *p) {
   data[length++] = p;
 }
 
-void GList::append(GList *list) {
+void GList::append(const GList *list) {
   int i;
 
   while (length + list->length > size) {

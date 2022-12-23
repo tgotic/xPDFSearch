@@ -7,9 +7,9 @@
 #pragma once
 
 #include "contentplug.h"
-#include <tchar.h>
 
 #include <Object.h>
+#include <Zoox.h>
 #include "TcOutputDev.hh"
 #include <string>
 
@@ -50,6 +50,10 @@ private:
     void getMetadataDate(PDFDoc* doc, const char* key);
     void getMetadataAttrStr(PDFDoc* doc);
     void getDocID(PDFDoc* doc);
+    bool getOulinesTitles(GList* node);
+    void getOulines(PDFDoc* doc);
+    void getVersion(PDFDoc* doc);
+    void getConformance(PDFDoc* doc);
 
     static double getPaperSize(int units);
     static bool isIncremental(PDFDoc* doc);
@@ -59,11 +63,13 @@ private:
     static size_t removeDelimiters(wchar_t* str, size_t cchStr, const wchar_t* delims);
     static void appendHexValue(wchar_t* dst, size_t cbDst, int value);
     static wchar_t nibble2wchar(char nibble);
+    static bool getElemOrAttrData(ZxElement* elem, const char* nodeName, GString& conformance, const char* prefix);
+    static void getXmpConformance(GString* metadata, GString& conformance);
+    static int getExtensionLevel(PDFDoc* doc);
+    static bool dateToInt(const char* date, uint8_t len, uint16_t& result);
     int initData(const wchar_t* fileName, int field, int unit, int flags, DWORD timeout);
-    void getOulines(PDFDoc* doc);
-    bool getOulinesTitles(GList* node);
 
-    unsigned int startWorkerThread();
+    uint32_t startWorkerThread();
     int waitForConsumer(DWORD timeout);
     bool open();
     void close();
