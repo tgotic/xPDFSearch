@@ -46,14 +46,15 @@ public:
     void waitForProducer();
 
 private:
-    void getMetadataString(PDFDoc* doc, const char* key);
-    void getMetadataDate(PDFDoc* doc, const char* key);
-    void getMetadataAttrStr(PDFDoc* doc);
-    void getDocID(PDFDoc* doc);
+    void getMetadataString(const char* key);
+    void getMetadataDate(const char* key);
+    void getMetadataDateRaw(const char* key);
+    void getMetadataAttrStr();
+    void getDocID();
     bool getOulinesTitles(GList* node);
-    void getOulines(PDFDoc* doc);
-    void getVersion(PDFDoc* doc);
-    void getConformance(PDFDoc* doc);
+    void getOulines();
+    void getVersion();
+    void getConformance();
 
     static double getPaperSize(int units);
     static bool isIncremental(PDFDoc* doc);
@@ -67,6 +68,8 @@ private:
     static void getXmpConformance(GString* metadata, GString& conformance);
     static int getExtensionLevel(PDFDoc* doc);
     static bool dateToInt(const char* date, uint8_t len, uint16_t& result);
+    static GString* getMetadataDateTimeString(PDFDoc* doc, const char* key);
+    static bool PdfDateTimeToFileTime(GString* pdfDateTime, FILETIME& fileTime);
     int initData(const wchar_t* fileName, int field, int unit, int flags, DWORD timeout);
 
     uint32_t startWorkerThread();

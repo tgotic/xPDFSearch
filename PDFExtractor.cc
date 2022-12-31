@@ -248,13 +248,12 @@ void PDFExtractor::appendHexValue(wchar_t* dst, size_t cbDst, int value)
 * Extract metadata information from PDF and convert to wchar_t.
 * Data exchange is guarded with mutex.
 * 
-* @param[in]    doc     pointer to PDFDoc object
 * @param[in]    key     one of values from #metaDataFields
 */
-void PDFExtractor::getMetadataString(PDFDoc* doc, const char* key)
+void PDFExtractor::getMetadataString(const char* key)
 {
     Object objDocInfo;
-    if (doc->getDocInfo(&objDocInfo)->isDict())
+    if (m_doc->getDocInfo(&objDocInfo)->isDict())
     {
         Object obj;
         const auto dict{ objDocInfo.getDict() };
@@ -351,12 +350,10 @@ bool PDFExtractor::getOulinesTitles(GList* node)
 
 /**
 * Extract document outline.
-*
-* @param[in]    doc     pointer to PDFDoc object
 */
-void PDFExtractor::getOulines(PDFDoc* doc)
+void PDFExtractor::getOulines()
 {
-    const auto outline{ doc->getOutline() };
+    const auto outline{ m_doc->getOutline() };
     if (outline)
     {
         getOulinesTitles(outline->getItems());
@@ -367,14 +364,12 @@ void PDFExtractor::getOulines(PDFDoc* doc)
 * Extract PDF file identifier. 
 * This value should be two MD5 strings.
 * Data exchange is guarded with mutex.
-*
-* @param[in]    doc     pointer to PDFDoc object
 */
-void PDFExtractor::getDocID(PDFDoc* doc)
+void PDFExtractor::getDocID()
 {
     Object fileIDObj;
 
-    doc->getXRef()->getTrailerDict()->dictLookup("ID", &fileIDObj);
+    m_doc->getXRef()->getTrailerDict()->dictLookup("ID", &fileIDObj);
     if (fileIDObj.isArray()) 
     {
         auto len{ REQUEST_BUFFER_SIZE };
@@ -431,32 +426,30 @@ bool PDFExtractor::isTagged(PDFDoc* doc)
 /**
 * "PDF Attribute" field data extraction.
 * Data exchange is guarded with mutex.
-*
-* @param[in]    doc     pointer to PDFDoc object
 */
-void PDFExtractor::getMetadataAttrStr(PDFDoc* doc)
+void PDFExtractor::getMetadataAttrStr()
 {
     wchar_t attrs[]{ L"----------" };
 
-    if (doc->okToPrint())
+    if (m_doc->okToPrint())
         attrs[0] = L'P';
-    if (doc->okToCopy())
+    if (m_doc->okToCopy())
         attrs[1] = L'C';
-    if (doc->okToChange())
+    if (m_doc->okToChange())
         attrs[2] = L'M';
-    if (doc->okToAddNotes())
+    if (m_doc->okToAddNotes())
         attrs[3] = L'N';
-    if (isIncremental(doc))
+    if (isIncremental(m_doc.get()))
         attrs[4] = L'I';
-    if (isTagged(doc))
+    if (isTagged(m_doc.get()))
         attrs[5] = L'T';
-    if (doc->isLinearized())
+    if (m_doc->isLinearized())
         attrs[6] = L'L';
-    if (doc->isEncrypted())
+    if (m_doc->isEncrypted())
         attrs[7] = L'E';
-    if (hasSignature(doc))
+    if (hasSignature(m_doc.get()))
         attrs[8] = L'S';
-    if (hasOutlines(doc))
+    if (hasOutlines(m_doc.get()))
         attrs[9] = L'O';
 
     m_data->setValue(attrs, ft_stringw);
@@ -482,14 +475,15 @@ bool PDFExtractor::dateToInt(const char* date, uint8_t len, uint16_t& result)
 }
 
 /**
-* "Created" and "Modified" fields data extraction.
-* Convert PDF date and time to FILETIME structure.
+* Get PDF date time string from PDF Info CreationDate or ModDate
 *
 * @param[in]    doc     pointer to PDFDoc object
 * @param[in]    key     "CreationDate" or "ModDate"
+* @return pointer to allocated GString, needs to be deleted/released after usage.
 */
-void PDFExtractor::getMetadataDate(PDFDoc* doc, const char* key)
+GString* PDFExtractor::getMetadataDateTimeString(PDFDoc* doc, const char* key)
 {
+    GString* dateTimeString{ nullptr };
     Object objDocInfo;
     if (doc->getDocInfo(&objDocInfo)->isDict())
     {
@@ -497,102 +491,162 @@ void PDFExtractor::getMetadataDate(PDFDoc* doc, const char* key)
         const auto dict{ objDocInfo.getDict() };
         if (dict->lookup(key, &obj)->isString())
         {
-            std::unique_ptr<GString> dateTimeSting(TextString(obj.getString()).toUTF8());
-            auto const* acrobatDateTimeString{ dateTimeSting->getCString() };
-            auto len{ dateTimeSting->getLength() };
-            if (acrobatDateTimeString && (len >= 4))    // YYYY is minimum
-            {
-                // D:20080918111951
-                // D:20080918111951Z
-                // D:20080918111951-07'00'
-                if ((acrobatDateTimeString[0] == 'D') && (acrobatDateTimeString[1] == ':'))
-                {
-                    acrobatDateTimeString += 2U;
-                    len -= 2;
-                }
-
-                SYSTEMTIME sysTime{ };
-                uint16_t hours{ 0 }, minutes{ 0 };
-                int offset{ 0 };
-                if (len >= 4)
-                {
-                    // default values, PDF 1.7
-                    sysTime.wMonth = 1;
-                    sysTime.wDay = 1;
-
-                    SYSTEMTIME now{ };
-                    GetSystemTime(&now);
-
-                    // check if first conversion is successful and year is valid (PDF1.0 is released in 1993.)
-                    if (dateToInt(acrobatDateTimeString, 4U, sysTime.wYear))
-                    {
-                        // from gpdf/poppler, y2k bug in Distiller
-                        // CCYYYMMDDHHmmSS
-                        // CC - century = 19
-                        if ((sysTime.wYear < 1930) && (len > 14))
-                        {
-                            acrobatDateTimeString += 2U; // skip century
-                            if (dateToInt(acrobatDateTimeString, 3U, sysTime.wYear))
-                            {
-                                sysTime.wYear += 1900;
-                                acrobatDateTimeString += 3U;
-                                len -= 5U;
-                            }
-                            else
-                                sysTime.wYear = 0;
-                        }
-                        else
-                        {
-                            acrobatDateTimeString += 4U;
-                            len -= 4;
-                        }
-                        if ((sysTime.wYear > 1992) && (sysTime.wYear <= now.wYear) && (len >= 2))
-                        {
-                            if (dateToInt(acrobatDateTimeString, 2U, sysTime.wMonth) && (len >= 4))
-                            {
-                                if (dateToInt(acrobatDateTimeString + 2U, 2U, sysTime.wDay) && (len >= 6))
-                                {
-                                    if (dateToInt(acrobatDateTimeString + 4U, 2U, sysTime.wHour) && (len >= 8))
-                                    {
-                                        if (dateToInt(acrobatDateTimeString + 6U, 2U, sysTime.wMinute) && (len >= 10))
-                                        {
-                                            if (dateToInt(acrobatDateTimeString + 8U, 2U, sysTime.wSecond) && (len >= 13))
-                                            {
-                                                if (dateToInt(acrobatDateTimeString + 11U, 2U, hours) && (len >= 16))
-                                                {
-                                                    dateToInt(acrobatDateTimeString + 14U, 2U, minutes);
-                                                }
-                                                offset = hours * 3600 + minutes * 60;
-                                                if (acrobatDateTimeString[10] == '-')
-                                                    offset = 0 - offset;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        FILETIME fileTime{ };
-                        if (SystemTimeToFileTime(&sysTime, &fileTime))
-                        {
-                            if (offset)
-                            {
-                                LARGE_INTEGER timeValue;
-                                timeValue.HighPart = fileTime.dwHighDateTime;
-                                timeValue.LowPart = fileTime.dwLowDateTime;
-                                timeValue.QuadPart -= offset * 10000000ULL;
-
-                                fileTime.dwHighDateTime = timeValue.HighPart;
-                                fileTime.dwLowDateTime = timeValue.LowPart;
-                            }
-                            m_data->setValue(fileTime, ft_datetime);
-                        }
-                    }
-                }
-            }
+            dateTimeString = TextString(obj.getString()).toUTF8();
         }
         obj.free();
     }
     objDocInfo.free();
+
+    return dateTimeString;
+}
+
+/**
+* Convert PDF date and time to FILETIME structure.
+* PDF 1.0 was published in 1993 and had arbitrary date format. This plugin doesn't handle those formats.
+* PDF 1.1 was published in 1994 and specified date time format as D:YYYYMMDDHHmmss.
+*
+* String with year 1909-1913 is a Distiller y2k bug.
+*
+* @param[in]    pdfDateTime     pointer to PDF date time string
+* @param[out]   fileTime        result of a conversion
+* @return true - conversiotn succeedeed, false - failed
+*/
+bool PDFExtractor::PdfDateTimeToFileTime(GString* pdfDateTime, FILETIME& fileTime)
+{
+    auto const* acrobatDateTimeString{ pdfDateTime->getCString() };
+    auto len{ pdfDateTime->getLength() };
+    if (acrobatDateTimeString && (len >= 4))
+    {
+        // D:20080918111951
+        // D:20080918111951Z
+        // D:20080918111951-07'00'
+        if ((acrobatDateTimeString[0] == 'D') && (acrobatDateTimeString[1] == ':'))
+        {
+            acrobatDateTimeString += 2U;
+            len -= 2;
+        }
+        // YYYY is minimum
+        if (len >= 4)
+        {
+            int offset{ 0 };
+            SYSTEMTIME sysTime{ };
+            // default values, PDF 1.7
+            sysTime.wMonth = 1;
+            sysTime.wDay = 1;
+
+            if (dateToInt(acrobatDateTimeString, 4U, sysTime.wYear))
+            {
+                // from gpdf/poppler, y2k bug in Distiller
+                // CCYYYMMDDHHmmSS
+                // CC - century = 19
+                if ((sysTime.wYear >= 1909) && (sysTime.wYear <= 1913) && (len > 14))
+                {
+                    // if year is between 199x and 203x
+                    acrobatDateTimeString += 2U; // skip century
+                    if (dateToInt(acrobatDateTimeString, 3U, sysTime.wYear))
+                    {
+                        sysTime.wYear += 1900;
+                        acrobatDateTimeString += 3U;
+                        len -= 5U;
+                    }
+                    else
+                        sysTime.wYear = 0;  // mark error
+                }
+                else
+                {
+                    acrobatDateTimeString += 4U;
+                    len -= 4;
+                }
+                if (len >= 2)
+                {
+                    if (dateToInt(acrobatDateTimeString, 2U, sysTime.wMonth) && (len >= 4))
+                    {
+                        if (dateToInt(acrobatDateTimeString + 2U, 2U, sysTime.wDay) && (len >= 6))
+                        {
+                            if (dateToInt(acrobatDateTimeString + 4U, 2U, sysTime.wHour) && (len >= 8))
+                            {
+                                if (dateToInt(acrobatDateTimeString + 6U, 2U, sysTime.wMinute) && (len >= 10))
+                                {
+                                    if (dateToInt(acrobatDateTimeString + 8U, 2U, sysTime.wSecond) && (len >= 13))
+                                    {
+                                        uint16_t hours{ 0 }, minutes{ 0 };
+                                        if (dateToInt(acrobatDateTimeString + 11U, 2U, hours) && (len >= 16))
+                                        {
+                                            dateToInt(acrobatDateTimeString + 14U, 2U, minutes);
+                                        }
+                                        offset = hours * 3600 + minutes * 60;
+                                        if (acrobatDateTimeString[10] == '-')
+                                            offset = 0 - offset;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (SystemTimeToFileTime(&sysTime, &fileTime))
+                {
+                    if (offset)
+                    {
+                        LARGE_INTEGER timeValue;
+                        timeValue.HighPart = fileTime.dwHighDateTime;
+                        timeValue.LowPart = fileTime.dwLowDateTime;
+                        timeValue.QuadPart -= offset * 10000000ULL;
+
+                        fileTime.dwHighDateTime = timeValue.HighPart;
+                        fileTime.dwLowDateTime = timeValue.LowPart;
+                    }
+                    return true;
+                }
+                else
+                {
+                    TRACE(L"%hs!SystemTimeToFileTime(%s) failed: %lu\n", __FUNCTION__, acrobatDateTimeString, GetLastError());
+                }
+            }
+        }
+    }
+    return false;
+}
+
+/**
+* "Created" and "Modified" fields data extraction.
+* Convert PDF date and time to FILETIME structure.
+*
+* @param[in]    key     "CreationDate" or "ModDate"
+*/
+void PDFExtractor::getMetadataDate(const char* key)
+{
+    std::unique_ptr<GString> dateTimeString(getMetadataDateTimeString(m_doc.get(), key));
+    if (dateTimeString)
+    {
+        FILETIME fileTime{ };
+        if (PdfDateTimeToFileTime(dateTimeString.get(), fileTime))
+        {
+            m_data->setValue(fileTime, ft_datetime);
+        }
+    }
+}
+
+/**
+* "CreatedRaw" and "ModifiedRaw" fields data extraction.
+* Get raw date fields, without conversion to FILETIME.
+*
+* @param[in]    key     "CreationDate" or "ModDate"
+*/
+void PDFExtractor::getMetadataDateRaw(const char* key)
+{
+    std::unique_ptr<GString> dateTimeString(getMetadataDateTimeString(m_doc.get(), key));
+    if (dateTimeString)
+    {
+        if (globalOptionsFromIni.removeDateRawDColon)
+        {
+            if (dateTimeString->cmpN("D:", 2) == 0)
+            {
+                dateTimeString->del(0, 2);
+            }
+        }
+        m_data->setValue(dateTimeString.get(), ft_stringw);
+    }
 }
 
 /**
@@ -704,13 +758,11 @@ void PDFExtractor::getXmpConformance(GString* metadata, GString& conformance)
 
 /**
 * Get PDF conformance value (PDF/A, PDF/X, PDF/E)
-*
-* @param[in]    doc     pointer to PDFDoc object
 */
-void PDFExtractor::getConformance(PDFDoc* doc)
+void PDFExtractor::getConformance()
 {
     GString conformance;
-    getXmpConformance(doc->readMetadata(), conformance);
+    getXmpConformance(m_doc->readMetadata(), conformance);
     m_data->setValue(&conformance, ft_stringw);
 }
 
@@ -751,15 +803,13 @@ int PDFExtractor::getExtensionLevel(PDFDoc* doc)
 * Get PDF version
 * If globalOptionsFromIni.appendExtensionLevel=1, try to get PDF Extension Level.
 * Valid for PDF > 1.7
-*
-* @param[in]    doc     pointer to PDFDoc object
 */
-void PDFExtractor::getVersion(PDFDoc* doc)
+void PDFExtractor::getVersion()
 {
     auto ver{ m_doc->getPDFVersion() };
     if ((ver >= 1.7) && globalOptionsFromIni.appendExtensionLevel)
     {
-        auto ext{ getExtensionLevel(doc) };
+        auto ext{ getExtensionLevel(m_doc.get()) };
         if ((ext > 0) && (ext < 10))
         {
             ver += ext / 100.0;
@@ -786,7 +836,7 @@ void PDFExtractor::doWork()
     case fiAuthor:
     case fiCreator:
     case fiProducer:
-        getMetadataString(m_doc.get(), metaDataFields[field]);
+        getMetadataString(metaDataFields[field]);
         break;
     case fiDocStart:
     case fiFirstRow:
@@ -797,7 +847,7 @@ void PDFExtractor::doWork()
         m_data->setValue(m_doc->getNumPages(), ft_numeric_32);
         break;
     case fiPDFVersion:
-        getVersion(m_doc.get());
+        getVersion();
         break;
     case fiPageWidth:
         m_data->setValue(m_doc->getPageCropWidth(1) * getPaperSize(m_data->getRequestUnit()), ft_numeric_floating);
@@ -833,22 +883,28 @@ void PDFExtractor::doWork()
         m_data->setValue(hasSignature(m_doc.get()), ft_boolean);
         break;
     case fiCreationDate:
-        getMetadataDate(m_doc.get(), "CreationDate");
+        getMetadataDate("CreationDate");
         break;
     case fiLastModifiedDate:
-        getMetadataDate(m_doc.get(), "ModDate");
+        getMetadataDate("ModDate");
         break;
     case fiID:
-        getDocID(m_doc.get());
+        getDocID();
         break;
     case fiAttributesString:
-        getMetadataAttrStr(m_doc.get());
+        getMetadataAttrStr();
         break;
     case fiOutlines:
-        getOulines(m_doc.get());
+        getOulines();
         break;
     case fiConformance:
-        getConformance(m_doc.get());
+        getConformance();
+        break;
+    case fiCreationDateRaw:
+        getMetadataDateRaw("CreationDate");
+        break;
+    case fiLastModifiedDateRaw:
+        getMetadataDateRaw("ModDate");
         break;
     default:
         break;

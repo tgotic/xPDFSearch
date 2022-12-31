@@ -1,3 +1,13 @@
+# Version 1.38
+
+ADDED
+* New fields: CreatedRaw and ModifiedRaw (date strings from PDF)
+* \[xPDFSearch\] RemoveDateRawDColon - remove D: from date string
+
+CHANGED
+* Relaxed date year in Created and Modified fields
+* Updated Danish and Croatian translation
+
 # Version 1.37
 
 ADDED
@@ -5,15 +15,15 @@ ADDED
 If xPDFSearch.ini is not found, load options from TC content plugin ini file.
 * \[xPDFSearch\] AppendExtensionLevel - find PDF Extension Level and append it to PDF Version:  
 PDF 1.7 Extension Level 3 = 1.73
-* new field: Conformance - PDF/A, PDF/E, PDF/X
+* New field: Conformance - PDF/A, PDF/E, PDF/X
 
 CHANGED
-* improved PDF Date parsing, allow dates that don't start with D:
+* Improved PDF Date parsing, allow dates that don't start with D:
 
 # Version 1.36
 
 ADDED
-* options in content plugin ini file:
+* Options in content plugin ini file:
     * \[xPDFSearch\] NoCache - disable file caching
         - allow renaming PDF file with values form xPDFSearch
         - allow changing file attributes (not content of PDF file)
@@ -25,17 +35,17 @@ ADDED
     * \[xPDFSearch\] MarginTop - discard all characters above of mediaBox - marginTop
     * \[xPDFSearch\] MarginBottom  - discard all characters bellow of mediaBox + marginBottom
     * \[xPDFSearch\] TextOutputMode - text formatting mode, see TextOutputControl in TextOutputDev.h
-* new field: Outline - search outlines (bookmarks) titles
-* new attribute, O - PDF has outlines (bookmarks) directory
+* New field: Outline - search outlines (bookmarks) titles
+* New attribute, O - PDF has outlines (bookmarks) directory
 
 CHANGED
-* open PDF file with write deny share
+* Open PDF file with write deny share
 
 # Version 1.35
 
 CHANGED
 * Xpdf updated to version 4.04.
-* open PDF file without write deny, allow change of file attributes
+* Open PDF file without write deny, allow change of file attributes
 
 # Version 1.34
 
@@ -52,8 +62,8 @@ CHANGED
 # Version 1.31
 
 FIXED
-* values for binary fields were wrong in 1.3
-* plugin didn't return correct values if units index was not 0
+* Values for binary fields were wrong in 1.3
+* Plugin didn't return correct values if units index was not 0
 
 # Version 1.30
 
@@ -68,9 +78,9 @@ FIXED
 # Version 1.20
 
 ADDED
-* new fields: Incremental, Signature Field, ID and PDF Attributes.
-* data caching - faster retirieval of fields - PDF document stays open while reading fields
-* improved exit from PDF document when search string is found
+* New fields: Incremental, Signature Field, ID and PDF Attributes.
+* Data caching - faster retirieval of fields - PDF document stays open while reading fields
+* Improved exit from PDF document when search string is found
 
 CHANGED
 * Document Start field moved to position 7

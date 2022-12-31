@@ -31,7 +31,7 @@ static constexpr const char* fieldNames[FIELD_COUNT]
     "PDF Version", "Page Width", "Page Height",
     "Copying Allowed", "Printing Allowed", "Adding Comments Allowed", "Changing Allowed", "Encrypted", "Tagged", "Linearized", "Incremental", "Signature Field",
     "Created", "Modified",
-    "ID", "PDF Attributes", "Conformance",
+    "ID", "PDF Attributes", "Conformance", "CreatedRaw", "ModifiedRaw",
     "Outlines", "Text"
 };
 
@@ -43,7 +43,7 @@ constexpr int fieldTypes[FIELD_COUNT]
     ft_numeric_floating, ft_numeric_floating, ft_numeric_floating,
     ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean,
     ft_datetime, ft_datetime,
-    ft_stringw, ft_stringw, ft_stringw,
+    ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw,
     ft_fulltext, ft_fulltext
 };
 
@@ -344,6 +344,7 @@ void __stdcall ContentSetDefaultParams(ContentDefaultParamStruct* dps)
     globalOptionsFromIni.discardDiagonalText = GetPrivateProfileIntA("xPDFSearch", "DiscardDiagonalText", 1, iniFileName);
     globalOptionsFromIni.discardClippedText = GetPrivateProfileIntA("xPDFSearch", "DiscardClippedText", 1, iniFileName);
     globalOptionsFromIni.appendExtensionLevel = GetPrivateProfileIntA("xPDFSearch", "AppendExtensionLevel", 1, iniFileName);
+    globalOptionsFromIni.removeDateRawDColon = GetPrivateProfileIntA("xPDFSearch", "RemoveDateRawDColon", 0, iniFileName);
     globalOptionsFromIni.marginLeft = GetPrivateProfileIntA("xPDFSearch", "MarginLeft", 0, iniFileName);
     globalOptionsFromIni.marginRight = GetPrivateProfileIntA("xPDFSearch", "MarginRight", 0, iniFileName);
     globalOptionsFromIni.marginTop = GetPrivateProfileIntA("xPDFSearch", "MarginTop", 0, iniFileName);

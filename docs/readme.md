@@ -115,7 +115,7 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
         </tr>
         <tr>
           <td>Modified</td>
-          <td>The date were the document has been modified.</td>
+          <td>The date when the document has been modified.</td>
         </tr>
         <tr>
           <td>ID</td>
@@ -176,6 +176,14 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
         <tr>
           <td>Conformance</td>
           <td>Indicates conformance of the document to the PDF/A, PDF/E or PDF/X standards.</td>
+        </tr>
+        <tr>
+          <td>CreatedRaw</td>
+          <td>The creation date of the document as written in PDF document.</td>
+        </tr>
+        <tr>
+          <td>ModifiedRaw</td>
+          <td>The date when the document has been modified as written in PDF document.</td>
         </tr>
         <tr>
           <td>Outlines</td>
@@ -249,7 +257,8 @@ xPDFSearch plugin can be configured in xPDFSearch.ini file:
     *   4=optimized for tables
     *   5=fixed-pitch/height layout
     *   6=keep text in content stream order
-*   AppendExtensionLevel=0 append PDF Extension Level to PDF Version (PDF 1.7 Ext. Level 3 = 1.73)  
+*   AppendExtensionLevel=0 append PDF Extension Level to PDF Version (PDF 1.7 Ext. Level 3 = 1.73)
+*   RemoveDateRawDColon=0 remove D: from CreatedRaw and ModifiedRaw fields  
 
 If there is no xPDFSearch.ini file located in plugin directory, plugin uses options from TC content ini file.
 Default location of TC content ini file is %COMMANDER_PATH%\contplug.ini.  
