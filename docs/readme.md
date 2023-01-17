@@ -274,4 +274,4 @@ There is a [thread](http://www.ghisler.ch/board/viewtopic.php?t=7423) in the [To
 
 ## 7\. License<a id='7'></a>
 
-This Total Commander Plugin is licensed under the General Public License (GPL). The license can be found in the file GPL.txt.
+This Total Commander Plugin is licensed under the General Public License (GPL). The license can be found in the [LICENSE.md](../LICENSE.md).
