@@ -15,7 +15,9 @@ xPDFSearch is a content plugin for Total Commander.
 
 ## 1\. Plugin descriptionr<a id='1'></a>
 
-xPDFSearch can be used to perform full text search in PDF files. In addition xPDFSearch provides meta data information from PDF files. It's possible to display title, subject, keywords, author, application, PDF producer, number of pages, PDF version, created and modified.
+xPDFSearch can be used to perform full text search in PDF files.  
+In addition xPDFSearch provides meta data information from PDF files.  
+It's possible to display title, subject, keywords, author, application, PDF producer, number of pages, PDF version, created and modified.
 
 Plugin can be used in Synchronize Directories to compare content of PDF files.
 
@@ -270,7 +272,7 @@ xPDFSearch plugin uses slightly modified [Xpdf library](http://www.xpdfreader.co
 
 ## 6\. Author contact<a id='6'></a>
 
-There is a [thread](http://www.ghisler.ch/board/viewtopic.php?t=7423) in the [Total Commander forum](http://www.ghisler.ch/) which can be used to discuss problems, bugs and suggestions.
+There is a [thread](https://www.ghisler.ch/board/viewtopic.php?t=78256) in the [Total Commander forum](http://www.ghisler.ch/) which can be used to discuss problems, bugs and suggestions.
 
 ## 7\. License<a id='7'></a>
 
