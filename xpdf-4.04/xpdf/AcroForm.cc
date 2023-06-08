@@ -342,7 +342,7 @@ public:
 
 AcroForm *AcroForm::load(PDFDoc *docA, Catalog *catalog, Object *acroFormObjA) {
   Object acroFormObj2;
-  AcroForm *acroForm;
+  AcroForm* acroForm{ nullptr };
   AcroFormField *field;
   Object xfaObj, fieldsObj, annotsObj, annotRef, annotObj, obj1, obj2;
   int pageNum, i, j;
@@ -366,7 +366,6 @@ AcroForm *AcroForm::load(PDFDoc *docA, Catalog *catalog, Object *acroFormObjA) {
     }
     obj1.free();
 
-    acroForm->buildAnnotPageList(catalog);
 
     if (!acroFormObjA->dictLookup("Fields", &obj1)->isArray()) {
       if (!obj1.isNull()) {
@@ -383,6 +382,7 @@ AcroForm *AcroForm::load(PDFDoc *docA, Catalog *catalog, Object *acroFormObjA) {
     }
     obj1.free();
 
+    acroForm->buildAnnotPageList(catalog);
     // scan the annotations, looking for Widget-type annots that are
     // not attached to the AcroForm object
     for (pageNum = 1; pageNum <= catalog->getNumPages(); ++pageNum) {
@@ -519,11 +519,17 @@ void AcroForm::scanField(Object *fieldRef) {
   Object fieldObj, kidsObj, kidRef, kidObj, subtypeObj;
   GBool isTerminal;
   int i;
-
+  int startDepth = depth++;
+  if (depth > maxDepth) {
+    error(errInternal, -1, "Recursion depth exceeded");
+    depth = startDepth;
+    return;
+  }
   fieldRef->fetch(doc->getXRef(), &fieldObj);
   if (!fieldObj.isDict()) {
     error(errSyntaxError, -1, "AcroForm field object is wrong type");
     fieldObj.free();
+    depth = startDepth;
     return;
   }
 
@@ -561,6 +567,7 @@ void AcroForm::scanField(Object *fieldRef) {
   }
 
   fieldObj.free();
+  depth = startDepth;
 }
 
 void AcroForm::draw(int pageNum, Gfx *gfx, GBool printing) {
