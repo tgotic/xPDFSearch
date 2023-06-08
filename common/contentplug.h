@@ -20,8 +20,8 @@
 #define ft_string           8   /**< text string; values returned by ContentGetValue(W) may be of type ft_stringw or ft_string */
 #define ft_fulltext         9   /**< full text (multiple text strings), only used for searching */
 #define ft_datetime         10  /**< timestamp of type FILETIME, as returned e.g. by FindFirstFile(), 64-bit value representing the number of 100-nanosecond intervals since January 1, 1601 */
-#define ft_stringw          11  /**< full text with UTF-16 encoding (multiple text strings), only used for searching */
-#define ft_fulltextw        12  /**< text string with UTF-16 encoding */
+#define ft_stringw          11  /**< text string with UTF-16 encoding */
+#define ft_fulltextw        12  /**< full text with UTF-16 encoding (multiple text strings), only used for searching */
 #define ft_comparecontent   100 /**< used in "Synchronize dirs" only  */
 /** @} */
 
