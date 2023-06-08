@@ -21,7 +21,7 @@
 static ptrdiff_t PdfTxtToUTF16(const char* src, const ptrdiff_t cchSrc, wchar_t* dst, ptrdiff_t *cbDst)
 {
     ptrdiff_t i{ 0 };
-    for (; (i < cchSrc) && (*cbDst > sizeOfWchar + 1); i += sizeOfWchar)
+    for (; (i < cchSrc) && (*cbDst > static_cast<ptrdiff_t>(sizeOfWchar) + 1); i += sizeOfWchar)
     {
         // swap bytes
         *dst = (*(src + i + 1) & 0xFF) | ((*(src + i) << 8U) & 0xFF00);
@@ -51,7 +51,7 @@ ptrdiff_t ThreadData::UnicodeToUTF16(const Unicode* src, ptrdiff_t cchSrc, wchar
     ptrdiff_t i{ 0 };
     if (src && dst && cbDst)
     {
-        for (; (i < cchSrc) && (*cbDst > sizeOfWchar + 1); i++)
+        for (; (i < cchSrc) && (*cbDst > static_cast<ptrdiff_t>(sizeOfWchar) + 1); i++)
         {
             *dst++ = *src++ & 0xFFFF;
             *cbDst -= sizeOfWchar;
@@ -265,8 +265,7 @@ int ThreadData::compareWaitForConsumers(ThreadData* searcher, DWORD timeout)
             break;
         }
         case WAIT_TIMEOUT:
-            result = ft_compare_abort;
-            break;
+            [[fallthrough]];
         default:
             result = ft_compare_abort;
             break;
@@ -385,7 +384,10 @@ int ThreadData::initRequest(const wchar_t* fileName, int field, int unit, int fl
 
     // for continuous full text search, don't move ptr to the beginning, it may point to extracted data
     if (!(((field == fiText) || (field == fiOutlines)) && (unit > 0)))
+    {
         request.ptr = request.buffer;   // set string end to begining of buffer
+    }
+
     // if buffer is empty set result to ft_fieldempty
     if (request.ptr == request.buffer)
     {
@@ -437,8 +439,11 @@ int ThreadData::output(const char *text, ptrdiff_t len, bool textIsUnicode)
                     setStatusCond(requestStatus::cancelled, requestStatus::active);
                     return 1;
                 }
+
                 if (getStatus() != requestStatus::active)
+                {
                     return 1;
+                }
 
                 lock.lock();
                 cbDstW = request.remaining();
@@ -461,6 +466,7 @@ int ThreadData::output(const char *text, ptrdiff_t len, bool textIsUnicode)
                 lenConverted = PdfTxtToUTF16(text, len, dstW, &cbDstW);
                 text += lenConverted;
             }
+
             if (lenConverted)
                 len -= lenConverted;
             else
@@ -534,7 +540,9 @@ int ThreadData::output(const char *text, ptrdiff_t len, bool textIsUnicode)
                     TRACE(L"%hs!TC notified!%d b\n", __FUNCTION__, REQUEST_BUFFER_SIZE - cbDstW);
                 }
                 else
+                {
                     return 1;
+                }
             }
             else
             {

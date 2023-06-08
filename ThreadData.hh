@@ -118,10 +118,10 @@ public:
     int initRequest(const wchar_t* fileName, int field, int unit, int flags, DWORD timeout);
 
     template<typename T> void setValue(T value, int type);
-#ifdef _MSC_VER
+#if defined(_MSC_VER) 
     // GCC BUG, it doesn't support Explicit specialization in non-namespace scope
-    template<> void setValue<GString*>(GString* value, int type);
-    template<> void setValue<wchar_t*>(wchar_t* value, int type);
+    template<> void setValue(GString* value, int type);
+    template<> void setValue(wchar_t* value, int type);
 #endif
     auto getRequestField() const { return request.field; }
     auto getRequestFlags() const { return request.flags; }
@@ -166,7 +166,7 @@ private:
 template<typename T>
 void ThreadData::setValue(T value, int type)
 {
-#ifndef _MSC_VER
+#if defined(__GNUC__) || defined(__llvm__)
     ptrdiff_t len{ REQUEST_BUFFER_SIZE };
     /*
     https://stackoverflow.com/questions/49707184/explicit-specialization-in-non-namespace-scope-does-not-compile-in-gcc
@@ -204,7 +204,7 @@ void ThreadData::setValue(T value, int type)
     setRequestResult(type);
 }
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 /**
 * Template specialization of #setValue for GString.
 * Convert GString to TextString to get Unicode and then convert Unicode to UTF-16.
@@ -213,7 +213,7 @@ void ThreadData::setValue(T value, int type)
 * @param[in]    type    type of result value
 */
 template<>
-void ThreadData::setValue<GString*>(GString* value, int type)
+void ThreadData::setValue(GString* value, int type)
 {
     if (value && value->getLength())
     {
@@ -239,7 +239,7 @@ void ThreadData::setValue<GString*>(GString* value, int type)
 * @param[in]    type    type of result value
 */
 template<>
-void ThreadData::setValue<wchar_t*>(wchar_t* value, int type)
+void ThreadData::setValue(wchar_t* value, int type)
 {
     auto len{ REQUEST_BUFFER_SIZE };
     std::lock_guard lock(mutex);

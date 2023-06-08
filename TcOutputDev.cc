@@ -18,7 +18,9 @@ static GBool abortExtraction(void* stream)
 {
     const auto data{ static_cast<ThreadData*>(stream) };
     if (data && (requestStatus::active == data->getStatus()))
+    {
         return gFalse;
+    }
 
     return gTrue;
 }
