@@ -8,10 +8,10 @@
 
 #include "contentplug.h"
 
-#include <Object.h>
-#include <Zoox.h>
 #include "TcOutputDev.hh"
+#include "PDFDocEx.hh"
 #include <string>
+#include <locale>
 
 /**
 * RAII wrapper for collate category of locale ANSI Code Page 
@@ -49,27 +49,18 @@ private:
     void getMetadataString(const char* key);
     void getMetadataDate(const char* key);
     void getMetadataDateRaw(const char* key);
-    void getMetadataAttrStr();
+    void getAttrStr();
     void getDocID();
     bool getOulinesTitles(GList* node);
     void getOulines();
     void getVersion();
     void getConformance();
+    void getExtensions();
 
     static double getPaperSize(int units);
-    static bool isIncremental(PDFDoc* doc);
-    static bool isTagged(PDFDoc* doc);
-    static bool hasSignature(PDFDoc* doc);
-    static bool hasOutlines(PDFDoc* doc);
     static size_t removeDelimiters(wchar_t* str, size_t cchStr, const wchar_t* delims);
-    static void appendHexValue(wchar_t* dst, size_t cbDst, int value);
-    static wchar_t nibble2wchar(char nibble);
-    static bool getElemOrAttrData(ZxElement* elem, const char* nodeName, GString& conformance, const char* prefix);
-    static void getXmpConformance(GString* metadata, GString& conformance);
-    static int getExtensionLevel(PDFDoc* doc);
     static bool dateToInt(const char* date, uint8_t len, uint16_t& result);
-    static GString* getMetadataDateTimeString(PDFDoc* doc, const char* key);
-    static bool PdfDateTimeToFileTime(GString* pdfDateTime, FILETIME& fileTime);
+    static bool PdfDateTimeToFileTime(const GString& pdfDateTime, FILETIME& fileTime);
     int initData(const wchar_t* fileName, int field, int unit, int flags, DWORD timeout);
 
     uint32_t startWorkerThread();
@@ -82,8 +73,8 @@ private:
 
     std::unique_ptr<ThreadData>     m_data{ std::make_unique<ThreadData>() };      /**< pointer to thread data, request    */
     std::unique_ptr<PDFExtractor>   m_search{ nullptr };        /**< pointer to second instance of PDFExtractor, used to extract data from second file when comparing data */
-    std::unique_ptr<PDFDoc>         m_doc{ nullptr };           /**< pointer to PDFDoc object   */
+    std::unique_ptr<PDFDocEx>       m_doc{ nullptr };           /**< pointer to PDFDoc object   */
     ScopedCollateLocale             m_locale{ };                /**< locale-specific value, used for compare as text */
-    std::wstring                    m_fileName{ };              /**< full patht to PDF document, used to compare open with new one  */
+    std::wstring                    m_fileName{ };              /**< full path to PDF document, used to compare current document with the new one */
     TcOutputDev                     m_tc;                       /**< text extraction object */
 };

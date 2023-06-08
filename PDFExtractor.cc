@@ -77,9 +77,9 @@
 */
 
 /**
-* The keys required to read the metadata fields. 
+* The keys required to read the Document Info Directory fields.
 */
-static constexpr const char* metaDataFields[] =
+static constexpr const char* DocInfoFields[] =
 {
     "Title", "Subject", "Keywords", "Author", "Creator", "Producer"
 };
@@ -161,7 +161,7 @@ bool PDFExtractor::open()
         if (!m_fileName.empty())
         {
             m_data->setStatus(requestStatus::active);
-            m_doc = std::make_unique<PDFDoc>(m_fileName.c_str(), m_fileName.size());
+            m_doc = std::make_unique<PDFDocEx>(m_fileName.c_str(), m_fileName.size());
             TRACE(L"%hs!%ls\n", __FUNCTION__, m_fileName.c_str());
         }
 
@@ -198,50 +198,23 @@ size_t PDFExtractor::removeDelimiters(wchar_t* str, size_t cchStr, const wchar_t
         for (; n < cchStr; ++n)
         {
             if (wcschr(delims, str[n]))
+            {
                 continue;
+            }
 
             if (i != n)
+            {
                 str[i] = str[n];
+            }
 
             ++i;
         }
         if (i != n)
+        {
             str[i] = 0;
+        }
     }
     return i;
-}
-
-/**
-* Convert nibble value to hex character.
-*
-* @param[in]    nibble   nibble to convert
-* @return converted hex character
-*/
-wchar_t PDFExtractor::nibble2wchar(char nibble)
-{
-    auto ret{ L'x' };
-    if ((nibble >= 0) && (nibble <= 9))
-        ret = nibble + L'0';
-    else if ((nibble >= 0x0A) && (nibble <= 0x0F))
-        ret = nibble - 0x0A + L'A';
-
-    return ret;
-}
-
-/**
-* Convert binary value to hex string and appends to destination.
-*
-* @param[out]   dst     destination string
-* @param[in]    cbDst   size of dst in bytes
-* @param[in]    value   value to convert to hex string
-*/
-void PDFExtractor::appendHexValue(wchar_t* dst, size_t cbDst, int value)
-{
-    wchar_t tmp[3]{ 0 };
-
-    tmp[0] = nibble2wchar((value >> 4) & 0x0F);
-    tmp[1] = nibble2wchar(value & 0x0F);
-    StringCbCatW(dst, cbDst, tmp);
 }
 
 /**
@@ -252,69 +225,24 @@ void PDFExtractor::appendHexValue(wchar_t* dst, size_t cbDst, int value)
 */
 void PDFExtractor::getMetadataString(const char* key)
 {
-    Object objDocInfo;
-    if (m_doc->getDocInfo(&objDocInfo)->isDict())
+    std::unique_ptr<GString> value{ m_doc->getMetadataString(key) };
+    if (value)
     {
-        Object obj;
-        const auto dict{ objDocInfo.getDict() };
-        if (dict->lookup(key, &obj)->isString())
-        {
-            m_data->setValue(obj.getString(), ft_stringw);
-        }
-        obj.free();
+        m_data->setValue(value.get(), ft_stringw);
     }
-    objDocInfo.free();
 }
 
 /**
-* PDF document contains signature fields.
-* It is not verified if document is signed or if signature is valid.
-*
-* @param[in]    doc     pointer to PDFDoc object
-* @return true if SigFlags value > 0
+* Extract PDF file identifier.
+* This value should be two MD5 strings.
 */
-bool PDFExtractor::hasSignature(PDFDoc* doc)
+void PDFExtractor::getDocID()
 {
-    bool ret{ false };
-    const auto catalog{ doc->getCatalog() };
-    if (catalog)
+    std::unique_ptr<GString> id{ m_doc->getID() };
+    if (id)
     {
-        const auto acroForm{ catalog->getAcroForm() };
-        if (acroForm->isDict())
-        {
-            const auto dict{ acroForm->getDict() };
-            if (dict)
-            {
-                Object obj;
-                if (dict->lookup("SigFlags", &obj)->isInt())
-                {
-                    // verify only bit position 1; 
-                    // bit position 2 informs that signature will be invalidated
-                    // if document is not saved as incremental
-                    ret = static_cast<bool>(obj.getInt() & 0x01);
-                }
-                obj.free();
-            }
-        }
+        m_data->setValue(id.get(), ft_stringw);
     }
-    return ret;
-}
-
-/**
-* PDF document has outlines (bookmarks).
-* It is not verified if document outline has titles (labels).
-*
-* @param[in]    doc     pointer to PDFDoc object
-* @return true if document has outlines
-*/
-bool PDFExtractor::hasOutlines(PDFDoc* doc)
-{
-    const auto outline{ doc->getOutline() };
-    if (outline && outline->getItems())
-    {
-        return true;
-    }
-    return false;
 }
 
 /**
@@ -325,7 +253,7 @@ bool PDFExtractor::hasOutlines(PDFDoc* doc)
 */
 bool PDFExtractor::getOulinesTitles(GList* node)
 {
-    int outlinesDone{ false };
+    auto outlinesDone{ false };
     if (node)
     {
         for (auto n{ 0 }; (!outlinesDone) && (n < node->getLength()); n++)
@@ -335,7 +263,9 @@ bool PDFExtractor::getOulinesTitles(GList* node)
             if (titleLen)
             {
                 if (m_data->output(reinterpret_cast<const char*>(item->getTitle()), titleLen, true))
+                {
                     return true;
+                }
             }
             if (item->hasKids())
             {
@@ -361,97 +291,81 @@ void PDFExtractor::getOulines()
 }
 
 /**
-* Extract PDF file identifier. 
-* This value should be two MD5 strings.
-* Data exchange is guarded with mutex.
-*/
-void PDFExtractor::getDocID()
-{
-    Object fileIDObj;
-
-    m_doc->getXRef()->getTrailerDict()->dictLookup("ID", &fileIDObj);
-    if (fileIDObj.isArray()) 
-    {
-        auto len{ REQUEST_BUFFER_SIZE };
-        std::lock_guard lock(m_data->mutex);
-        auto dst{ static_cast<wchar_t*>(m_data->getRequestBuffer()) };
-        *dst = 0;
-        // convert byte arrays to human readable strings
-        for (int i{ 0 }; i < fileIDObj.arrayGetLength(); i++)
-        {
-            Object fileIDObj1;
-            if (fileIDObj.arrayGet(i, &fileIDObj1)->isString())
-            {
-                const auto str{ fileIDObj1.getString() };
-                if (i)
-                    StringCbCatW(dst, len, L"-");
-
-                for (int j{ 0 }; j < str->getLength(); j++)
-                {
-                    appendHexValue(dst, len, str->getChar(j));
-                }
-            }
-            fileIDObj1.free();
-        }
-        if (*dst)
-            m_data->setRequestResult(ft_stringw);
-    }
-    fileIDObj.free();
-}
-
-/**
-* PDF document was updated incrementally without rewriting the entire file.
-*
-* @param[in]    doc     pointer to PDFDoc object
-* @return true if PDF is incremental
-*/
-bool PDFExtractor::isIncremental(PDFDoc* doc)
-{
-    return (doc->getXRef()->getNumXRefTables() > 1) ? true : false;
-}
-
-/**
-* From Portable document format - Part 1: PDF 1.7
-* 14.8 Tagged PDF
-* "Tagged PDF (PDF 1.4) is a stylized use of PDF that builds on the logical structure framework described in 14.7, "Logical Structure""
-*
-* @param[in]    doc     pointer to PDFDoc object
-* @return true if PDF is tagged
-*/
-bool PDFExtractor::isTagged(PDFDoc* doc)
-{
-    return doc->getStructTreeRoot()->isDict() ? true : false;
-}
-
-/**
 * "PDF Attribute" field data extraction.
 * Data exchange is guarded with mutex.
 */
-void PDFExtractor::getMetadataAttrStr()
+void PDFExtractor::getAttrStr()
 {
-    wchar_t attrs[]{ L"----------" };
+    wchar_t attrs[]{ L"---------------"};
+    size_t n{ 0 };
 
-    if (m_doc->okToPrint())
-        attrs[0] = L'P';
-    if (m_doc->okToCopy())
-        attrs[1] = L'C';
-    if (m_doc->okToChange())
-        attrs[2] = L'M';
-    if (m_doc->okToAddNotes())
-        attrs[3] = L'N';
-    if (isIncremental(m_doc.get()))
-        attrs[4] = L'I';
-    if (isTagged(m_doc.get()))
-        attrs[5] = L'T';
-    if (m_doc->isLinearized())
-        attrs[6] = L'L';
-    if (m_doc->isEncrypted())
-        attrs[7] = L'E';
-    if (hasSignature(m_doc.get()))
-        attrs[8] = L'S';
-    if (hasOutlines(m_doc.get()))
-        attrs[9] = L'O';
-
+    if (globalOptionsFromIni.attrPrintable)
+    {
+        if (m_doc->okToPrint())
+            attrs[n] = globalOptionsFromIni.attrPrintable;
+        n++;
+    }
+    if (globalOptionsFromIni.attrCopyable)
+    {
+        if (m_doc->okToCopy())
+            attrs[n] = globalOptionsFromIni.attrCopyable;
+        n++;
+    }
+    if (globalOptionsFromIni.attrChangeable)
+    {
+        if (m_doc->okToChange())
+            attrs[n] = globalOptionsFromIni.attrChangeable;
+        n++;
+    }
+    if (globalOptionsFromIni.attrCommentable)
+    {
+        if (m_doc->okToAddNotes())
+            attrs[n] = globalOptionsFromIni.attrCommentable;
+        n++;
+    }
+    if (globalOptionsFromIni.attrIncremental)
+    {
+        if (m_doc->isIncremental())
+            attrs[n] = globalOptionsFromIni.attrIncremental;
+        n++;
+    }
+    if (globalOptionsFromIni.attrTagged)
+    {
+        if (m_doc->isTagged())
+            attrs[n] = globalOptionsFromIni.attrTagged;
+        n++;
+    }
+    if (globalOptionsFromIni.attrLinearized)
+    {
+        if (m_doc->isLinearized())
+            attrs[n] = globalOptionsFromIni.attrLinearized;
+        n++;
+    }
+    if (globalOptionsFromIni.attrEncrypted)
+    {
+        if (m_doc->isEncrypted())
+            attrs[n] = globalOptionsFromIni.attrEncrypted;
+        n++;
+    }
+    if (globalOptionsFromIni.attrSigned)
+    {
+        if (m_doc->hasSignature())
+            attrs[n] = globalOptionsFromIni.attrSigned;
+        n++;
+    }
+    if (globalOptionsFromIni.attrOutlined)
+    {
+        if (m_doc->hasOutlines())
+            attrs[n] = globalOptionsFromIni.attrOutlined;
+        n++;
+    }
+    if (globalOptionsFromIni.attrEmbeddedFiles)
+    {
+        if (m_doc->hasEmbeddedFiles())
+            attrs[n] = globalOptionsFromIni.attrEmbeddedFiles;
+        n++;
+    }
+    attrs[n] = L'\0';
     m_data->setValue(attrs, ft_stringw);
 }
 
@@ -466,7 +380,7 @@ void PDFExtractor::getMetadataAttrStr()
 */
 bool PDFExtractor::dateToInt(const char* date, uint8_t len, uint16_t& result)
 {
-    auto conv{ std::from_chars(date, date + len, result) };
+    const auto conv{ std::from_chars(date, date + len, result) };
     if ((conv.ec == std::errc()) && (conv.ptr == date + len))
     {
         return true;
@@ -474,31 +388,6 @@ bool PDFExtractor::dateToInt(const char* date, uint8_t len, uint16_t& result)
     return false;
 }
 
-/**
-* Get PDF date time string from PDF Info CreationDate or ModDate
-*
-* @param[in]    doc     pointer to PDFDoc object
-* @param[in]    key     "CreationDate" or "ModDate"
-* @return pointer to allocated GString, needs to be deleted/released after usage.
-*/
-GString* PDFExtractor::getMetadataDateTimeString(PDFDoc* doc, const char* key)
-{
-    GString* dateTimeString{ nullptr };
-    Object objDocInfo;
-    if (doc->getDocInfo(&objDocInfo)->isDict())
-    {
-        Object obj;
-        const auto dict{ objDocInfo.getDict() };
-        if (dict->lookup(key, &obj)->isString())
-        {
-            dateTimeString = TextString(obj.getString()).toUTF8();
-        }
-        obj.free();
-    }
-    objDocInfo.free();
-
-    return dateTimeString;
-}
 
 /**
 * Convert PDF date and time to FILETIME structure.
@@ -509,17 +398,21 @@ GString* PDFExtractor::getMetadataDateTimeString(PDFDoc* doc, const char* key)
 *
 * @param[in]    pdfDateTime     pointer to PDF date time string
 * @param[out]   fileTime        result of a conversion
-* @return true - conversiotn succeedeed, false - failed
+* @return       true - conversion succeedeed, false - failed
 */
-bool PDFExtractor::PdfDateTimeToFileTime(GString* pdfDateTime, FILETIME& fileTime)
+bool PDFExtractor::PdfDateTimeToFileTime(const GString& pdfDateTime, FILETIME& fileTime)
 {
-    auto const* acrobatDateTimeString{ pdfDateTime->getCString() };
-    auto len{ pdfDateTime->getLength() };
+    auto const* acrobatDateTimeString{ pdfDateTime.getCString() };
+    auto len{ pdfDateTime.getLength() };
     if (acrobatDateTimeString && (len >= 4))
     {
         // D:20080918111951
         // D:20080918111951Z
         // D:20080918111951-07'00'
+        // 2023-04-25T12:13:14Z
+        // 2023-04-25T12:13:14+01
+        // 2023-04-25T12:13:14+0100
+        // 2023-04-25T12:13:14-01:00
         if ((acrobatDateTimeString[0] == 'D') && (acrobatDateTimeString[1] == ':'))
         {
             acrobatDateTimeString += 2U;
@@ -528,7 +421,6 @@ bool PDFExtractor::PdfDateTimeToFileTime(GString* pdfDateTime, FILETIME& fileTim
         // YYYY is minimum
         if (len >= 4)
         {
-            int offset{ 0 };
             SYSTEMTIME sysTime{ };
             // default values, PDF 1.7
             sysTime.wMonth = 1;
@@ -536,6 +428,7 @@ bool PDFExtractor::PdfDateTimeToFileTime(GString* pdfDateTime, FILETIME& fileTim
 
             if (dateToInt(acrobatDateTimeString, 4U, sysTime.wYear))
             {
+                int offset{ 0 };
                 // from gpdf/poppler, y2k bug in Distiller
                 // CCYYYMMDDHHmmSS
                 // CC - century = 19
@@ -550,33 +443,85 @@ bool PDFExtractor::PdfDateTimeToFileTime(GString* pdfDateTime, FILETIME& fileTim
                         len -= 5U;
                     }
                     else
+                    {
                         sysTime.wYear = 0;  // mark error
+                    }
                 }
                 else
                 {
                     acrobatDateTimeString += 4U;
                     len -= 4;
                 }
-                if (len >= 2)
+                if (len && (*acrobatDateTimeString == '-'))
                 {
-                    if (dateToInt(acrobatDateTimeString, 2U, sysTime.wMonth) && (len >= 4))
+                    acrobatDateTimeString++;
+                    len--;
+                }
+                if ((len >= 2) && dateToInt(acrobatDateTimeString, 2U, sysTime.wMonth))
+                {
+                    acrobatDateTimeString += 2U;
+                    len -= 2;
+                    if (len && (*acrobatDateTimeString == '-'))
                     {
-                        if (dateToInt(acrobatDateTimeString + 2U, 2U, sysTime.wDay) && (len >= 6))
+                        acrobatDateTimeString++;
+                        len--;
+                    }
+                    if ((len >= 2) && dateToInt(acrobatDateTimeString, 2U, sysTime.wDay))
+                    {
+                        acrobatDateTimeString += 2U;
+                        len -= 2;
+                        if (len && (*acrobatDateTimeString == 'T'))
                         {
-                            if (dateToInt(acrobatDateTimeString + 4U, 2U, sysTime.wHour) && (len >= 8))
+                            acrobatDateTimeString++;
+                            len--;
+                        }
+                        if ((len >= 2) && dateToInt(acrobatDateTimeString, 2U, sysTime.wHour))
+                        {
+                            acrobatDateTimeString += 2U;
+                            len -= 2;
+                            if (len && (*acrobatDateTimeString == ':'))
                             {
-                                if (dateToInt(acrobatDateTimeString + 6U, 2U, sysTime.wMinute) && (len >= 10))
+                                acrobatDateTimeString++;
+                                len--;
+                            }
+                            if ((len >= 2) && dateToInt(acrobatDateTimeString, 2U, sysTime.wMinute))
+                            {
+                                acrobatDateTimeString += 2U;
+                                len -= 2;
+                                if (len && (*acrobatDateTimeString == ':'))
                                 {
-                                    if (dateToInt(acrobatDateTimeString + 8U, 2U, sysTime.wSecond) && (len >= 13))
+                                    acrobatDateTimeString++;
+                                    len--;
+                                }
+                                if ((len >= 2) && dateToInt(acrobatDateTimeString, 2U, sysTime.wSecond))
+                                {
+                                    acrobatDateTimeString += 2U;
+                                    len -= 2;
+                                    if (len >= 3)
                                     {
-                                        uint16_t hours{ 0 }, minutes{ 0 };
-                                        if (dateToInt(acrobatDateTimeString + 11U, 2U, hours) && (len >= 16))
+                                        offset = 1;
+                                        if (*acrobatDateTimeString == '-')
                                         {
-                                            dateToInt(acrobatDateTimeString + 14U, 2U, minutes);
+                                            offset = -1;
                                         }
-                                        offset = hours * 3600 + minutes * 60;
-                                        if (acrobatDateTimeString[10] == '-')
-                                            offset = 0 - offset;
+                                        acrobatDateTimeString++;
+                                        len--;
+                                        uint16_t offsetHours{ 0 }, offsetMinutes{ 0 };
+                                        if (dateToInt(acrobatDateTimeString, 2U, offsetHours))
+                                        {
+                                            acrobatDateTimeString += 2U;
+                                            len -= 2;
+                                            if (len && ((*acrobatDateTimeString == ':') || (*acrobatDateTimeString == '\'')))
+                                            {
+                                                acrobatDateTimeString++;
+                                                len--;
+                                            }
+                                            if (len >= 2)
+                                            {
+                                                dateToInt(acrobatDateTimeString, 2U, offsetMinutes);
+                                            }
+                                        }
+                                        offset *= offsetHours * 3600 + offsetMinutes * 60;
                                     }
                                 }
                             }
@@ -588,7 +533,7 @@ bool PDFExtractor::PdfDateTimeToFileTime(GString* pdfDateTime, FILETIME& fileTim
                 {
                     if (offset)
                     {
-                        LARGE_INTEGER timeValue;
+                        LARGE_INTEGER timeValue{};
                         timeValue.HighPart = fileTime.dwHighDateTime;
                         timeValue.LowPart = fileTime.dwLowDateTime;
                         timeValue.QuadPart -= offset * 10000000ULL;
@@ -609,18 +554,18 @@ bool PDFExtractor::PdfDateTimeToFileTime(GString* pdfDateTime, FILETIME& fileTim
 }
 
 /**
-* "Created" and "Modified" fields data extraction.
+* "Created", "Modified" and and "MetadataDate" fields data extraction.
 * Convert PDF date and time to FILETIME structure.
 *
-* @param[in]    key     "CreationDate" or "ModDate"
+* @param[in]    key     "CreationDate" or "ModDate" or "MetadataDate"
 */
 void PDFExtractor::getMetadataDate(const char* key)
 {
-    std::unique_ptr<GString> dateTimeString(getMetadataDateTimeString(m_doc.get(), key));
-    if (dateTimeString)
+    std::unique_ptr<GString> dateTime{ m_doc->getMetadataDateTime(key) };
+    if (dateTime)
     {
         FILETIME fileTime{ };
-        if (PdfDateTimeToFileTime(dateTimeString.get(), fileTime))
+        if (PdfDateTimeToFileTime(*dateTime, fileTime))
         {
             m_data->setValue(fileTime, ft_datetime);
         }
@@ -628,24 +573,24 @@ void PDFExtractor::getMetadataDate(const char* key)
 }
 
 /**
-* "CreatedRaw" and "ModifiedRaw" fields data extraction.
+* "CreatedRaw", "ModifiedRaw" and "MetadataDateRaw" fields data extraction.
 * Get raw date fields, without conversion to FILETIME.
 *
-* @param[in]    key     "CreationDate" or "ModDate"
+* @param[in]    key     "CreationDate", "ModDate" or "MetadataDate"
 */
 void PDFExtractor::getMetadataDateRaw(const char* key)
 {
-    std::unique_ptr<GString> dateTimeString(getMetadataDateTimeString(m_doc.get(), key));
-    if (dateTimeString)
+    std::unique_ptr<GString> dateTime{ m_doc->getMetadataDateTime(key) };
+    if (dateTime)
     {
         if (globalOptionsFromIni.removeDateRawDColon)
         {
-            if (dateTimeString->cmpN("D:", 2) == 0)
+            if (dateTime->cmpN("D:", 2) == 0)
             {
-                dateTimeString->del(0, 2);
+                dateTime->del(0, 2);
             }
         }
-        m_data->setValue(dateTimeString.get(), ft_stringw);
+        m_data->setValue(dateTime.get(), ft_stringw);
     }
 }
 
@@ -673,130 +618,13 @@ double PDFExtractor::getPaperSize(int units)
 }
 
 /**
-* Search for XMP element attribute or child element.
-*
-* @param[in]    elem            pointer to XMP element
-* @param[in]    nodeName        attribute or child element name
-* @param[out]   conformance     append attribute value or child element value to this parameter
-* @param[in]    prefix          prefix to append before value
-* @return true - attribute or child element found, false - not found
-*/
-bool PDFExtractor::getElemOrAttrData(ZxElement* elem, const char* nodeName, GString& conformance, const char* prefix)
-{
-    const auto attr{ elem->findAttr(nodeName) };
-    if (attr)
-    {
-        conformance.append(prefix)->append(attr->getValue());
-        return true;
-    }
-    const ZxNode* child{ elem->findFirstChildElement(nodeName) };
-    if (child && child->isElement())
-    {
-        const auto node{ child->getFirstChild() };
-        if (node && node->isCharData())
-        {
-            conformance.append(prefix)->append(static_cast<ZxCharData*>(node)->getData());
-            return true;
-        }
-    }
-    return false;
-}
-
-/**
-* Get PDF conformance value from XMP metadata
-*
-* @param[in]    metadata     pointer to XMP medata string
-* @param[out]   conformance  reference to extracted conformance string
-*/
-void PDFExtractor::getXmpConformance(GString* metadata, GString& conformance)
-{
-    if (metadata)
-    {
-        std::unique_ptr<ZxDoc> xmp(ZxDoc::loadMem(metadata->getCString(), metadata->getLength()));
-        if (xmp)
-        {
-            auto root{ xmp->getRoot() };
-            if (root->isElement("x:xmpmeta"))
-            {
-                root = root->findFirstChildElement("rdf:RDF");
-            }
-            if (root && root->isElement("rdf:RDF"))
-            {
-                for (auto node{ root->getFirstChild() }; node; node = node->getNextChild())
-                {
-                    if (node->isElement("rdf:Description"))
-                    {
-                        const auto elem{ static_cast<ZxElement*>(node) };
-                        if (elem->findAttr("xmlns:pdfaid"))     // PDF/A
-                        {
-                            getElemOrAttrData(elem, "pdfaid:part", conformance, "PDF/A-");
-                            getElemOrAttrData(elem, "pdfaid:conformance", conformance, "");
-                            getElemOrAttrData(elem, "pdfaid:rev", conformance, ":");
-                            break;
-                        }
-                        if (elem->findAttr("xmlns:pdfxid"))    // PDF/X
-                        {
-                            getElemOrAttrData(elem, "pdfxid:GTS_PDFXVersion", conformance, "");
-                            break;
-                        }
-                        if (elem->findAttr("xmlns:pdfx"))    // PDF/X
-                        {
-                            getElemOrAttrData(elem, "pdfx:GTS_PDFXVersion", conformance, "");
-                            break;
-                        }
-                        if (elem->findAttr("xmlns:pdfe"))    // PDF/E
-                        {
-                            getElemOrAttrData(elem, "pdfe:ISO_PDFEVersion", conformance, "");
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
 * Get PDF conformance value (PDF/A, PDF/X, PDF/E)
 */
 void PDFExtractor::getConformance()
 {
-    GString conformance;
-    getXmpConformance(m_doc->readMetadata(), conformance);
-    m_data->setValue(&conformance, ft_stringw);
-}
-
-/**
-* PDF document contains signature fields.
-* It is not verified if document is signed or if signature is valid.
-*
-* @param[in]    doc     pointer to PDFDoc object
-* @return true if SigFlags value > 0
-*/
-int PDFExtractor::getExtensionLevel(PDFDoc* doc)
-{
-    int ret{ -1 };
-    Object catDict, objExt;
-    doc->getXRef()->getCatalog(&catDict);
-    if (catDict.dictLookup("Extensions", &objExt)->isDict())
-    {
-        Object adbeObj;
-        if (objExt.dictLookup("ADBE", &adbeObj)->isDict())
-        {
-            Object obj;
-            const auto adbeDict{ adbeObj.getDict() };
-            if (adbeDict->lookup("ExtensionLevel", &obj)->isInt())
-            {
-                ret = obj.getInt();
-            }
-            obj.free();
-        }
-        adbeObj.free();
-    }
-    objExt.free();
-    catDict.free();
-
-    return ret;
+    std::unique_ptr<GString> conformance{ m_doc->getConformance() };
+    if (conformance)
+        m_data->setValue(conformance.get(), ft_stringw);
 }
 
 /**
@@ -809,7 +637,7 @@ void PDFExtractor::getVersion()
     auto ver{ m_doc->getPDFVersion() };
     if ((ver >= 1.7) && globalOptionsFromIni.appendExtensionLevel)
     {
-        auto ext{ getExtensionLevel(m_doc.get()) };
+        auto ext{ m_doc->getAdbeExtensionLevel() };
         if ((ext > 0) && (ext < 10))
         {
             ver += ext / 100.0;
@@ -823,6 +651,22 @@ void PDFExtractor::getVersion()
 }
 
 /**
+* Get extensions form PDF Catalog.
+* Extensions are in format:
+* PREFIX BaseVersion.ExtensionLevel.ExtensionRevision
+* e.g. "ADBE 1.7.3.1" or "ADBE 1.7.3;ISO_ 2.0.24064;ISO_ 2.0.24654;GLGR 1.7.1002"
+*
+*/
+void PDFExtractor::getExtensions()
+{
+    std::unique_ptr<GString> extensions{ m_doc->getExtensions() };
+    if (extensions)
+    {
+        m_data->setValue(extensions.get(), ft_stringw);
+    }
+}
+
+/**
 * Call specific extraction functions.
 */
 void PDFExtractor::doWork()
@@ -831,15 +675,22 @@ void PDFExtractor::doWork()
     switch (field)
     {
     case fiTitle:
+        [[fallthrough]];
     case fiSubject:
+        [[fallthrough]];
     case fiKeywords:
+        [[fallthrough]];
     case fiAuthor:
+        [[fallthrough]];
     case fiCreator:
+        [[fallthrough]];
     case fiProducer:
-        getMetadataString(metaDataFields[field]);
+        getMetadataString(DocInfoFields[field]);
         break;
     case fiDocStart:
+        [[fallthrough]];
     case fiFirstRow:
+        [[fallthrough]];
     case fiText:
         m_tc.output(m_doc.get(), m_data.get());
         break;
@@ -855,56 +706,71 @@ void PDFExtractor::doWork()
     case fiPageHeight:
         m_data->setValue(m_doc->getPageCropHeight(1) * getPaperSize(m_data->getRequestUnit()), ft_numeric_floating);
         break;
-    case fiCopyingAllowed:
+    case fiCopyable:
         m_data->setValue<BOOL>(m_doc->okToCopy(), ft_boolean);
         break;
-    case fiPrintingAllowed:
+    case fiPrintable:
         m_data->setValue<BOOL>(m_doc->okToPrint(), ft_boolean);
         break;
-    case fiAddCommentsAllowed:
+    case fiCommentable:
         m_data->setValue<BOOL>(m_doc->okToAddNotes(), ft_boolean);
         break;
-    case fiChangingAllowed:
+    case fiChangeable:
         m_data->setValue<BOOL>(m_doc->okToChange(), ft_boolean);
         break;
     case fiEncrypted:
         m_data->setValue<BOOL>(m_doc->isEncrypted(), ft_boolean);
         break;
     case fiTagged:
-        m_data->setValue(isTagged(m_doc.get()), ft_boolean);
+        m_data->setValue(m_doc->isTagged(), ft_boolean);
         break;
     case fiLinearized:
         m_data->setValue<BOOL>(m_doc->isLinearized(), ft_boolean);
         break;
     case fiIncremental:
-        m_data->setValue(isIncremental(m_doc.get()), ft_boolean);
+        m_data->setValue(m_doc->isIncremental(), ft_boolean);
         break;
-    case fiSignature:
-        m_data->setValue(hasSignature(m_doc.get()), ft_boolean);
+    case fiSigned:
+        m_data->setValue(m_doc->hasSignature(), ft_boolean);
+        break;
+    case fiOutlined:
+        m_data->setValue(m_doc->hasOutlines(), ft_boolean);
+        break;
+    case fiEmbeddedFiles:
+        m_data->setValue(m_doc->hasEmbeddedFiles(), ft_boolean);
         break;
     case fiCreationDate:
         getMetadataDate("CreationDate");
         break;
-    case fiLastModifiedDate:
+    case fiModifiedDate:
         getMetadataDate("ModDate");
+        break;
+    case fiMetadataDate:
+        getMetadataDate("MetadataDate");
+        break;
+    case fiCreationDateRaw:
+        getMetadataDateRaw("CreationDate");
+        break;
+    case fiModifiedDateRaw:
+        getMetadataDateRaw("ModDate");
+        break;
+    case fiMetadataDateRaw:
+        getMetadataDateRaw("MetadataDate");
         break;
     case fiID:
         getDocID();
         break;
     case fiAttributesString:
-        getMetadataAttrStr();
-        break;
-    case fiOutlines:
-        getOulines();
+        getAttrStr();
         break;
     case fiConformance:
         getConformance();
         break;
-    case fiCreationDateRaw:
-        getMetadataDateRaw("CreationDate");
+    case fiOutlines:
+        getOulines();
         break;
-    case fiLastModifiedDateRaw:
-        getMetadataDateRaw("ModDate");
+    case fiExtensions:
+        getExtensions();
         break;
     default:
         break;
@@ -1055,10 +921,14 @@ int PDFExtractor::initData(const wchar_t* fileName, int field, int unit, int fla
     {
         stop();
         if (unit == -1)
+        {
             return retval;
+        }
     }
     else if (m_data->getStatus() == requestStatus::cancelled)       // extraction has been cancelled, but PDFDoc isn't closed yet, wait for it
+    {
         m_data->waitForConsumer(CONSUMER_TIMEOUT);
+    }
 
     const auto status{ m_data->getStatus() };
     if (!(  (status == requestStatus::cancelled)
@@ -1097,10 +967,14 @@ int PDFExtractor::extract(const wchar_t* fileName, int field, int unit, void* ds
             {
                 m_data->setStatusCond(requestStatus::active, requestStatus::complete);
                 if (startWorkerThread())
+                {
                     result = waitForConsumer(PRODUCER_TIMEOUT);
+                }
             }
             else if (result == ft_setsuccess)
+            {
                 result = waitForConsumer(PRODUCER_TIMEOUT);
+            }
 
             if (dst)
             {
@@ -1149,11 +1023,15 @@ int PDFExtractor::extract(const wchar_t* fileName, int field, int unit, void* ds
         {
             m_data->setStatusCond(requestStatus::active, requestStatus::complete);
             if (startWorkerThread())
+            {
                 result = waitForConsumer(CONSUMER_TIMEOUT);
+            }
 
             // if producer thread is slow, send empty field
             if (result == ft_timeout)
+            {
                 result = ft_fieldempty;
+            }
             else if ((result == ft_setsuccess) && dst)
             {
                 std::lock_guard lock(m_data->mutex);
@@ -1162,6 +1040,7 @@ int PDFExtractor::extract(const wchar_t* fileName, int field, int unit, void* ds
                 switch (result)
                 {
                 case ft_numeric_32:
+                    [[fallthrough]];
                 case ft_boolean:
                     memcpy(dst, src, sizeof(int32_t));
                     break;
@@ -1181,6 +1060,7 @@ int PDFExtractor::extract(const wchar_t* fileName, int field, int unit, void* ds
                     memcpy(dst, src, sizeof(int64_t));
                     break;
                 case ft_stringw:
+                    [[fallthrough]];
                 case ft_fulltextw:
                     dstSize &= ~1; // round to 2
                     StringCbCopyW(static_cast<wchar_t*>(dst), dstSize, static_cast<const wchar_t*>(src));
@@ -1203,7 +1083,9 @@ void PDFExtractor::abort()
 {
     m_data->abort();
     if (m_search)
+    {
         m_search->abort();
+    }
 }
 
 /**
@@ -1215,7 +1097,9 @@ void PDFExtractor::stop()
     // if extraction is active, mark it as cancelled
     m_data->stop();
     if (m_search)
+    {
         m_search->stop();
+    }
 }
 
 /**
@@ -1226,7 +1110,9 @@ void PDFExtractor::done()
 {
     m_data->done();
     if (m_search)
+    {
         m_search->done();
+    }
 }
 
 /**
@@ -1251,15 +1137,21 @@ int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* 
     // set timeout to long wait, because it waits for another extraction thread
     auto result{ initData(fileName1, field, 0, 0, CONSUMER_TIMEOUT) };
     if (result != ft_setsuccess)
+    {
         return ft_compare_next;
+    }
 
     if (!m_search)
+    {
         m_search = std::make_unique<PDFExtractor>();
+    }
 
     // set timeout to long wait, because it waits for another extraction thread to complete
     result = m_search->initData(fileName2, field, 0, 0, CONSUMER_TIMEOUT);
     if (result != ft_setsuccess)
+    {
         return ft_compare_next;
+    }
 
     // start threads
     if (startWorkerThread() && m_search->startWorkerThread())
@@ -1356,10 +1248,14 @@ int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* 
                     {
                         // discard compared data
                         if (len1 >= minLen)
+                        {
                             wmemmove(start1, start1 + minLen, len1 - minLen);
+                        }
 
                         if (len2 >= minLen)
+                        {
                             wmemmove(start2, start2 + minLen, len2 - minLen);
+                        }
 
                         // part of a string was equal, compare rest
                         result = ft_compare_not_eq;
@@ -1387,6 +1283,7 @@ int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* 
                 }
                 break;
             }
+
             if (progresscallback && (now - startCounter > PRODUCER_TIMEOUT))
             {
                 // inform TC about progress
@@ -1401,14 +1298,13 @@ int PDFExtractor::compare(PROGRESSCALLBACKPROC progresscallback, const wchar_t* 
                 bytesProcessed = 0U;
                 startCounter = now;
             }
-        } 
-        while (   (requestStatus::active == m_data->getStatus())
-               && (requestStatus::active == m_search->m_data->getStatus())
-              );
+        } while ((requestStatus::active == m_data->getStatus()) && (requestStatus::active == m_search->m_data->getStatus()));
 
         // if data was once compared as text, it is not binary equal
         if ((result == ft_compare_eq) && eqTxt)
+        {
             result = ft_compare_eq_txt;
+        }
 
         // don't close PDFDocs, they may be used again
         done();
