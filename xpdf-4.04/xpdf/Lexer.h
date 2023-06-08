@@ -76,11 +76,11 @@ private:
   int getChar();
   int lookChar();
 
-  Array *streams;		// array of input streams
-  int strPtr;			// index of current stream
+  Array* streams{ nullptr };		// array of input streams
+  int strPtr{ 0 };			// index of current stream
   Object curStr;		// current stream
-  GBool freeArray;		// should lexer free the streams array?
-  char tokBuf[tokBufSize];	// temporary token buffer
+  GBool freeArray{ gTrue };		// should lexer free the streams array?
+  char tokBuf[tokBufSize]{ };	// temporary token buffer
 };
 
 #endif

@@ -1429,9 +1429,9 @@ GfxColorSpace *GfxDeviceNColorSpace::copy() {
 
 GfxColorSpace *GfxDeviceNColorSpace::parse(Array *arr,
 					   int recursion) {
-  GfxDeviceNColorSpace *cs;
+  GfxDeviceNColorSpace *cs = NULL;
   int nCompsA;
-  GString *namesA[gfxColorMaxComps] = { 0 };
+  GString *namesA[gfxColorMaxComps] = { NULL };
   GfxColorSpace *altA = NULL;
   Function *funcA = NULL;
   Object attrsA, obj1, obj2;

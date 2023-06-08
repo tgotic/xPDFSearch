@@ -665,7 +665,7 @@ void readWindowsShortcut(wchar_t *wPath, size_t wPathSize) {
   if (n < 4 || wcscmp(wPath + n - 4, L".lnk")) {
     return;
   }
-  IShellLinkW *shellLink;
+  IShellLinkW *shellLink = nullptr;
   HRESULT hres;
   hres = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER,
 			  IID_IShellLinkW, (LPVOID *)&shellLink);
@@ -680,7 +680,7 @@ void readWindowsShortcut(wchar_t *wPath, size_t wPathSize) {
   if (FAILED(hres)) {
     return;
   }
-  IPersistFile *persistFile;
+  IPersistFile *persistFile = nullptr;
   hres = shellLink->QueryInterface(IID_IPersistFile, (LPVOID *)&persistFile);
   if (FAILED(hres)) {
     return;

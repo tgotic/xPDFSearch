@@ -2073,7 +2073,7 @@ void GlobalParams::parseFloat(const char *cmdName, double *val,
 GlobalParams::~GlobalParams() {
   GHashIter *iter;
   GString *key;
-  GList *list;
+  GList *list = nullptr;
 
   freeBuiltinFontTables();
 
@@ -2274,7 +2274,7 @@ void GlobalParams::setupBaseFonts(const char *dir) {
     if (!fileName && winFontDir[0] && displayFontTab[i].ttFileName) {
       fileName = appendToPath(new GString(winFontDir),
 			      displayFontTab[i].ttFileName);
-      if ((f = fopen(fileName->getCString(), "rb"))) {
+      if (fileName && (f = fopen(fileName->getCString(), "rb"))) {
 	fclose(f);
       } else {
 	delete fileName;
@@ -2342,7 +2342,7 @@ void GlobalParams::setupBaseFonts(const char *dir) {
     if (!fileName && s) {
       for (j = 0; !fileName && displayFontDirs[j]; ++j) {
 	fileName = appendToPath(new GString(displayFontDirs[j]), s);
-	if ((f = fopen(fileName->getCString(), "rb"))) {
+	if (fileName && (f = fopen(fileName->getCString(), "rb"))) {
 	  fclose(f);
 	} else {
 	  delete fileName;
@@ -2679,7 +2679,7 @@ GList *GlobalParams::getPSResidentFonts() {
   GList *names;
   GHashIter *iter;
   GString *name;
-  GString *psName;
+  GString *psName = nullptr;
 
   names = new GList();
   lockGlobalParams;

@@ -48,8 +48,7 @@ static char specialChars[256] = {
 //------------------------------------------------------------------------
 
 Lexer::Lexer(XRef *xref, Stream *str) 
- : streams(new Array(xref)), strPtr(0), 
-  freeArray(gTrue), tokBuf()
+ : streams(new Array(xref))
 {
   Object obj;
   curStr.initStream(str);
@@ -58,8 +57,6 @@ Lexer::Lexer(XRef *xref, Stream *str)
 }
 
 Lexer::Lexer(XRef *xref, Object *obj) 
-    : streams(NULL), strPtr(0),
-    freeArray(gTrue), tokBuf()
 {
   Object obj2;
 

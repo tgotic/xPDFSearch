@@ -49,6 +49,8 @@ private:
   void buildAnnotPageList(Catalog *catalog);
   int lookupAnnotPage(Object *annotRef);
   void scanField(Object *fieldRef);
+  int depth{ 0 };
+  const int maxDepth{ 100 };
 
   PDFDoc *doc;
   Object acroFormObj;

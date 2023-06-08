@@ -331,8 +331,10 @@ Stream *Stream::makeFilter(char *name, Stream *str, Object *params,
   else if (!strcmp(name, "JPXDecode")) {
     str = new JPXStream(str);
   }
-#endif   
-  else {
+#endif
+  else if (!strcmp(name, "Crypt")) {
+    // this is handled in Parser::makeStream()
+  } else {
     error(errSyntaxError, getPos(), "Unknown filter '{0:s}'", name);
     str = new EOFStream(str);
   }
@@ -356,8 +358,9 @@ BaseStream::~BaseStream() {
 // FilterStream
 //------------------------------------------------------------------------
 
-FilterStream::FilterStream(Stream *strA) {
-  str = strA;
+FilterStream::FilterStream(Stream *strA) 
+    : str{ strA }
+{
 }
 
 FilterStream::~FilterStream() {
@@ -491,18 +494,16 @@ void ImageStream::skipLine() {
 //------------------------------------------------------------------------
 
 StreamPredictor::StreamPredictor(Stream *strA, int predictorA,
-				 int widthA, int nCompsA, int nBitsA) {
-  str = strA;
-  predictor = predictorA;
-  width = widthA;
-  nComps = nCompsA;
-  nBits = nBitsA;
-  predLine = NULL;
-  ok = gFalse;
-
-  nVals = width * nComps;
-  pixBytes = (nComps * nBits + 7) >> 3;
-  rowBytes = ((nVals * nBits + 7) >> 3) + pixBytes;
+				 int widthA, int nCompsA, int nBitsA) 
+    : str{ strA }
+    , predictor{ predictorA }
+    , width{ widthA }
+    , nComps{ nCompsA }
+    , nBits{ nBitsA }
+    , nVals{ width * nComps }
+    , pixBytes{ (nComps * nBits + 7) >> 3 }
+    , rowBytes{ ((nVals * nBits + 7) >> 3) + pixBytes }
+{
   if (width <= 0 || nComps <= 0 || nBits <= 0 ||
       nComps > gfxColorMaxComps ||
       nBits > 16 ||
@@ -781,25 +782,25 @@ GFileOffset SharedFile::getSize() {
 //------------------------------------------------------------------------
 
 FileStream::FileStream(FILE *fA, GFileOffset startA, GBool limitedA,
-		       GFileOffset lengthA, Object *dictA):
-    BaseStream(dictA) {
-  f = new SharedFile(fA);
-  start = startA;
-  limited = limitedA;
-  length = lengthA;
-  bufPtr = bufEnd = buf;
-  bufPos = start;
+		       GFileOffset lengthA, Object *dictA)
+    : BaseStream(dictA) 
+    , f{ new SharedFile(fA) }
+    , start{ startA }
+    , limited{ limitedA }
+    , length{ lengthA }
+    , bufPos{ start }
+{
 }
 
 FileStream::FileStream(SharedFile *fA, GFileOffset startA, GBool limitedA,
-		       GFileOffset lengthA, Object *dictA):
-    BaseStream(dictA) {
-  f = fA->copy();
-  start = startA;
-  limited = limitedA;
-  length = lengthA;
-  bufPtr = bufEnd = buf;
-  bufPos = start;
+		       GFileOffset lengthA, Object *dictA)
+    : BaseStream(dictA) 
+    , f{ fA->copy() }
+    , start{ startA }
+    , limited{ limitedA }
+    , length{ lengthA }
+    , bufPos{ start }
+{
 }
 
 FileStream::~FileStream() {
@@ -891,14 +892,14 @@ void FileStream::moveStart(int delta) {
 // MemStream
 //------------------------------------------------------------------------
 
-MemStream::MemStream(char *bufA, Guint startA, Guint lengthA, Object *dictA):
-    BaseStream(dictA) {
-  buf = bufA;
-  start = startA;
-  length = lengthA;
-  bufEnd = buf + start + length;
-  bufPtr = buf + start;
-  needFree = gFalse;
+MemStream::MemStream(char *bufA, Guint startA, Guint lengthA, Object *dictA)
+    : BaseStream(dictA) 
+    , buf{ bufA }
+    , start{ startA }
+    , length{ lengthA }
+    , bufEnd{ buf + start + length }
+    , bufPtr{ buf + start }
+{
 }
 
 MemStream::~MemStream() {
@@ -989,11 +990,12 @@ void MemStream::moveStart(int delta) {
 //------------------------------------------------------------------------
 
 EmbedStream::EmbedStream(Stream *strA, Object *dictA,
-			 GBool limitedA, GFileOffset lengthA):
-    BaseStream(dictA) {
-  str = strA;
-  limited = limitedA;
-  length = lengthA;
+			 GBool limitedA, GFileOffset lengthA)
+    : BaseStream(dictA) 
+    , str{ strA }
+    , limited{ limitedA }
+    , length{ lengthA }
+{
 }
 
 EmbedStream::~EmbedStream() {
@@ -1057,8 +1059,6 @@ void EmbedStream::moveStart(int delta) {
 
 ASCIIHexStream::ASCIIHexStream(Stream *strA):
     FilterStream(strA) {
-  buf = EOF;
-  eof = gFalse;
 }
 
 ASCIIHexStream::~ASCIIHexStream() {
@@ -1153,7 +1153,7 @@ GBool ASCIIHexStream::isBinary(GBool last) {
 //------------------------------------------------------------------------
 
 ASCII85Stream::ASCII85Stream(Stream *strA):
-    FilterStream(strA), c(), b(), index(0), n(0), eof(gFalse)
+    FilterStream(strA)
 {
 }
 
@@ -1239,10 +1239,7 @@ GBool ASCII85Stream::isBinary(GBool last) {
 
 LZWStream::LZWStream(Stream *strA, int predictor, int columns, int colors,
 		     int bits, int earlyA):
-    FilterStream(strA), pred(NULL), early(earlyA), eof(gFalse), inputBuf(0),
-    inputBits(0), table(), nextCode(258), nextBits(9), prevCode(0), newChar(0), 
-    seqBuf(), seqLength(0), seqIndex(0), first(gTrue), checkForDecompressionBombs(gTrue),
-    totalIn(0), totalOut(0)
+    FilterStream(strA), early(earlyA)
 {
   if (predictor != 1) {
     pred = new StreamPredictor(this, predictor, columns, colors, bits);
@@ -1251,7 +1248,6 @@ LZWStream::LZWStream(Stream *strA, int predictor, int columns, int colors,
       pred = NULL;
     }
   }
-  clearTable();
 }
 
 LZWStream::~LZWStream() {
@@ -1487,8 +1483,6 @@ GBool LZWStream::isBinary(GBool last) {
 
 RunLengthStream::RunLengthStream(Stream *strA):
     FilterStream(strA) {
-  bufPtr = bufEnd = buf;
-  eof = gFalse;
 }
 
 RunLengthStream::~RunLengthStream() {
@@ -4971,10 +4965,7 @@ FlateHuffmanTab FlateStream::fixedDistCodeTab = {
 
 FlateStream::FlateStream(Stream *strA, int predictor, int columns,
 			 int colors, int bits):
-    FilterStream(strA), pred(NULL), buf(new Guchar[flateWindow]),
-    index(0), remain(0), codeBuf(0), codeSize(0), codeLengths(),
-    compressedBlock(gFalse), blockLen(0), endOfBlock(gTrue), 
-    eof(gTrue), checkForDecompressionBombs(gTrue), totalIn(0), totalOut(0)
+    FilterStream(strA), buf(new Guchar[flateWindow])
 {
   if (!buf)
       exit(1);
@@ -4987,8 +4978,6 @@ FlateStream::FlateStream(Stream *strA, int predictor, int columns,
       pred = NULL;
     }
   }
-  litCodeTab.codes = NULL;
-  distCodeTab.codes = NULL;
 }
 
 FlateStream::~FlateStream() {
@@ -5380,12 +5369,10 @@ GBool FlateStream::readDynamicCodes() {
   int numCodeLenCodes;
   int numLitCodes;
   int numDistCodes;
-  int codeLenCodeLengths[flateMaxCodeLenCodes];
-  FlateHuffmanTab codeLenCodeTab;
+  int codeLenCodeLengths[flateMaxCodeLenCodes] = { 0 };
+  FlateHuffmanTab codeLenCodeTab = { NULL, 0 };
   int len, repeat, code;
   int i;
-
-  codeLenCodeTab.codes = NULL;
 
   // read lengths
   if ((numLitCodes = getCodeWord(5)) == EOF) {
@@ -5405,11 +5392,12 @@ GBool FlateStream::readDynamicCodes() {
       numCodeLenCodes > flateMaxCodeLenCodes) {
     goto err;
   }
-
+#if 0
   // build the code length code table
   for (i = 0; i < flateMaxCodeLenCodes; ++i) {
     codeLenCodeLengths[i] = 0;
   }
+#endif
   for (i = 0; i < numCodeLenCodes; ++i) {
     if ((codeLenCodeLengths[codeLenCodeMap[i]] = getCodeWord(3)) == -1) {
       goto err;
@@ -5490,7 +5478,7 @@ void FlateStream::compHuffmanCodes(int *lengths, unsigned int n, FlateHuffmanTab
   }
 
   // allocate the table
-  tabSize = 1 << tab->maxLen;
+  tabSize = 1U << tab->maxLen;
   tab->codes = (FlateCode *)gmallocn(tabSize, sizeof(FlateCode));
 
   // clear the table
@@ -5583,9 +5571,11 @@ Stream *EOFStream::copy() {
 // BufStream
 //------------------------------------------------------------------------
 
-BufStream::BufStream(Stream *strA, int bufSizeA): FilterStream(strA) {
-  bufSize = bufSizeA;
-  buf = (int *)gmallocn(bufSize, sizeof(int));
+BufStream::BufStream(Stream *strA, int bufSizeA)
+    : FilterStream(strA)
+    , bufSize{ bufSizeA }
+    , buf{ (int*)gmallocn(bufSize, sizeof(int)) }
+{
 }
 
 BufStream::~BufStream() {
@@ -5633,10 +5623,10 @@ GBool BufStream::isBinary(GBool last) {
 // FixedLengthEncoder
 //------------------------------------------------------------------------
 
-FixedLengthEncoder::FixedLengthEncoder(Stream *strA, int lengthA):
-    FilterStream(strA) {
-  length = lengthA;
-  count = 0;
+FixedLengthEncoder::FixedLengthEncoder(Stream *strA, int lengthA)
+    : FilterStream(strA) 
+    , length{ lengthA }
+{
 }
 
 FixedLengthEncoder::~FixedLengthEncoder() {
@@ -5677,9 +5667,6 @@ GBool FixedLengthEncoder::isBinary(GBool last) {
 
 ASCIIHexEncoder::ASCIIHexEncoder(Stream *strA):
     FilterStream(strA) {
-  bufPtr = bufEnd = buf;
-  lineLen = 0;
-  eof = gFalse;
 }
 
 ASCIIHexEncoder::~ASCIIHexEncoder() {
@@ -5729,9 +5716,6 @@ GBool ASCIIHexEncoder::fillBuf() {
 
 ASCII85Encoder::ASCII85Encoder(Stream *strA):
     FilterStream(strA) {
-  bufPtr = bufEnd = buf;
-  lineLen = 0;
-  eof = gFalse;
 }
 
 ASCII85Encoder::~ASCII85Encoder() {
@@ -5753,7 +5737,7 @@ void ASCII85Encoder::reset() {
 
 GBool ASCII85Encoder::fillBuf() {
   Guint t;
-  char buf1[5];
+  char buf1[5] = { 0 };
   int c0, c1, c2, c3;
   int n, i;
 
@@ -5826,8 +5810,6 @@ GBool ASCII85Encoder::fillBuf() {
 
 RunLengthEncoder::RunLengthEncoder(Stream *strA):
     FilterStream(strA) {
-  bufPtr = bufEnd = nextEnd = buf;
-  eof = gFalse;
 }
 
 RunLengthEncoder::~RunLengthEncoder() {
@@ -5935,8 +5917,7 @@ GBool RunLengthEncoder::fillBuf() {
 //------------------------------------------------------------------------
 
 LZWEncoder::LZWEncoder(Stream *strA):
-  FilterStream(strA), table(), nextSeq(0), codeLen(0), inBuf(),
-  inBufStart(0), inBufLen(0), outBuf(0), outBufLen(0), needEOD(gFalse)
+  FilterStream(strA)
 {
 }
 

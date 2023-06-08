@@ -288,7 +288,7 @@ inline GBool Object::streamIs(char *dictType)
   { return stream->getDict()->is(dictType); }
 
 inline GBool Object::isStream(char *dictType)
-  { return type == objStream && streamIs(dictType); }
+  { return (type == objStream) && streamIs(dictType); }
 
 inline void Object::streamReset()
   { stream->reset(); }

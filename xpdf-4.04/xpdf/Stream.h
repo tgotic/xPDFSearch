@@ -300,9 +300,9 @@ private:
   int nVals;			// components per line
   int pixBytes;			// bytes per pixel
   int rowBytes;			// bytes per line
-  Guchar *predLine;		// line buffer
-  int predIdx;			// current index in predLine
-  GBool ok;
+  Guchar* predLine{ nullptr };		// line buffer
+  int predIdx{ 0 };			// current index in predLine
+  GBool ok{ gFalse };
 };
 
 //------------------------------------------------------------------------
@@ -344,9 +344,9 @@ private:
   GFileOffset start;
   GBool limited;
   GFileOffset length;
-  char buf[fileStreamBufSize];
-  char *bufPtr;
-  char *bufEnd;
+  char buf[fileStreamBufSize]{};
+  char* bufPtr{ buf };
+  char *bufEnd{ buf };
   GFileOffset bufPos;
 };
 
@@ -382,7 +382,7 @@ private:
   Guint length;
   char *bufEnd;
   char *bufPtr;
-  GBool needFree;
+  GBool needFree{ gFalse };
 };
 
 //------------------------------------------------------------------------
@@ -442,8 +442,8 @@ public:
 
 private:
 
-  int buf;
-  GBool eof;
+  int buf{ EOF };
+  GBool eof{ gFalse };
 };
 
 //------------------------------------------------------------------------
@@ -467,10 +467,10 @@ public:
 
 private:
 
-  int c[5];
-  int b[4];
-  int index, n;
-  GBool eof;
+  int c[5]{};
+  int b[4]{};
+  int index{ 0 }, n{ 0 };
+  GBool eof{ gFalse };
 };
 
 //------------------------------------------------------------------------
@@ -500,27 +500,27 @@ public:
 
 private:
 
-  StreamPredictor *pred;	// predictor
+  StreamPredictor *pred{ nullptr };	// predictor
   int early;			// early parameter
-  GBool eof;			// true if at eof
-  int inputBuf;			// input buffer
-  int inputBits;		// number of bits in input buffer
+  GBool eof{ gFalse };			// true if at eof
+  int inputBuf{ 0 };			// input buffer
+  int inputBits{ 0 };		// number of bits in input buffer
   struct {			// decoding table
-    int length;
-    int head;
-    Guchar tail;
-  } table[4097];
-  int nextCode;			// next code to be used
-  int nextBits;			// number of bits in next code word
-  int prevCode;			// previous code used in stream
-  int newChar;			// next char to be added to table
-  Guchar seqBuf[4097];		// buffer for current sequence
-  int seqLength;		// length of current sequence
-  int seqIndex;			// index into current sequence
-  GBool first;			// first code after a table clear
-  GBool checkForDecompressionBombs;
-  unsigned long long totalIn;	// total number of encoded bytes read so far
-  unsigned long long totalOut;	// total number of bytes decoded so far
+    int length{ 0 };
+    int head{ 0 };
+    Guchar tail{ 0 };
+  } table[4097]{};
+  int nextCode{ 258 };			// next code to be used
+  int nextBits{ 9 };			// number of bits in next code word
+  int prevCode{ 0 };			// previous code used in stream
+  int newChar{ 0 };			// next char to be added to table
+  Guchar seqBuf[4097]{};		// buffer for current sequence
+  int seqLength{ 0 };		// length of current sequence
+  int seqIndex{ 0 };			// index into current sequence
+  GBool first{ gTrue };			// first code after a table clear
+  GBool checkForDecompressionBombs{ gTrue };
+  unsigned long long totalIn{ 0 };	// total number of encoded bytes read so far
+  unsigned long long totalOut{ 0 };	// total number of bytes decoded so far
 
   GBool processNextCode();
   void clearTable();
@@ -550,10 +550,10 @@ public:
 
 private:
 
-  char buf[128];		// buffer
-  char *bufPtr;			// next char to read
-  char *bufEnd;			// end of buffer
-  GBool eof;
+  char buf[128]{ };		// buffer
+  char *bufPtr{ buf };			// next char to read
+  char* bufEnd{ buf };			// end of buffer
+  GBool eof{ gFalse };
 
   GBool fillBuf();
 };
@@ -789,19 +789,19 @@ private:
 
 // Huffman code table entry
 struct FlateCode {
-  Gushort len;			// code length, in bits
-  Gushort val;			// value represented by this code
+  Gushort len{ 0 };			// code length, in bits
+  Gushort val{ 0 };			// value represented by this code
 };
 
 struct FlateHuffmanTab {
-  FlateCode *codes;
-  unsigned int maxLen;
+	FlateCode* codes{ nullptr };
+	unsigned int maxLen{ 0 };
 };
 
 // Decoding info for length and distance code words
 struct FlateDecode {
-  int bits;			// # extra bits
-  int first;			// first length/distance
+  int bits{ 0 };			// # extra bits
+  int first{ 0 };			// first length/distance
 };
 
 class FlateStream: public FilterStream {
@@ -826,23 +826,23 @@ public:
 
 private:
 
-  StreamPredictor *pred;	// predictor
+  StreamPredictor* pred{ nullptr };	// predictor
   Guchar* buf;	// output data buffer
-  int index;			// current index into output buffer
-  int remain;			// number valid bytes in output buffer
-  int codeBuf;			// input buffer
-  int codeSize;			// number of bits in input buffer
+  int index{ 0 };			// current index into output buffer
+  int remain{ 0 };			// number valid bytes in output buffer
+  int codeBuf{ 0 };			// input buffer
+  int codeSize{ 0 };			// number of bits in input buffer
   int				// literal and distance code lengths
-    codeLengths[flateMaxLitCodes + flateMaxDistCodes];
-  FlateHuffmanTab litCodeTab;	// literal code table
-  FlateHuffmanTab distCodeTab;	// distance code table
-  GBool compressedBlock;	// set if reading a compressed block
-  int blockLen;			// remaining length of uncompressed block
-  GBool endOfBlock;		// set when end of block is reached
-  GBool eof;			// set when end of stream is reached
-  GBool checkForDecompressionBombs;
-  unsigned long long totalIn;	// total number of encoded bytes read so far
-  unsigned long long totalOut;	// total number of bytes decoded so far
+	  codeLengths[flateMaxLitCodes + flateMaxDistCodes]{};
+  FlateHuffmanTab litCodeTab{ };	// literal code table
+  FlateHuffmanTab distCodeTab{ };	// distance code table
+  GBool compressedBlock{ gFalse };	// set if reading a compressed block
+  int blockLen{ 0 };			// remaining length of uncompressed block
+  GBool endOfBlock{ gTrue };		// set when end of block is reached
+  GBool eof{ gTrue };			// set when end of stream is reached
+  GBool checkForDecompressionBombs{ gTrue };
+  unsigned long long totalIn{ 0 };	// total number of encoded bytes read so far
+  unsigned long long totalOut{ 0 };	// total number of bytes decoded so far
 
   static int			// code length code reordering
     codeLenCodeMap[flateMaxCodeLenCodes];
@@ -908,8 +908,8 @@ public:
 
 private:
 
-  int *buf;
   int bufSize;
+  int *buf;
 };
 
 //------------------------------------------------------------------------
@@ -935,7 +935,7 @@ public:
 private:
 
   int length;
-  int count;
+  int count{ 0 };
 };
 
 //------------------------------------------------------------------------
@@ -962,11 +962,11 @@ public:
 
 private:
 
-  char buf[4];
-  char *bufPtr;
-  char *bufEnd;
-  int lineLen;
-  GBool eof;
+  char buf[4]{ };
+  char* bufPtr{ buf };
+  char* bufEnd{ buf };
+  int lineLen{ 0 };
+  GBool eof{ gFalse };
 
   GBool fillBuf();
 };
@@ -995,11 +995,11 @@ public:
 
 private:
 
-  char buf[8];
-  char *bufPtr;
-  char *bufEnd;
-  int lineLen;
-  GBool eof;
+  char buf[8]{ 0 };
+  char *bufPtr{ buf };
+  char *bufEnd{ buf };
+  int lineLen{ 0 };
+  GBool eof{ gFalse };
 
   GBool fillBuf();
 };
@@ -1028,11 +1028,11 @@ public:
 
 private:
 
-  char buf[131];
-  char *bufPtr;
-  char *bufEnd;
-  char *nextEnd;
-  GBool eof;
+  char buf[131]{ 0 };
+  char *bufPtr{ buf };
+  char *bufEnd{ buf };
+  char *nextEnd{ buf };
+  GBool eof{ gFalse };
 
   GBool fillBuf();
 };
@@ -1042,9 +1042,9 @@ private:
 //------------------------------------------------------------------------
 
 struct LZWEncoderNode {
-  int byte;
-  LZWEncoderNode *next;		// next sibling
-  LZWEncoderNode *children;	// first child
+  int byte{ 0 };
+  LZWEncoderNode* next{ nullptr };		// next sibling
+  LZWEncoderNode *children{ nullptr };	// first child
 };
 
 class LZWEncoder: public FilterStream {
@@ -1065,15 +1065,15 @@ public:
 
 private:
 
-  LZWEncoderNode table[4096];
-  int nextSeq;
-  int codeLen;
-  Guchar inBuf[8192];
-  int inBufStart;
-  int inBufLen;
-  int outBuf;
-  int outBufLen;
-  GBool needEOD;
+  LZWEncoderNode table[4096]{ };
+  int nextSeq{ 0 };
+  int codeLen{ 0 };
+  Guchar inBuf[8192]{ };
+  int inBufStart{ 0 };
+  int inBufLen{ 0 };
+  int outBuf{ 0 };
+  int outBufLen{ 0 };
+  GBool needEOD{ gFalse };
 
   void fillBuf();
 };

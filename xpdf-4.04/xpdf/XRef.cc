@@ -26,23 +26,12 @@
 #include "Parser.h"
 #include "Dict.h"
 #include "Error.h"
-#include "ErrorCodes.h"
 #include "XRef.h"
 
 //------------------------------------------------------------------------
 
 #define xrefSearchSize 1024	// read this many bytes at end of file
 				//   to look for 'startxref'
-
-//------------------------------------------------------------------------
-// Permission bits
-//------------------------------------------------------------------------
-
-#define permPrint    (1<<2)
-#define permChange   (1<<3)
-#define permCopy     (1<<4)
-#define permNotes    (1<<5)
-#define defPermFlags 0xfffc
 
 //------------------------------------------------------------------------
 // XRefPosSet
@@ -151,25 +140,21 @@ public:
 private:
 
   int objStrNum;		// object number of the object stream
-  int nObjects;			// number of objects in the stream
-  Object *objs;			// the objects (length = nObjects)
-  int *objNums;			// the object numbers (length = nObjects)
-  GBool ok;
+  int nObjects{ 0 };			// number of objects in the stream
+  Object* objs{ nullptr };			// the objects (length = nObjects)
+  int *objNums{ nullptr };			// the object numbers (length = nObjects)
+  GBool ok{ gFalse };
 };
 
-ObjectStream::ObjectStream(XRef *xref, int objStrNumA) {
+ObjectStream::ObjectStream(XRef *xref, int objStrNumA) 
+  : objStrNum{ objStrNumA }
+{
   Stream *str;
   Lexer *lexer;
   Parser *parser;
   int *offsets;
   Object objStr, obj1, obj2;
   int first, i;
-
-  objStrNum = objStrNumA;
-  nObjects = 0;
-  objs = NULL;
-  objNums = NULL;
-  ok = gFalse;
 
   if (!xref->fetch(objStrNum, 0, &objStr)->isStream()) {
     goto err1;
@@ -293,44 +278,19 @@ Object *ObjectStream::getObject(int objIdx, int objNum, Object *obj) {
 // XRef
 //------------------------------------------------------------------------
 
-XRef::XRef(BaseStream *strA, GBool repair) {
+XRef::XRef(BaseStream *strA, GBool repair) 
+    : str{ strA }
+{
   GFileOffset pos;
   Object obj;
   XRefPosSet *posSet;
   int i;
-
-  ok = gTrue;
-  errCode = errNone;
-  repaired = gFalse;
-  size = 0;
-  last = -1;
-  entries = NULL;
-  lastStartxrefPos = 0;
-  xrefTablePos = NULL;
-  xrefTablePosLen = 0;
-  streamEnds = NULL;
-  streamEndsLen = 0;
-  for (i = 0; i < objStrCacheSize; ++i) {
-    objStrs[i] = NULL;
-    objStrLastUse[i] = 0;
-  }
-  objStrCacheLength = 0;
-  objStrTime = 0;
-
-  encrypted = gFalse;
-  permFlags = defPermFlags;
-  ownerPasswordOk = gFalse;
-
-  for (i = 0; i < xrefCacheSize; ++i) {
-    cache[i].num = -1;
-  }
 
 #if MULTITHREADED
   gInitMutex(&objStrsMutex);
   gInitMutex(&cacheMutex);
 #endif
 
-  str = strA;
   start = str->getStart();
 
   // if the 'repair' flag is set, try to reconstruct the xref table
@@ -692,7 +652,7 @@ GBool XRef::readXRefTable(GFileOffset *pos, int offset, XRefPosSet *posSet) {
 
 GBool XRef::readXRefStream(Stream *xrefStr, GFileOffset *pos, GBool hybrid) {
   Dict *dict;
-  int w[3];
+  int w[3] = { 0 };
   GBool more;
   Object obj, obj2, idx;
   int newSize, first, n, i;

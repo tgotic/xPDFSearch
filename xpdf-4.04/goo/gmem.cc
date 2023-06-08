@@ -388,9 +388,10 @@ void gMemReport(FILE *f) {
 #endif
 
 char *copyString(const char *s) {
-  char *s1;
-
-  s1 = (char *)gmalloc((int)strlen(s) + 1);
-  strcpy(s1, s);
+  char *s1 = NULL;
+  if (s) {
+    s1 = (char *)gmalloc((int)strlen(s) + 1);
+    strcpy(s1, s);
+  }
   return s1;
 }

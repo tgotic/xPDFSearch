@@ -21,6 +21,17 @@
 #if MULTITHREADED
 #include "GMutex.h"
 #endif
+#include "ErrorCodes.h"
+
+//------------------------------------------------------------------------
+// Permission bits
+//------------------------------------------------------------------------
+
+#define permPrint    (1<<2)
+#define permChange   (1<<3)
+#define permCopy     (1<<4)
+#define permNotes    (1<<5)
+#define defPermFlags 0xfffc
 
 class Dict;
 class Stream;
@@ -39,15 +50,15 @@ enum XRefEntryType {
 };
 
 struct XRefEntry {
-  GFileOffset offset;
-  int gen;
-  XRefEntryType type;
+	GFileOffset offset{ 0 };
+  int gen{ -1 };
+  XRefEntryType type{ xrefEntryFree };
 };
 
 struct XRefCacheEntry {
-  int num;
-  int gen;
-  Object obj;
+	int num{ -1 };
+	int gen{ -1 };
+	Object obj;
 };
 
 #define xrefCacheSize 16
@@ -130,42 +141,42 @@ public:
 private:
 
   BaseStream *str;		// input stream
-  GFileOffset start;		// offset in file (to allow for garbage
+  GFileOffset start{ 0 };		// offset in file (to allow for garbage
 				//   at beginning of file)
-  XRefEntry *entries;		// xref entries
-  int size;			// size of <entries> array
-  int last;			// last used index in <entries>
+  XRefEntry* entries{ nullptr };		// xref entries
+  int size{ 0 };			// size of <entries> array
+  int last{ -1 };			// last used index in <entries>
   int rootNum, rootGen;		// catalog dict
-  GBool ok;			// true if xref table is valid
-  int errCode;			// error code (if <ok> is false)
-  GBool repaired;		// set if the xref table was constructed by
+  GBool ok{ gTrue };			// true if xref table is valid
+  int errCode{ errNone };			// error code (if <ok> is false)
+  GBool repaired{ gFalse };		// set if the xref table was constructed by
 				//   the repair code
   Object trailerDict;		// trailer dictionary
-  GFileOffset lastXRefPos;	// offset of last xref table
-  GFileOffset lastStartxrefPos;	// offset of 'startxref' at end of file
-  GFileOffset *xrefTablePos;	// positions of all xref tables
-  int xrefTablePosLen;		// number of xref table positions
-  GFileOffset *streamEnds;	// 'endstream' positions - only used in
+  GFileOffset lastXRefPos{ 0 };	// offset of last xref table
+  GFileOffset lastStartxrefPos{ 0 };	// offset of 'startxref' at end of file
+  GFileOffset *xrefTablePos{ nullptr };	// positions of all xref tables
+  int xrefTablePosLen{ 0 };		// number of xref table positions
+  GFileOffset *streamEnds{ nullptr };	// 'endstream' positions - only used in
 				//   damaged files
-  int streamEndsLen;		// number of valid entries in streamEnds
+  int streamEndsLen{ 0 };		// number of valid entries in streamEnds
   ObjectStream *		// cached object streams
-    objStrs[objStrCacheSize];
-  int objStrCacheLength;	// number of valid entries in objStrs[]
+	  objStrs[objStrCacheSize]{ nullptr };
+  int objStrCacheLength{ 0 };	// number of valid entries in objStrs[]
   Guint				// time of last use for each obj stream
-    objStrLastUse[objStrCacheSize];
-  Guint objStrTime;		// current time for the obj stream cache
+	  objStrLastUse[objStrCacheSize]{ 0 };
+  Guint objStrTime{ 0 };		// current time for the obj stream cache
 #if MULTITHREADED
   GMutex objStrsMutex;
 #endif
-  GBool encrypted;		// true if file is encrypted
-  int permFlags;		// permission bits
-  GBool ownerPasswordOk;	// true if owner password is correct
+  GBool encrypted{ gFalse };		// true if file is encrypted
+  int permFlags{ defPermFlags };		// permission bits
+  GBool ownerPasswordOk{ gFalse };	// true if owner password is correct
   Guchar fileKey[32];		// file decryption key
-  int keyLength;		// length of key, in bytes
-  int encVersion;		// encryption version
+  int keyLength{ 0 };		// length of key, in bytes
+  int encVersion{ 0 };		// encryption version
   CryptAlgorithm encAlgorithm;	// encryption algorithm
   XRefCacheEntry		// cache of recently accessed objects
-    cache[xrefCacheSize];
+	  cache[xrefCacheSize]{ };
 #if MULTITHREADED
   GMutex cacheMutex;
 #endif

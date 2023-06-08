@@ -53,7 +53,7 @@ private:
   Lexer *lexer;			// input stream
   GBool allowStreams;		// parse stream objects?
   Object buf1, buf2;		// next two tokens
-  int inlineImg;		// set when inline image data is encountered
+  int inlineImg{ 0 };		// set when inline image data is encountered
 
   Stream *makeStream(Object *dict, Guchar *fileKey,
 		     CryptAlgorithm encAlgorithm, int keyLength,

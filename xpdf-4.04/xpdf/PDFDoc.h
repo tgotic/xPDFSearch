@@ -19,6 +19,7 @@
 #include "XRef.h"
 #include "Catalog.h"
 #include "Page.h"
+#include "ErrorCodes.h"
 
 class GString;
 class BaseStream;
@@ -200,7 +201,6 @@ public:
 
 private:
 
-  void init(PDFCore *coreA);
   GBool setup(GString *ownerPassword, GString *userPassword);
   GBool setup2(GString *ownerPassword, GString *userPassword,
 	       GBool repairXRef);
@@ -209,23 +209,23 @@ private:
 #ifndef NO_EMBEDDED_CONTENT
   GBool saveEmbeddedFile2(int idx, FILE *f);
 #endif
-  GString *fileName;
+  GString *fileName{ nullptr };
 #ifdef _WIN32
-  wchar_t *fileNameU;
+  wchar_t *fileNameU{ nullptr };
 #endif
-  FILE *file;
-  BaseStream *str;
-  PDFCore *core;
-  double pdfVersion;
-  XRef *xref;
-  Catalog *catalog;
+  FILE *file{ nullptr };
+  BaseStream* str{ nullptr };
+  PDFCore *core{ nullptr };
+  double pdfVersion{ 0 };
+  XRef *xref{ nullptr };
+  Catalog *catalog{ nullptr };
 #ifndef DISABLE_OUTLINE
-  Outline *outline;
+  Outline *outline{ nullptr };
 #endif
-  OptionalContent *optContent;
+  OptionalContent *optContent{ nullptr };
 
-  GBool ok;
-  int errCode;
+  GBool ok{ gFalse };
+  int errCode{ errNone };
 };
 
 #endif

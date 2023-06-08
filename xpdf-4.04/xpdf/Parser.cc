@@ -27,11 +27,11 @@
 // in the object structure.
 #define recursionLimit 500
 
-Parser::Parser(XRef *xrefA, Lexer *lexerA, GBool allowStreamsA) {
-  xref = xrefA;
-  lexer = lexerA;
-  inlineImg = 0;
-  allowStreams = allowStreamsA;
+Parser::Parser(XRef *xrefA, Lexer *lexerA, GBool allowStreamsA) 
+    : xref{ xrefA }
+    , lexer{ lexerA }
+    , allowStreams{ allowStreamsA }
+{
   lexer->getObj(&buf1);
   lexer->getObj(&buf2);
 }

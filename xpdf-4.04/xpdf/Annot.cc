@@ -1157,8 +1157,8 @@ void Annot::drawText(GString *text, GString *da, int quadding, double margin,
 
   // parse the default appearance string
   tfPos = tmPos = -1;
+  daToks = new GList();
   if (da) {
-    daToks = new GList();
     i = 0;
     while (i < da->getLength()) {
       while (i < da->getLength() && Lexer::isSpace(da->getChar(i))) {
@@ -1179,8 +1179,6 @@ void Annot::drawText(GString *text, GString *da, int quadding, double margin,
 	tmPos = i - 6;
       }
     }
-  } else {
-    daToks = NULL;
   }
 
   // get the font and font size
