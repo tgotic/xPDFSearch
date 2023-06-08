@@ -32,7 +32,6 @@
 #include "Link.h"
 #include "OutputDev.h"
 #include "Error.h"
-#include "ErrorCodes.h"
 #include "Lexer.h"
 #include "Parser.h"
 #include "SecurityHandler.h"
@@ -62,29 +61,24 @@
 //------------------------------------------------------------------------
 
 PDFDoc::PDFDoc(GString *fileNameA, GString *ownerPassword,
-	       GString *userPassword, PDFCore *coreA) {
+	       GString *userPassword, PDFCore *coreA) 
+    : fileName{ fileNameA }
+    , core{ coreA }
+
+{
   Object obj;
-  GString *fileName1, *fileName2;
-#ifdef _WIN32
-  int n, i;
-#endif
+  GString *fileName1{ fileName };
 
-  init(coreA);
-
-  fileName = fileNameA;
 #ifdef _WIN32
-  n = fileName->getLength();
+  int n = fileName->getLength();
   fileNameU = (wchar_t *)gmallocn(n + 1, sizeof(wchar_t));
-  for (i = 0; i < n; ++i) {
+  for (int i = 0; i < n; ++i) {
     fileNameU[i] = (wchar_t)(fileName->getChar(i) & 0xff);
   }
   fileNameU[n] = L'\0';
 #endif
 
-  fileName1 = fileName;
-
   // try to open file
-  fileName2 = NULL;
 #ifdef VMS
   if (!(file = fopen(fileName1->getCString(), fopenReadMode, "ctx=stm"))) {
     error(errIO, -1, "Couldn't open file '{0:t}'", fileName1);
@@ -93,7 +87,7 @@ PDFDoc::PDFDoc(GString *fileNameA, GString *ownerPassword,
   }
 #else
   if (!(file = fopen(fileName1->getCString(), fopenReadMode))) {
-    fileName2 = fileName->copy();
+    auto fileName2 = fileName->copy();
     fileName2->lowerCase();
     if (!(file = fopen(fileName2->getCString(), fopenReadMode))) {
       fileName2->upperCase();
@@ -117,11 +111,11 @@ PDFDoc::PDFDoc(GString *fileNameA, GString *ownerPassword,
 
 #ifdef _WIN32
 PDFDoc::PDFDoc(const wchar_t *fileNameA, size_t fileNameLen, GString *ownerPassword,
-	       GString *userPassword, PDFCore *coreA) {
+	       GString *userPassword, PDFCore *coreA) 
+    : fileName{ new GString() }
+    , core{ coreA }
+{
   Object obj;
-  size_t i;
-
-  init(coreA);
 
   // handle a Windows shortcut
   wchar_t wPath[MAX_PATH + 1];
@@ -129,13 +123,12 @@ PDFDoc::PDFDoc(const wchar_t *fileNameA, size_t fileNameLen, GString *ownerPassw
   memcpy(wPath, fileNameA, n * sizeof(wchar_t));
   wPath[n] = L'\0';
   readWindowsShortcut(wPath, MAX_PATH + 1);
-  size_t wPathLen = wcslen(wPath);
+  const int wPathLen = (int)wcslen(wPath);
 
   // save both Unicode and 8-bit copies of the file name
-  fileName = new GString();
-  fileNameU = (wchar_t *)gmallocn(wPathLen + 1U, sizeof(wchar_t));
-  memcpy(fileNameU, wPath, (wPathLen + 1U) * sizeof(wchar_t));
-  for (i = 0; i < wPathLen; ++i) {
+  fileNameU = (wchar_t *)gmallocn(wPathLen + 1, sizeof(wchar_t));
+  memcpy(fileNameU, wPath, (wPathLen + 1) * sizeof(wchar_t));
+  for (int i = 0; i < wPathLen; ++i) {
     fileName->append((char)fileNameA[i]);
   }
 
@@ -161,21 +154,16 @@ PDFDoc::PDFDoc(const wchar_t *fileNameA, size_t fileNameLen, GString *ownerPassw
 #endif
 
 PDFDoc::PDFDoc(char *fileNameA, GString *ownerPassword,
-	       GString *userPassword, PDFCore *coreA) {
+	       GString *userPassword, PDFCore *coreA) 
+    : fileName{ new GString(fileNameA) }
+    , core{ coreA }
+{
   Object obj;
-#ifdef _WIN32
-  Unicode u;
-  int i, j;
-#endif
-
-  init(coreA);
-
-  fileName = new GString(fileNameA);
 
 #if defined(_WIN32)
+  int i{ 0 }, j{ 0 };
   wchar_t wPath[MAX_PATH + 1];
-  i = 0;
-  j = 0;
+  Unicode u;
   while (j < MAX_PATH && getUTF8(fileName, &i, &u)) {
     wPath[j++] = (wchar_t)u;
   }
@@ -212,45 +200,22 @@ PDFDoc::PDFDoc(char *fileNameA, GString *ownerPassword,
 }
 
 PDFDoc::PDFDoc(BaseStream *strA, GString *ownerPassword,
-	       GString *userPassword, PDFCore *coreA) {
-#ifdef _WIN32
-  int n, i;
-#endif
-
-  init(coreA);
-
+	       GString *userPassword, PDFCore *coreA) 
+    : core{ coreA }
+{
   if (strA->getFileName()) {
     fileName = strA->getFileName()->copy();
 #ifdef _WIN32
-    n = fileName->getLength();
+    int n = fileName->getLength();
     fileNameU = (wchar_t *)gmallocn(n + 1, sizeof(wchar_t));
-    for (i = 0; i < n; ++i) {
+    for (int i = 0; i < n; ++i) {
       fileNameU[i] = (wchar_t)(fileName->getChar(i) & 0xff);
     }
     fileNameU[n] = L'\0';
 #endif
-  } else {
-    fileName = NULL;
-#ifdef _WIN32
-    fileNameU = NULL;
-#endif
   }
   str = strA;
   ok = setup(ownerPassword, userPassword);
-}
-
-void PDFDoc::init(PDFCore *coreA) {
-  ok = gFalse;
-  errCode = errNone;
-  core = coreA;
-  file = NULL;
-  str = NULL;
-  xref = NULL;
-  catalog = NULL;
-#ifndef DISABLE_OUTLINE
-  outline = NULL;
-#endif
-  optContent = NULL;
 }
 
 GBool PDFDoc::setup(GString *ownerPassword, GString *userPassword) {
