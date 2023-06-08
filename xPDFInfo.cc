@@ -24,40 +24,43 @@ options_t globalOptionsFromIni;
 * Names of fields returned to TC.
 * Names are grouped by field types.
 */
-static constexpr const char* fieldNames[FIELD_COUNT]
+static constexpr const char* fieldNames[]
 {
-    "Title", "Subject", "Keywords", "Author", "Application", "PDF Producer", "Document Start", "First Row",
+    "Title", "Subject", "Keywords", "Author", "Application", "PDF Producer", "Document Start", "First Row", "Extensions",
     "Number Of Pages",
     "PDF Version", "Page Width", "Page Height",
-    "Copying Allowed", "Printing Allowed", "Adding Comments Allowed", "Changing Allowed", "Encrypted", "Tagged", "Linearized", "Incremental", "Signature Field",
-    "Created", "Modified",
-    "ID", "PDF Attributes", "Conformance", "CreatedRaw", "ModifiedRaw",
+    "Copying Allowed", "Printing Allowed", "Adding Comments Allowed", "Changing Allowed", "Encrypted", "Tagged", "Linearized", "Incremental", "Signature Field", "Outlined", "Embedded Files",
+    "Created", "Modified", "Metadata Date",
+    "ID", "PDF Attributes", "Conformance", "Created Raw", "Modified Raw", "Metadata Date Raw",
     "Outlines", "Text"
 };
+static_assert(_countof(fieldNames) == FIELD_COUNT, "fieldNames size error");
 
 /** Array used to simplify fieldType returning. */
-constexpr int fieldTypes[FIELD_COUNT]
+constexpr int fieldTypes[]
 {
-    ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw,
+    ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw,
     ft_numeric_32,
     ft_numeric_floating, ft_numeric_floating, ft_numeric_floating,
-    ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean,
-    ft_datetime, ft_datetime,
-    ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw,
+    ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean,
+    ft_datetime, ft_datetime, ft_datetime,
+    ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw,
     ft_fulltext, ft_fulltext
 };
+static_assert(_countof(fieldTypes) == FIELD_COUNT, "fieldTypes size error");
 
 /** Supported field flags, special value for attributes */
-constexpr int fieldFlags[FIELD_COUNT]
+constexpr int fieldFlags[]
 {
-    0, 0, 0, 0, 0, 0, 0, 0, 
-    0,
-    0, 0, 0, 
     0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0,
-    0, contflags_substattributestr, 0,
+    0,
+    0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0,
+    0, contflags_substattributestr, 0, 0, 0, 0, 0 ,0,
     0, 0
 };
+static_assert(_countof(fieldFlags) == FIELD_COUNT, "fieldFlags size error");
 
 /**< Only one instance of PDFExtractor per thread. */
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
@@ -202,7 +205,7 @@ int __stdcall ContentGetSupportedField(int fieldIndex, char* fieldName, char* un
 
     // Exclude date time fields in older TC versions.
     if ((fieldIndex < 0) || (fieldIndex >= FIELD_COUNT) ||
-        (!enableDateTimeField && ((fieldIndex == fiCreationDate) || (fieldIndex == fiLastModifiedDate))))
+        (!enableDateTimeField && ((fieldIndex == fiCreationDate) || (fieldIndex == fiModifiedDate) || (fieldIndex == fiMetadataDate))))
     {
         return ft_nomorefields;
     }
@@ -212,7 +215,9 @@ int __stdcall ContentGetSupportedField(int fieldIndex, char* fieldName, char* un
 
     //set units names
     if ((fieldIndex == fiPageWidth) || (fieldIndex == fiPageHeight))
+    {
         StringCchCopyA(units, maxlen, "mm|cm|in|pt");
+    }
 
     return fieldTypes[fieldIndex];
 }
@@ -231,7 +236,9 @@ void __stdcall ContentSendStateInformationW(int state, const wchar_t* path)
    {
    case contst_readnewdir:
        if (g_extractor)
+       {
            g_extractor->stop();
+       }
        break;
    default:
        break;
@@ -267,7 +274,9 @@ int __stdcall ContentGetValueW(const wchar_t* fileName, int fieldIndex, int unit
     if ((fieldIndex >= fiTitle) && (fieldIndex <= fiText))
     {
         if (CONTENT_DELAYIFSLOW & flags)
+        {
             return ft_delayed;
+        }
 
         if (!g_extractor)
         {
@@ -276,13 +285,16 @@ int __stdcall ContentGetValueW(const wchar_t* fileName, int fieldIndex, int unit
         }
 
         if (g_extractor)
+        {
             return g_extractor->extract(fileName, fieldIndex, unitIndex, fieldValue, cbfieldValue, flags);
-
+        }
         TRACE(L"%hs!unable to create extractor\n", __FUNCTION__);
         return ft_fileerror;
     }
     else if (g_extractor)
+    {
         g_extractor->stop();
+    }
 
     return ft_nomorefields;
 }
@@ -332,6 +344,7 @@ static void getIniFileName(const char* defaultIniName, char* iniFileName)
 void __stdcall ContentSetDefaultParams(ContentDefaultParamStruct* dps)
 {
     TRACE(L"%hs\n", __FUNCTION__);
+    constexpr auto appName{ "xPDFSearch" };
     // Check content plugin interface version to enable fields of type datetime.
     enableDateTimeField = ((dps->pluginInterfaceVersionHi == 1) && (dps->pluginInterfaceVersionLow >= 2)) || (dps->pluginInterfaceVersionHi > 1);
     enableCompareFields = ((dps->pluginInterfaceVersionHi == 2) && (dps->pluginInterfaceVersionLow >= 10)) || (dps->pluginInterfaceVersionHi > 2);
@@ -339,17 +352,41 @@ void __stdcall ContentSetDefaultParams(ContentDefaultParamStruct* dps)
     char iniFileName[MAX_PATH]{};
     getIniFileName(dps->defaultIniName, iniFileName);
 
-    globalOptionsFromIni.noCache = GetPrivateProfileIntA("xPDFSearch", "NoCache", 0, iniFileName);
-    globalOptionsFromIni.discardInvisibleText = GetPrivateProfileIntA("xPDFSearch", "DiscardInvisibleText", 1, iniFileName);
-    globalOptionsFromIni.discardDiagonalText = GetPrivateProfileIntA("xPDFSearch", "DiscardDiagonalText", 1, iniFileName);
-    globalOptionsFromIni.discardClippedText = GetPrivateProfileIntA("xPDFSearch", "DiscardClippedText", 1, iniFileName);
-    globalOptionsFromIni.appendExtensionLevel = GetPrivateProfileIntA("xPDFSearch", "AppendExtensionLevel", 1, iniFileName);
-    globalOptionsFromIni.removeDateRawDColon = GetPrivateProfileIntA("xPDFSearch", "RemoveDateRawDColon", 0, iniFileName);
-    globalOptionsFromIni.marginLeft = GetPrivateProfileIntA("xPDFSearch", "MarginLeft", 0, iniFileName);
-    globalOptionsFromIni.marginRight = GetPrivateProfileIntA("xPDFSearch", "MarginRight", 0, iniFileName);
-    globalOptionsFromIni.marginTop = GetPrivateProfileIntA("xPDFSearch", "MarginTop", 0, iniFileName);
-    globalOptionsFromIni.marginBottom = GetPrivateProfileIntA("xPDFSearch", "MarginBottom", 0, iniFileName);
-    globalOptionsFromIni.textOutputMode = static_cast<TextOutputMode>(GetPrivateProfileIntA("xPDFSearch", "TextOutputMode", 0, iniFileName) % (textOutRawOrder + 1));
+    globalOptionsFromIni.noCache = GetPrivateProfileIntA(appName, "NoCache", 0, iniFileName);
+    globalOptionsFromIni.discardInvisibleText = GetPrivateProfileIntA(appName, "DiscardInvisibleText", 1, iniFileName);
+    globalOptionsFromIni.discardDiagonalText = GetPrivateProfileIntA(appName, "DiscardDiagonalText", 1, iniFileName);
+    globalOptionsFromIni.discardClippedText = GetPrivateProfileIntA(appName, "DiscardClippedText", 1, iniFileName);
+    globalOptionsFromIni.appendExtensionLevel = GetPrivateProfileIntA(appName, "AppendExtensionLevel", 1, iniFileName);
+    globalOptionsFromIni.removeDateRawDColon = GetPrivateProfileIntA(appName, "RemoveDateRawDColon", 0, iniFileName);
+    globalOptionsFromIni.marginLeft = GetPrivateProfileIntA(appName, "MarginLeft", 0, iniFileName);
+    globalOptionsFromIni.marginRight = GetPrivateProfileIntA(appName, "MarginRight", 0, iniFileName);
+    globalOptionsFromIni.marginTop = GetPrivateProfileIntA(appName, "MarginTop", 0, iniFileName);
+    globalOptionsFromIni.marginBottom = GetPrivateProfileIntA(appName, "MarginBottom", 0, iniFileName);
+    globalOptionsFromIni.textOutputMode = static_cast<TextOutputMode>(GetPrivateProfileIntA(appName, "TextOutputMode", 0, iniFileName) % (textOutRawOrder + 1));
+
+    char tmp[2];
+    if (GetPrivateProfileStringA(appName, "AttrCopyingAllowed", "C", tmp, sizeof(tmp), iniFileName) == 1)
+        mbtowc(&globalOptionsFromIni.attrCopyable, tmp, 1);
+    if (GetPrivateProfileStringA(appName, "AttrPrintingAllowed", "P", tmp, sizeof(tmp), iniFileName) == 1)
+        mbtowc(&globalOptionsFromIni.attrPrintable, tmp, 1);
+    if (GetPrivateProfileStringA(appName, "AttrAddingCommentsAllowed", "N", tmp, sizeof(tmp), iniFileName) == 1)
+        mbtowc(&globalOptionsFromIni.attrCommentable, tmp, 1);
+    if (GetPrivateProfileStringA(appName, "AttrChangingAllowed", "M", tmp, sizeof(tmp), iniFileName) == 1)
+        mbtowc(&globalOptionsFromIni.attrChangeable, tmp, 1);
+    if (GetPrivateProfileStringA(appName, "AttrIncremental", "I", tmp, sizeof(tmp), iniFileName) == 1)
+        mbtowc(&globalOptionsFromIni.attrIncremental, tmp, 1);
+    if (GetPrivateProfileStringA(appName, "AttrTagged", "T", tmp, sizeof(tmp), iniFileName) == 1)
+        mbtowc(&globalOptionsFromIni.attrTagged, tmp, 1);
+    if (GetPrivateProfileStringA(appName, "AttrLinearized", "L", tmp, sizeof(tmp), iniFileName) == 1)
+        mbtowc(&globalOptionsFromIni.attrLinearized, tmp, 1);
+    if (GetPrivateProfileStringA(appName, "AttrEncrypted", "E", tmp, sizeof(tmp), iniFileName) == 1)
+        mbtowc(&globalOptionsFromIni.attrEncrypted, tmp, 1);
+    if (GetPrivateProfileStringA(appName, "AttrSignatureField", "S", tmp, sizeof(tmp), iniFileName) == 1)
+        mbtowc(&globalOptionsFromIni.attrSigned, tmp, 1);
+    if (GetPrivateProfileStringA(appName, "AttrOutlined", "O", tmp, sizeof(tmp), iniFileName) == 1)
+        mbtowc(&globalOptionsFromIni.attrOutlined, tmp, 1);
+    if (GetPrivateProfileStringA(appName, "AttrEmbeddedFiles", "F", tmp, sizeof(tmp), iniFileName) == 1)
+        mbtowc(&globalOptionsFromIni.attrEmbeddedFiles, tmp, 1);
 }
 
 /**
@@ -362,7 +399,9 @@ void __stdcall ContentPluginUnloading()
 {
     TRACE(L"%hs\n", __FUNCTION__);
     if (g_extractor)
+    {
         g_extractor->abort();
+    }
 }
 
 /**
@@ -375,7 +414,9 @@ void __stdcall ContentStopGetValueW(const wchar_t* fileName)
 {
     TRACE(L"%hs\n", __FUNCTION__);
     if (g_extractor)
+    {
         g_extractor->stop();
+    }
 }
 /**
 * ContentGetSupportedFieldFlags is called to get various information about a plugin variable.
@@ -388,10 +429,14 @@ void __stdcall ContentStopGetValueW(const wchar_t* fileName)
 int __stdcall ContentGetSupportedFieldFlags(int fieldIndex)
 {
     if (fieldIndex == -1)
+    {
         return contflags_substmask;
+    }
 
     if ((fieldIndex >= fiTitle) && (fieldIndex <= fiText))
+    {
         return fieldFlags[fieldIndex];
+    }
 
     return 0;
 }
@@ -411,7 +456,9 @@ int __stdcall ContentCompareFilesW(PROGRESSCALLBACKPROC progressCallback, int co
 {
     TRACE(L"%hs\n", __FUNCTION__);
     if ((compareIndex < ft_comparebaseindex) || (compareIndex >= ft_comparebaseindex + FIELD_COUNT))
+    {
         return ft_compare_next;
+    }
 
     if (!g_extractor)
     {
@@ -420,7 +467,9 @@ int __stdcall ContentCompareFilesW(PROGRESSCALLBACKPROC progressCallback, int co
     }
 
     if (g_extractor)
+    {
         return g_extractor->compare(progressCallback, fileName1, fileName2, compareIndex - ft_comparebaseindex);
+    }
 
     TRACE(L"%hs!unable to create extractor\n", __FUNCTION__);
     return ft_compare_next;

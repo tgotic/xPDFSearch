@@ -18,6 +18,7 @@ enum SizeUnits
     suInches,       /**< inches */
     suPoints        /**< points */
 };
+
 /**
 * Options from ini file.
 */
@@ -34,6 +35,17 @@ typedef struct options_s
     int marginRight{ 0 };               /**< discard all characters right of mediaBox - marginRight */
     int marginTop{ 0 };                 /**< discard all characters above of mediaBox - marginTop */
     int marginBottom{ 0 };              /**< discard all characters bellow of mediaBox + marginBottom */
+    wchar_t attrCopyable{ L'\0' };
+    wchar_t attrPrintable{ L'\0' };
+    wchar_t attrCommentable{ L'\0' };
+    wchar_t attrChangeable{ L'\0' };
+    wchar_t attrEncrypted{ L'\0' };
+    wchar_t attrTagged{ L'\0' };
+    wchar_t attrLinearized{ L'\0' };
+    wchar_t attrIncremental{ L'\0' };
+    wchar_t attrSigned{ L'\0' };
+    wchar_t attrOutlined{ L'\0' };
+    wchar_t attrEmbeddedFiles{ L'\0' };
 } options_t;
 
 extern options_t globalOptionsFromIni;
@@ -43,17 +55,17 @@ extern options_t globalOptionsFromIni;
 */
 enum fieldIndexes
 {
-    fiTitle, fiSubject, fiKeywords, fiAuthor, fiCreator, fiProducer, fiDocStart, fiFirstRow,
+    fiTitle, fiSubject, fiKeywords, fiAuthor, fiCreator, fiProducer, fiDocStart, fiFirstRow, fiExtensions,
     fiNumberOfPages, 
     fiPDFVersion, fiPageWidth, fiPageHeight,
-    fiCopyingAllowed, fiPrintingAllowed, fiAddCommentsAllowed, fiChangingAllowed, fiEncrypted, fiTagged, fiLinearized, fiIncremental, fiSignature,
-    fiCreationDate, fiLastModifiedDate, 
-    fiID, fiAttributesString, fiConformance, fiCreationDateRaw, fiLastModifiedDateRaw,
+    fiCopyable, fiPrintable, fiCommentable, fiChangeable, fiEncrypted, fiTagged, fiLinearized, fiIncremental, fiSigned, fiOutlined, fiEmbeddedFiles,
+    fiCreationDate, fiModifiedDate, fiMetadataDate,
+    fiID, fiAttributesString, fiConformance, fiCreationDateRaw, fiModifiedDateRaw, fiMetadataDateRaw,
     fiOutlines, fiText
 };
 
 /**< used to globally set the number of supported fields. */
-constexpr auto FIELD_COUNT{ 30 };
+constexpr size_t FIELD_COUNT{ static_cast<size_t>(fiText + 1) };
 
 #ifdef _DEBUG
 extern bool __cdecl _trace(const wchar_t *format, ...);
