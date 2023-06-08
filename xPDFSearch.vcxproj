@@ -38,22 +38,22 @@
     <ProjectGuid>{86691622-79CA-4015-AEC6-361D13E884EC}</ProjectGuid>
     <RootNamespace>xPDFSearch</RootNamespace>
     <Keyword>Win32Proj</Keyword>
-    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='LLVM|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>llvm</PlatformToolset>
+    <PlatformToolset>ClangCL</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
@@ -65,17 +65,17 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='LLVM|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>llvm</PlatformToolset>
+    <PlatformToolset>ClangCL</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
@@ -123,7 +123,7 @@
     <ClangClAdditionalOptions>-Wdocumentation  -Wno-unused-parameter</ClangClAdditionalOptions>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='LLVM|x64'" Label="LLVM">
-    <ClangClAdditionalOptions>-Wdocumentation  -Wno-unused-parameter</ClangClAdditionalOptions>
+    <ClangClAdditionalOptions>-Wdocumentation  -Wno-unused-parameter --analyze</ClangClAdditionalOptions>
   </PropertyGroup>
   <PropertyGroup Label="LLVM" Condition="'$(Configuration)|$(Platform)'=='LLVM|Win32'">
     <ClangClAdditionalOptions>--analyze</ClangClAdditionalOptions>
@@ -227,7 +227,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <Version>1.380</Version>
+      <Version>1.400</Version>
       <SetChecksum>true</SetChecksum>
       <ProgramDatabaseFile>
       </ProgramDatabaseFile>
@@ -259,7 +259,7 @@
       <MinimumRequiredVersion>6.01</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.380</Version>
+      <Version>1.400</Version>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_WIN64</PreprocessorDefinitions>
@@ -294,7 +294,7 @@
       <MinimumRequiredVersion>6.01</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.350</Version>
+      <Version>1.400</Version>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_WIN64</PreprocessorDefinitions>
@@ -329,7 +329,7 @@
       <MinimumRequiredVersion>6.01</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.380</Version>
+      <Version>1.400</Version>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <SetChecksum>true</SetChecksum>
@@ -368,7 +368,7 @@
       <MinimumRequiredVersion>5.02</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.380</Version>
+      <Version>1.400</Version>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <SetChecksum>true</SetChecksum>
@@ -432,6 +432,7 @@
     <ClCompile Include="xpdf-4.04\xpdf\XFAScanner.cc" />
     <ClCompile Include="xpdf-4.04\xpdf\XRef.cc" />
     <ClCompile Include="xpdf-4.04\xpdf\Zoox.cc" />
+    <ClCompile Include="PDFDocEx.cc" />
     <ClCompile Include="PDFExtractor.cc" />
     <ClCompile Include="TcOutputDev.cc" />
     <ClCompile Include="xPDFInfo.cc" />
@@ -439,6 +440,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="aconf.h" />
+    <ClInclude Include="PDFDocEx.hh" />
     <ClInclude Include="PDFExtractor.hh" />
     <ClInclude Include="TcOutputDev.hh" />
     <ClInclude Include="ThreadData.hh" />

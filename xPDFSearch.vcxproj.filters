@@ -195,6 +195,9 @@
     <ClCompile Include="ThreadData.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PDFDocEx.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="aconf.h">
@@ -213,6 +216,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="xPDFInfo.hh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PDFDocEx.hh">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
