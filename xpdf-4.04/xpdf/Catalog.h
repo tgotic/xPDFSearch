@@ -90,7 +90,7 @@ public:
 
   Object *getAcroForm() { return &acroForm; }
 
-  AcroForm *getForm() { return form; }
+  AcroForm* getForm();
 
   GBool getNeedsRendering() { return needsRendering; }
 
@@ -107,7 +107,7 @@ public:
   Object *getEmbeddedFileStreamObj(int idx, Object *strObj);
 #endif
   // Return true if the document has page labels.
-  GBool hasPageLabels() { return pageLabels != NULL; }
+  GBool hasPageLabels();
 
   // Get the page label for page number [pageNum].  Returns NULL if
   // the PDF file doesn't have page labels.
@@ -120,34 +120,38 @@ public:
 
   Object *getViewerPreferences() { return &viewerPrefs; }
 
+  Object* getCatalogObj() { return &catDict; }
+
 private:
 
   PDFDoc *doc;
   XRef *xref;			// the xref table for this PDF file
-  PageTreeNode *pageTree;	// the page tree
-  Page **pages;			// array of pages
-  Ref *pageRefs;		// object ID for each page
+  PageTreeNode* pageTree{ nullptr };	// the page tree
+  Page **pages{ nullptr };			// array of pages
+  Ref *pageRefs{ nullptr };		// object ID for each page
 #if MULTITHREADED
   GMutex pageMutex;
 #endif
-  int numPages;			// number of pages
+  int numPages{ 0 };			// number of pages
   Object dests;			// named destination dictionary
   Object nameTree;		// name tree
-  GString *baseURI;		// base URI for URI-type links
+  GString *baseURI{ nullptr };		// base URI for URI-type links
   Object metadata;		// metadata stream
   Object structTreeRoot;	// structure tree root dictionary
   Object outline;		// outline dictionary
   Object acroForm;		// AcroForm dictionary
-  GBool needsRendering;		// NeedsRendering flag
-  AcroForm *form;		// parsed form
+  GBool needsRendering{ gFalse };		// NeedsRendering flag
+  AcroForm *form{ nullptr };		// parsed form
   Object ocProperties;		// OCProperties dictionary
-  GList *embeddedFiles;		// embedded file list [EmbeddedFile]
-  GList *pageLabels;		// page labels [PageLabelNode]
+  GList *embeddedFiles{ nullptr };		// embedded file list [EmbeddedFile]
+  Object pageLabelsObj;		// PageLabel object
+  GList *pageLabels{ nullptr };		// page labels [PageLabelNode]
   Object viewerPrefs;		// ViewerPreferences object
-  GBool ok;			// true if catalog is valid
+  Object catDict;			// This catalog object
+  GBool ok{ gFalse };			// true if catalog is valid
 
   Object *findDestInTree(Object *tree, GString *name, Object *obj);
-  GBool readPageTree(Object *catDict);
+  GBool readPageTree();
   int countPageTree(Object *pagesObj);
   void loadPage(int pg);
   void loadPage2(int pg, int relPg, PageTreeNode *node);

@@ -144,21 +144,12 @@ PageLabelNode::~PageLabelNode() {
 // Catalog
 //------------------------------------------------------------------------
 
-Catalog::Catalog(PDFDoc *docA) {
-  Object catDict;
+Catalog::Catalog(PDFDoc *docA) 
+  : doc{ docA }
+  , xref{ doc->getXRef() }
+{
   Object obj, obj2;
 
-  ok = gTrue;
-  doc = docA;
-  xref = doc->getXRef();
-  pageTree = NULL;
-  pages = NULL;
-  pageRefs = NULL;
-  numPages = 0;
-  baseURI = NULL;
-  form = NULL;
-  embeddedFiles = NULL;
-  pageLabels = NULL;
 #if MULTITHREADED
   gInitMutex(&pageMutex);
 #endif
@@ -167,22 +158,21 @@ Catalog::Catalog(PDFDoc *docA) {
   if (!catDict.isDict()) {
     error(errSyntaxError, -1, "Catalog object is wrong type ({0:s})",
 	  catDict.getTypeName());
-    goto err1;
+    return;
   }
 
   // read page tree
-  if (!readPageTree(&catDict)) {
-    goto err1;
+  if (!readPageTree()) {
+      return;
   }
 
   // read named destination dictionary
   catDict.dictLookup("Dests", &dests);
 
   // read root of named destination tree
-  if (catDict.dictLookup("Names", &obj)->isDict())
+  if (catDict.dictLookup("Names", &obj)->isDict()) {
     obj.dictLookup("Dests", &nameTree);
-  else
-    nameTree.initNull();
+  }
   obj.free();
 
   // read base URI
@@ -227,10 +217,6 @@ Catalog::Catalog(PDFDoc *docA) {
                    obj.getBool();
   obj.free();
 
-  // create the Form
-  // (if acroForm is a null object, this will still create an AcroForm
-  // if there are unattached Widget-type annots)
-  form = AcroForm::load(doc, this, &acroForm);
 #ifndef NO_EMBEDDED_CONTENT
   // get the OCProperties dictionary
   catDict.dictLookup("OCProperties", &ocProperties);
@@ -240,20 +226,8 @@ Catalog::Catalog(PDFDoc *docA) {
 #endif
   // get the ViewerPreferences object
   catDict.dictLookupNF("ViewerPreferences", &viewerPrefs);
-
-  if (catDict.dictLookup("PageLabels", &obj)->isDict()) {
-    readPageLabelTree(&obj);
-  }
-  obj.free();
-
-  catDict.free();
-  return;
-
- err1:
-  catDict.free();
-  dests.initNull();
-  nameTree.initNull();
-  ok = gFalse;
+  catDict.dictLookup("PageLabels", &pageLabelsObj);
+  ok = gTrue;
 }
 
 Catalog::~Catalog() {
@@ -287,15 +261,17 @@ Catalog::~Catalog() {
     delete form;
   }
   ocProperties.free();
-#ifndef NO_EMBEDDED_CONTENT  
+#ifndef NO_EMBEDDED_CONTENT
   if (embeddedFiles) {
     deleteGList(embeddedFiles, EmbeddedFile);
   }
 #endif
+  pageLabelsObj.free();
   if (pageLabels) {
     deleteGList(pageLabels, PageLabelNode);
   }
   viewerPrefs.free();
+  catDict.free();
 }
 
 Page *Catalog::getPage(int i) {
@@ -501,11 +477,11 @@ Object *Catalog::findDestInTree(Object *tree, GString *name, Object *obj) {
   return obj;
 }
 
-GBool Catalog::readPageTree(Object *catDict) {
+GBool Catalog::readPageTree() {
   Object topPagesRef, topPagesObj, countObj;
   int i;
 
-  if (!catDict->dictLookupNF("Pages", &topPagesRef)->isRef()) {
+  if (!catDict.dictLookupNF("Pages", &topPagesRef)->isRef()) {
     error(errSyntaxError, -1, "Top-level pages reference is wrong type ({0:s})",
 	  topPagesRef.getTypeName());
     topPagesRef.free();
@@ -696,14 +672,15 @@ void Catalog::loadPage2(int pg, int relPg, PageTreeNode *node) {
 }
 
 Object *Catalog::getDestOutputProfile(Object *destOutProf) {
-  Object catDict, intents, intent, subtype;
+  Object intents, intent, subtype;
   int i;
 
-  if (!xref->getCatalog(&catDict)->isDict()) {
-    goto err1;
+  if (!catDict.isDict()) {
+    return NULL;
   }
   if (!catDict.dictLookup("OutputIntents", &intents)->isArray()) {
-    goto err2;
+      intents.free();
+      return NULL;
   }
   for (i = 0; i < intents.arrayGetLength(); ++i) {
     intents.arrayGet(i, &intent);
@@ -719,19 +696,12 @@ Object *Catalog::getDestOutputProfile(Object *destOutProf) {
     subtype.free();
     if (!intent.dictLookup("DestOutputProfile", destOutProf)->isStream()) {
       destOutProf->free();
-      intent.free();
-      goto err2;
+      destOutProf = NULL;
     }
     intent.free();
     intents.free();
-    catDict.free();
     return destOutProf;
   }
-
- err2:
-  intents.free();
- err1:
-  catDict.free();
   return NULL;
 }
 #ifndef NO_EMBEDDED_CONTENT
@@ -961,7 +931,7 @@ TextString *Catalog::getPageLabel(int pageNum) {
   int pageRangeNum;
   GString *suffix;
 
-  if (!pageLabels || !(label = findPageLabel(pageNum))) {
+  if (!hasPageLabels() || !(label = findPageLabel(pageNum))) {
     return NULL;
   }
 
@@ -1195,4 +1165,25 @@ GBool Catalog::convertPageLabelToInt(TextString *pageLabel, int prefixLength,
     return gTrue;
   }
   return gFalse;
+}
+
+AcroForm* Catalog::getForm() {
+  if (!form) {
+    // create the Form
+    // (if acroForm is a null object, this will still create an AcroForm
+    // if there are unattached Widget-type annots)
+    form = AcroForm::load(doc, this, &acroForm);
+  }
+
+    return form;
+}
+
+GBool Catalog::hasPageLabels() {
+  if (pageLabels) {
+    return gTrue;
+  }
+  if (pageLabelsObj.isDict()) {
+    readPageLabelTree(&pageLabelsObj);
+  }
+  return (pageLabels != nullptr);
 }
