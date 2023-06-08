@@ -1,8 +1,31 @@
+# Version 1.40
+
+ADDED
+* New fields: Extensions, Outlined, Embedded Files, Metadata Date, Metadata Date Raw
+* Options in content plugin ini file:
+    * \[xPDFSearch\] AttrCopyingAllowed
+    * \[xPDFSearch\] AttrPrintingAllowed
+    * \[xPDFSearch\] AttrAddingCommentsAllowed
+    * \[xPDFSearch\] AttrChangeable
+    * \[xPDFSearch\] AttrEncrypted
+    * \[xPDFSearch\] AttrTagged
+    * \[xPDFSearch\] AttrLinearized
+    * \[xPDFSearch\] AttrIncremental
+    * \[xPDFSearch\] AttrSignatureField
+    * \[xPDFSearch\] AttrOutlined
+    * \[xPDFSearch\] AttrEmbeddedFiles
+
+CHANGED
+* Improved support for PDF 2.0 documents
+* Updated Conformance for PDF/UA and PDF/R, multiple conformances separated by semicolon
+* Updated Croatian translation
+
 # Version 1.38
 
 ADDED
 * New fields: CreatedRaw and ModifiedRaw (date strings from PDF)
-* \[xPDFSearch\] RemoveDateRawDColon - remove D: from date string
+* Options in content plugin ini file:
+    * \[xPDFSearch\] RemoveDateRawDColon - remove D: from date string
 
 CHANGED
 * Relaxed date year in Created and Modified fields

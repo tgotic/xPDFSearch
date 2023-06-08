@@ -58,6 +58,10 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
           <td>First row of the PDF document.</td>
         </tr>
         <tr>
+          <td>Extensions</td>
+          <td>List of declared PDF extensions, semicolon separated.</td>
+        </tr>
+        <tr>
           <td>Number Of Pages</td>
           <td>The number of pages of the document.</td>
         </tr>
@@ -112,12 +116,25 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
           document is digitally signed.</td>
         </tr>
         <tr>
+          <td>Outlined</td>
+          <td>Indicates if the PDF document has Outlines (bookmarks).</td>
+        </tr>
+        <tr>
+          <td>Embedded Files</td>
+          <td>Indicates if the PDF document has embedded files in Catalog direcory.
+          It is not checked for files in pages annotations.</td>
+        </tr>
+        <tr>
           <td>Created</td>
           <td>The creation date of the document.</td>
         </tr>
         <tr>
           <td>Modified</td>
           <td>The date when the document has been modified.</td>
+        </tr>
+        <tr>
+          <td>Metadata Date</td>
+          <td>The XMP metadata date from http://ns.adobe.com/xap/1.0/ namespace.</td>
         </tr>
         <tr>
           <td>ID</td>
@@ -171,21 +188,31 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
                   <td>O</td>
                   <td>Outlines/Bookmarks</td>
                 </tr>
+                <tr>
+                  <td>F</td>
+                  <td>Embedded Files</td>
+                </tr>
               </tbody>
             </table>
           </td>
         </tr>
         <tr>
           <td>Conformance</td>
-          <td>Indicates conformance of the document to the PDF/A, PDF/E or PDF/X standards.</td>
+          <td>Indicates conformances of the document to the PDF/A, PDF/E PDF/X, PDF/UA or PDF/R standards.  
+          Multiple conformances are semicolon separated, e.g. "PDF/A-1a;PDF/R-1.0"
+          </td>
         </tr>
         <tr>
-          <td>CreatedRaw</td>
-          <td>The creation date of the document as written in PDF document.</td>
+          <td>Created Raw</td>
+          <td>The creation date of the document without conversion to FILETIME.</td>
         </tr>
         <tr>
-          <td>ModifiedRaw</td>
-          <td>The date when the document has been modified as written in PDF document.</td>
+          <td>Modified Raw</td>
+          <td>The date when the document has been modified without conversion to FILETIME.</td>
+        </tr>
+        <tr>
+          <td>Metadata Date Raw</td>
+          <td>The XMP metadata date from http://ns.adobe.com/xap/1.0/ namespace without conversion to FILETIME.</td>
         </tr>
         <tr>
           <td>Outlines</td>
@@ -198,11 +225,25 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
       </tbody>
     </table>
 
+PDF 2.0 has deprecated usage of Document Info Directory. If PDF file does not have Document Info Directory, fields are read from PDF metadata:
+<table>
+  <tbody>
+  <tr><td>Title</td><td>dc:title</td></tr>
+  <tr><td>Subject</td><td>dc:description</td></tr>
+  <tr><td>Keywords</td><td>pdf:Keywords</td></tr>
+  <tr><td>Author</td><td>dc:creator</td></tr>
+  <tr><td>Application</td><td>pdf:Producer</td></tr>
+  <tr><td>Creator</td><td>xap:CreatorTool</td></tr>
+  <tr><td>Created</td><td>xap:CreateDate</td></tr>
+  <tr><td>Modified</td><td>xap:ModifyDate</td></tr>
+  <tr><td>Metadata Date</td><td>xap:MetadataDate</td></tr>
+  </tbody>
+</table> 
 
 ## 3\. System requirements<a id='3'></a>
 
-You need Total Commander 6.50 or higher for this plugin.
-To use the Created and Modified fields Total Commander 6.53 or higher is required.
+Total Commander 6.50 or higher is required for this plugin.
+To use the Created, Modified and Metadata Date fields Total Commander 6.53 or higher is required.
 
 ## 4\. Use<a id='4'></a>
 
@@ -260,9 +301,22 @@ xPDFSearch plugin can be configured in xPDFSearch.ini file:
     *   5=fixed-pitch/height layout
     *   6=keep text in content stream order
 *   AppendExtensionLevel=0 append PDF Extension Level to PDF Version (PDF 1.7 Ext. Level 3 = 1.73)
-*   RemoveDateRawDColon=0 remove D: from CreatedRaw and ModifiedRaw fields  
+*   RemoveDateRawDColon=0 remove D: from CreatedRaw and ModifiedRaw fields
+*   AttrPrintingAllowed=P symbol for "Printing Allowed" attribute
+*   AttrCopyingAllowed=C symbol for "Copying Allowed" attribute
+*   AttrChangingAllowed=M symbol for "Changing Allowed" attribute
+*   AttrAddingCommentsAllowed=N symbol for "Adding Comments Allowed" attribute
+*   AttrIncremental=I symbol for "Incremental" attribute
+*   AttrTagged=T symbol for "Tagged" attribute
+*   AttrLinearized=L symbol for "Linearized" attribute
+*   AttrEncrypted=E symbol for "Encrypted" attribute
+*   AttrSignatureField=S symbol for "Signature Field" attribute
+*   AttrOutlined=O symbol for "Outlined" attribute
+*   AttrEmbeddedFiles=F symbol for "Embedded Files" attribute    
 
-If there is no xPDFSearch.ini file located in plugin directory, plugin uses options from TC content ini file.
+To omit specific PDF Attribute field, clear attribute symbol, e.g. AttrEmbeddedFiles=
+
+If there is no xPDFSearch.ini file located in plugin directory, plugin uses options from TC content ini file.  
 Default location of TC content ini file is %COMMANDER_PATH%\contplug.ini.  
 Location of the \[xPDFSearch\] section in TC content ini file can be changed in wincmd.ini file, e.g.:  
 \[ReplaceIniLocation\]
