@@ -167,7 +167,7 @@ public:
   char **getEncoding();
 
   // Get the glyph names.
-  int getNumGlyphs()  const { return nGlyphs; }
+  int getNumGlyphs() const { return nGlyphs; }
   GString *getGlyphName(int gid);
 
   // Returns a hash mapping glyph names to GIDs.  This is only useful

@@ -39,7 +39,7 @@ GBool Type1COp::isZero()  const {
   }
 }
 
-GBool Type1COp::isNegative()  const {
+GBool Type1COp::isNegative() const {
   switch (kind) {
   case type1COpInteger:
     return intgr < 0;
@@ -53,7 +53,7 @@ GBool Type1COp::isNegative()  const {
   }
 }
 
-int Type1COp::toInt()  const {
+int Type1COp::toInt() const {
   switch (kind) {
   case type1COpInteger:
     return intgr;
@@ -73,7 +73,7 @@ int Type1COp::toInt()  const {
   }
 }
 
-double Type1COp::toFloat()  const {
+double Type1COp::toFloat() const {
   switch (kind) {
   case type1COpInteger:
     return (double)intgr;

@@ -36,7 +36,7 @@ public:
   //----- general
 
   // Get the number of elements.
-  int getLength()  const { return length; }
+  int getLength() const { return length; }
 
   // Returns a (shallow) copy of this list.
   GList *copy();

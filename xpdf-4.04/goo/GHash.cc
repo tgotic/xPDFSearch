@@ -361,7 +361,7 @@ GHashBucket *GHash::find(const char *key, int *h) {
   return NULL;
 }
 
-int GHash::hash(GString *key)  const {
+int GHash::hash(GString *key) const {
   const char *p;
   unsigned int h;
   int i;
@@ -373,7 +373,7 @@ int GHash::hash(GString *key)  const {
   return (int)(h % size);
 }
 
-int GHash::hash(const char *key)  const {
+int GHash::hash(const char *key) const {
   const char *p;
   unsigned int h;
 
