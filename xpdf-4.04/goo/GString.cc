@@ -110,35 +110,28 @@ static inline int size(int len) {
 }
 
 inline void GString::resize(int length1) {
-  char *s1;
-
   if (length1 < 0) {
     gMemError("GString::resize() with negative length");
   }
+  const int l1 = size(length1);
   if (!s) {
-    s = new char[size(length1)];
-  } else if (size(length1) != size(length)) {
-    s1 = new char[size(length1)];
-    if (length1 < length) {
-      memcpy(s1, s, length1);
-      s1[length1] = '\0';
-    } else {
-      memcpy(s1, s, length + 1);
+    s = new char[l1];
+  } else if (l1 != size(length)) {
+    char *s1 = new char[l1];
+    if (s1) {
+      if (length1 < length) {
+	memcpy(s1, s, length1);
+	s1[length1] = '\0'; 
+      } else {
+	memcpy(s1, s, length + 1);
+      }
     }
     delete[] s;
     s = s1;
   }
 }
 
-GString::GString() 
-  : length(0), s(NULL)
-{
-  resize(0);
-  s[0] = '\0';
-}
-
-GString::GString(const char *sA) 
-  : length(0), s(NULL)
+GString::GString(const char *sA)
 {
   if (sA) {
     int n = (int)strlen(sA);
@@ -150,34 +143,40 @@ GString::GString(const char *sA)
   }
 }
 
-GString::GString(const char *sA, int lengthA) 
-  : length(0), s(NULL)
+GString::GString(const char *sA, int lengthA)
 {
-  resize(lengthA);
-  if (s) {
-    length = lengthA;
-    if (sA) {
-      memcpy(s, sA, length * sizeof(char));
+  if (sA && lengthA) {
+    resize(lengthA);
+    if (s) {
+      length = lengthA;
+      memcpy(s, sA, length);
       s[length] = '\0';
     }
   }
 }
 
-GString::GString(GString *str, int idx, int lengthA) 
- : length(0), s(NULL)
+GString::GString(GString *str, int idx, int lengthA)
 {
-  resize(length = lengthA);
-  if (s && str) {
-    memcpy(s, str->getCString() + idx, length);
-    s[length] = '\0';
+  if (str && str->getCString() && (idx >= 0) && (idx < str->getLength())) {
+    const int right{ str->getLength() - idx };
+    if (right > lengthA) {
+      lengthA = right;
+    }
+    if (lengthA) {
+      resize(lengthA);
+      if (s) {
+	length = lengthA;
+	memcpy(s, str->getCString() + idx, length);
+	s[length] = '\0';
+      }
+    }
   }
 }
 
-GString::GString(GString *str) 
-  : length(0), s(NULL) 
+GString::GString(GString *str)
 {
-  if (str) {
-    int len = str->getLength();
+  if (str && str->getCString()) {
+    const int len = str->getLength();
     resize(len);
     if (s) {
       length = len;
@@ -187,20 +186,30 @@ GString::GString(GString *str)
 }
 
 GString::GString(GString *str1, GString *str2)
-  : length(0), s(NULL)
 {
-  if (str1 && str2) {
-    int n1 = str1->getLength();
-    int n2 = str2->getLength();
-
-    if (n1 > INT_MAX - n2) {
-      gMemError("Integer overflow in GString::GString()");
-    }
-    resize(n1 + n2);
+  int n1{ 0 };
+  int n2{ 0 };
+  if (str1 && str1->getCString()) {
+    n1 = str1->getLength();
+  }
+  if (str2 && str2->getCString()) {
+    n2 = str2->getLength();
+  }
+  if (n1 > INT_MAX - n2) {
+    gMemError("Integer overflow in GString::GString()");
+  }
+  auto n{ n1 + n2 };
+  if (n) {
+    resize(n);
     if (s) {
-      length = n1 + n2;
-      memcpy(s, str1->getCString(), n1);
-      memcpy(s + n1, str2->getCString(), n2 + 1);
+      length = n;
+      if (n1) {
+        memcpy(s, str1->getCString(), n1);
+      }
+      if (n2) {
+        memcpy(s + n1, str2->getCString(), n2);
+      }
+      s[length] = '\0';
     }
   }
 }
@@ -215,13 +224,15 @@ GString *GString::fromInt(int x) {
 }
 
 GString *GString::format(const char *fmt, ...) {
-  va_list argList;
   GString *s;
 
   s = new GString();
-  va_start(argList, fmt);
-  s->appendfv(fmt, argList);
-  va_end(argList);
+  if (s) {
+    va_list argList;
+    va_start(argList, fmt);
+    s->appendfv(fmt, argList);
+    va_end(argList);
+  }
   return s;
 }
 
@@ -229,7 +240,8 @@ GString *GString::formatv(const char *fmt, va_list argList) {
   GString *s;
 
   s = new GString();
-  s->appendfv(fmt, argList);
+  if (s)
+    s->appendfv(fmt, argList);
   return s;
 }
 
@@ -239,44 +251,26 @@ GString::~GString() {
 
 GString *GString::clear() {
   length = 0;
-  s[0] = '\0';
-  resize(0);
+  delete[] s;
+  s = nullptr;
   return this;
 }
 
 GString *GString::append(char c) {
-  if (length > INT_MAX - 1) {
-    gMemError("Integer overflow in GString::append()");
-  }
-  resize(length + 1);
-  if (s) {
-    s[length++] = c;
-    s[length] = '\0';
-  }
-  return this;
+  return append(&c, 1);
 }
 
 GString *GString::append(GString *str) {
-  int n = str->getLength();
-
-  if (length > INT_MAX - n) {
-    gMemError("Integer overflow in GString::append()");
+  if (str) {
+    append(str->getCString(), str->getLength());
   }
-  resize(length + n);
-  memcpy(s + length, str->getCString(), n + 1);
-  length += n;
   return this;
 }
 
 GString *GString::append(const char *str) {
-  int n = (int)strlen(str);
-
-  if (length > INT_MAX - n) {
-    gMemError("Integer overflow in GString::append()");
+  if (str) {
+    append(str, (int)strlen(str));
   }
-  resize(length + n);
-  memcpy(s + length, str, n + 1);
-  length += n;
   return this;
 }
 
@@ -284,19 +278,24 @@ GString *GString::append(const char *str, int lengthA) {
   if (lengthA < 0 || length > INT_MAX - lengthA) {
     gMemError("Integer overflow in GString::append()");
   }
-  resize(length + lengthA);
-  memcpy(s + length, str, lengthA);
-  length += lengthA;
-  s[length] = '\0';
+  if (str && lengthA) {
+    resize(length + lengthA);
+    if (s) {
+      memcpy(s + length, str, lengthA);
+      length += lengthA;
+      s[length] = '\0';
+    }
+  }
   return this;
 }
 
 GString *GString::appendf(const char *fmt, ...) {
-  va_list argList;
-
-  va_start(argList, fmt);
-  appendfv(fmt, argList);
-  va_end(argList);
+  if (fmt) {
+    va_list argList;
+    va_start(argList, fmt);
+    appendfv(fmt, argList);
+    va_end(argList);
+  }
   return this;
 }
 
@@ -577,7 +576,7 @@ GString *GString::appendfv(const char *fmt, va_list argList) {
 	    append(' ');
 	  }
 	}
-    if (str)
+	if (str)
 	  append(str, len);
 	if (reverseAlign && len < width) {
 	  for (i = len; i < width; ++i) {
@@ -613,7 +612,7 @@ void GString::formatInt(long x, char *buf, int bufSize,
 			GBool zeroFill, int width, int base,
 			const char **p, int *len) {
 #endif
-  static char vals[17] = "0123456789abcdef";
+  static const char vals[17] = "0123456789abcdef";
   GBool neg;
   int start, i, j;
 
@@ -652,7 +651,7 @@ void GString::formatUInt(Gulong x, char *buf, int bufSize,
 			 GBool zeroFill, int width, int base,
 			 const char **p, int *len) {
 #endif
-  static char vals[17] = "0123456789abcdef";
+  static const char vals[17] = "0123456789abcdef";
   int i, j;
 
   i = bufSize;
@@ -678,10 +677,8 @@ void GString::formatDouble(double x, char *buf, int bufSize, int prec,
   GBool neg, started;
   double x2;
   int d, i, j;
-
-  if ((neg = x < 0)) {
-    x = -x;
-  }
+  neg = x < 0;
+  x = fabs(x);
   x = floor(x * pow(10.0, prec) + 0.5);
   i = bufSize;
   started = !trim;
@@ -713,73 +710,52 @@ void GString::formatDouble(double x, char *buf, int bufSize, int prec,
 }
 
 GString *GString::insert(int i, char c) {
-  int j;
-
-  if (length > INT_MAX - 1) {
-    gMemError("Integer overflow in GString::insert()");
-  }
-  resize(length + 1);
-  for (j = length + 1; j > i; --j)
-    s[j] = s[j-1];
-  s[i] = c;
-  ++length;
-  return this;
+  return insert(i, &c, 1);
 }
 
 GString *GString::insert(int i, GString *str) {
-  int n = str->getLength();
-  int j;
-
-  if (length > INT_MAX - n) {
-    gMemError("Integer overflow in GString::insert()");
+  if (str) {
+    insert(i, str->getCString(), str->getLength());
   }
-  resize(length + n);
-  for (j = length; j >= i; --j)
-    s[j+n] = s[j];
-  memcpy(s+i, str->getCString(), n);
-  length += n;
   return this;
 }
 
 GString *GString::insert(int i, const char *str) {
-  int n = (int)strlen(str);
-  int j;
-
-  if (length > INT_MAX - n) {
-    gMemError("Integer overflow in GString::insert()");
+  if (str) {
+    insert(i, str, (int)strlen(str));
   }
-  resize(length + n);
-  for (j = length; j >= i; --j)
-    s[j+n] = s[j];
-  memcpy(s+i, str, n);
-  length += n;
   return this;
 }
 
 GString *GString::insert(int i, const char *str, int lengthA) {
-  int j;
-
   if (lengthA < 0 || length > INT_MAX - lengthA) {
     gMemError("Integer overflow in GString::insert()");
   }
-  resize(length + lengthA);
-  for (j = length; j >= i; --j)
-    s[j+lengthA] = s[j];
-  memcpy(s+i, str, lengthA);
-  length += lengthA;
+  if ((i < 0) || (i > length)) {
+    gMemError("GString::insert() index > length");
+  }
+  if (str) {
+    resize(length + lengthA);
+    if (s) {
+      memmove(s + i + lengthA, s + i, length - i + 1);
+      memcpy(s + i, str, lengthA);
+      length += lengthA;
+    }
+  }
   return this;
 }
 
 GString *GString::del(int i, int n) {
-  int j;
-
-  if (i >= 0 && n > 0 && i <= INT_MAX - n) {
+  if (getCString() && (i >= 0 && n > 0 && (i <= INT_MAX - n))) {
+    if (i > length)
+      i = length;
     if (i + n > length) {
       n = length - i;
     }
-    for (j = i; j <= length - n; ++j) {
-      s[j] = s[j + n];
-    }
+    // for (j = i; j <= length - n; ++j) {
+    //   s[j] = s[j + n];
+    // }
+    memmove(s + i, s + i + n, length - n + 1);
     resize(length -= n);
   }
   return this;
@@ -789,9 +765,7 @@ GString *GString::upperCase() {
   int i;
 
   for (i = 0; i < length; ++i) {
-    if (islower(s[i] & 0xff)) {
-      s[i] = (char)toupper(s[i] & 0xff);
-    }
+    s[i] = (char)toupper(s[i] & 0xff);
   }
   return this;
 }
@@ -800,87 +774,106 @@ GString *GString::lowerCase() {
   int i;
 
   for (i = 0; i < length; ++i) {
-    if (isupper(s[i] & 0xff)) {
-      s[i] = (char)tolower(s[i] & 0xff);
-    }
+    s[i] = (char)tolower(s[i] & 0xff);
   }
   return this;
 }
 
-int GString::cmp(GString *str)  const {
-  int n1, n2, i, x;
-  char *p1, *p2;
+int GString::cmp(GString *str) const {
+  const auto n1{ getLength() }, n2{ str ? str->getLength() : 0 };
+  auto p1{ getCString() };
+  auto p2{ str ? str->getCString() : nullptr };
 
-  n1 = length;
-  n2 = str->length;
-  for (i = 0, p1 = s, p2 = str->s; i < n1 && i < n2; ++i, ++p1, ++p2) {
-    x = (*p1 & 0xff) - (*p2 & 0xff);
-    if (x != 0) {
-      return x;
+  if (p1 && p2) {
+    for (int i = 0; i < n1 && i < n2; ++i, ++p1, ++p2) {
+      auto x = (*p1 & 0xff) - (*p2 & 0xff);
+      if (x != 0) {
+        return x;
+      }
     }
   }
   return n1 - n2;
 }
 
-int GString::cmpN(GString *str, int n)  const {
-  int n1, n2, i, x;
-  char *p1, *p2;
+int GString::cmpN(GString *str, int n) const {
+  const auto n1{ getLength() }, n2{ str ? str->getLength() : 0 };
+  auto p1{ getCString() };
+  auto p2{ str ? str->getCString() : nullptr };
 
-  n1 = length;
-  n2 = str->length;
-  for (i = 0, p1 = s, p2 = str->s;
-       i < n1 && i < n2 && i < n;
-       ++i, ++p1, ++p2) {
-    x = (*p1 & 0xff) - (*p2 & 0xff);
-    if (x != 0) {
-      return x;
+  if (p1 && p2) {
+    int i{ 0 };
+    for (; i < n1 && i < n2 && i < n; ++i, ++p1, ++p2) {
+      auto x = (*p1 & 0xff) - (*p2 & 0xff);
+      if (x != 0) {
+        return x;
+      }
     }
-  }
-  if (i == n) {
-    return 0;
+    if (i == n) {
+      return 0;
+    }
   }
   return n1 - n2;
 }
 
-int GString::cmp(const char *sA)  const {
-  int n1, i, x;
-  const char *p1, *p2;
-
-  n1 = length;
-  for (i = 0, p1 = s, p2 = sA; i < n1 && *p2; ++i, ++p1, ++p2) {
-    x = (*p1 & 0xff) - (*p2 & 0xff);
-    if (x != 0) {
-      return x;
+int GString::cmp(const char *sA) const {
+  auto n1{ getLength() };
+  auto p1{ getCString() };
+  auto p2{ sA };
+  if (p1 && p2) {
+    int i{ 0 };
+    for (; i < n1 && *p2; ++i, ++p1, ++p2) {
+      auto x = (*p1 & 0xff) - (*p2 & 0xff);
+      if (x != 0) {
+        return x;
+      }
     }
-  }
-  if (i < n1) {
-    return 1;
-  }
-  if (*p2) {
-    return -1;
-  }
-  return 0;
-}
-
-int GString::cmpN(const char *sA, int n)  const {
-  int n1, i, x;
-  const char *p1, *p2;
-
-  n1 = length;
-  for (i = 0, p1 = s, p2 = sA; i < n1 && *p2 && i < n; ++i, ++p1, ++p2) {
-    x = (*p1 & 0xff) - (*p2 & 0xff);
-    if (x != 0) {
-      return x;
+    if (i < n1) {
+      return 1;
     }
-  }
-  if (i == n) {
+    if (*p2) {
+      return -1;
+    }
     return 0;
   }
-  if (i < n1) {
-    return 1;
+  return 1;
+}
+
+int GString::cmpN(const char *sA, int n) const {
+  auto n1{ getLength() };
+  auto p1{ getCString() };
+  auto p2{ sA };
+
+  if (p1 && p2) {
+    int i{ 0 };
+    for (; i < n1 && i < n && *p2 ; ++i, ++p1, ++p2) {
+      auto x = (*p1 & 0xff) - (*p2 & 0xff);
+        if (x != 0) {
+          return x;
+       }
+    }
+    if (i == n) {
+      return 0;
+    }
+    if (i < n1) {
+      return 1;
+    }
+    if (*p2) {
+      return -1;
+    }
+    return 0;
   }
-  if (*p2) {
-    return -1;
+  return 1;
+}
+
+char GString::getChar(int i) const {
+  if (s && (i >= 0) && (i < length)) {
+    return s[i]; 
   }
-  return 0;
+  return 0; 
+}
+
+void GString::setChar(int i, char c) {
+  if (s && (i >= 0) && (i < length)) {
+    s[i] = c; 
+  } 
 }

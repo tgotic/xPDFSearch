@@ -25,7 +25,7 @@ class GString {
 public:
 
   // Create an empty string.
-  GString();
+  GString() {};
 
   // Create a string from a C string.
   GString(const char *sA);
@@ -80,13 +80,13 @@ public:
   int getLength() const { return length; }
 
   // Get C string.
-  char *getCString() { return s; }
+  char *getCString() const { return s; }
 
   // Get <i>th character.
-  char getChar(int i) const { return s[i]; }
+  char getChar(int i) const;
 
   // Change <i>th character.
-  void setChar(int i, char c) { s[i] = c; }
+  void setChar(int i, char c);
 
   // Clear string to zero length.
   GString *clear();
@@ -122,8 +122,8 @@ public:
 
 private:
 
-  int length;
-  char *s;
+	int length{0};
+	char* s{ nullptr };
 
   void resize(int length1);
 #ifdef LLONG_MAX
