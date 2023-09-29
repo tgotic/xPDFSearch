@@ -19,6 +19,9 @@ CHANGED
 * Improved support for PDF 2.0 documents
 * Updated Conformance for PDF/UA and PDF/R, multiple conformances separated by semicolon
 * Updated Croatian translation
+* Renamed fields:
+    * CreatedRaw -> Created Raw
+    * ModifiedRaw -> Modified Raw
 
 # Version 1.38
 
