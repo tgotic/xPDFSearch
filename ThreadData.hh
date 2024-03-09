@@ -118,7 +118,7 @@ public:
     int initRequest(const wchar_t* fileName, int field, int unit, int flags, DWORD timeout);
 
     template<typename T> void setValue(T value, int type);
-#if defined(_MSC_VER) 
+#if defined(_MSC_VER) && !defined(__llvm__)
     // GCC BUG, it doesn't support Explicit specialization in non-namespace scope
     template<> void setValue(GString* value, int type);
     template<> void setValue(wchar_t* value, int type);
@@ -151,6 +151,8 @@ private:
     inline auto hasWorker() const { return (handles[WORKER_HANDLE] != nullptr); }
     inline void notifyProducer() { SetEvent(handles[PRODUCER_HANDLE]); }
     inline void resetConsumer() { ResetEvent(handles[CONSUMER_HANDLE]); }
+    void setGStringValue(GString* value, int type);
+    void setWcharValue(wchar_t* value, int type);
 
     static ptrdiff_t UnicodeToUTF16(const Unicode* src, ptrdiff_t cchSrc, wchar_t* dst, ptrdiff_t *cbDst);
 };
@@ -167,35 +169,17 @@ template<typename T>
 void ThreadData::setValue(T value, int type)
 {
 #if defined(__GNUC__) || defined(__llvm__)
-    ptrdiff_t len{ REQUEST_BUFFER_SIZE };
     /*
     https://stackoverflow.com/questions/49707184/explicit-specialization-in-non-namespace-scope-does-not-compile-in-gcc
     */
     if constexpr (std::is_same_v<T, GString*>)
     {
-        if (value && value->getLength())
-        {
-            TextString ts(value);
-            if (ts.getLength())
-            {
-                std::lock_guard lock(mutex);
-                UnicodeToUTF16(ts.getUnicode(), ts.getLength(), static_cast<wchar_t*>(getRequestBuffer()), &len);
-                if (len != REQUEST_BUFFER_SIZE)
-                {
-                    setRequestResult(type);
-                }
-            }
-        }
+        setGStringValue(value, type);
         return;
     }
     if constexpr (std::is_same_v<T, wchar_t*>)
     {
-        std::lock_guard lock(mutex);
-        auto dst{ static_cast<wchar_t*>(getRequestBuffer()) };
-        if (SUCCEEDED(StringCbCopyW(dst, len, value)))
-        {
-            setRequestResult(type);
-        }
+        setWcharValue(value, type);
         return;
     }
 #endif
@@ -204,7 +188,7 @@ void ThreadData::setValue(T value, int type)
     setRequestResult(type);
 }
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__llvm__)
 /**
 * Template specialization of #setValue for GString.
 * Convert GString to TextString to get Unicode and then convert Unicode to UTF-16.
@@ -215,21 +199,7 @@ void ThreadData::setValue(T value, int type)
 template<>
 void ThreadData::setValue(GString* value, int type)
 {
-    if (value && value->getLength())
-    {
-        TextString ts(value);
-        if (ts.getLength())
-        {
-            ptrdiff_t len{ REQUEST_BUFFER_SIZE };
-
-            std::lock_guard lock(mutex);
-            UnicodeToUTF16(ts.getUnicode(), ts.getLength(), static_cast<wchar_t*>(getRequestBuffer()), &len);
-            if (len != REQUEST_BUFFER_SIZE)
-            {
-                setRequestResult(type);
-            }
-        }
-    }
+    setGStringValue(value, type);
 }
 
 /**
@@ -241,12 +211,6 @@ void ThreadData::setValue(GString* value, int type)
 template<>
 void ThreadData::setValue(wchar_t* value, int type)
 {
-    auto len{ REQUEST_BUFFER_SIZE };
-    std::lock_guard lock(mutex);
-    auto dst{ static_cast<wchar_t*>(getRequestBuffer()) };
-    if (SUCCEEDED(StringCbCopyW(dst, len, value)))
-    {
-        setRequestResult(type);
-    }
+    setWcharValue(value, type);
 }
 #endif // _MSC_VER

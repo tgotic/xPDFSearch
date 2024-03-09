@@ -131,7 +131,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>.\xpdf-4.04\;.\xpdf-4.04\fofi\;.\xpdf-4.04\xpdf\;.\xpdf-4.04\goo\;.\xpdf-4.04\splash\;.\common\;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\xpdf-4.05\;.\xpdf-4.05\fofi\;.\xpdf-4.05\xpdf\;.\xpdf-4.05\goo\;.\xpdf-4.05\splash\;.\common\;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;NOSERVICE;NOMCX;NOIME;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <PrecompiledHeader />
@@ -149,7 +149,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='LLVM|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>.\xpdf-4.04\;.\xpdf-4.04\fofi\;.\xpdf-4.04\xpdf\;.\xpdf-4.04\splash\;.\xpdf-4.04\goo\;.\common\;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\xpdf-4.05\;.\xpdf-4.05\fofi\;.\xpdf-4.05\xpdf\;.\xpdf-4.05\splash\;.\xpdf-4.05\goo\;.\common\;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;NOSERVICE;NOMCX;NOIME;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <PrecompiledHeader>
@@ -169,7 +169,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>.\xpdf-4.04\;.\xpdf-4.04\fofi\;.\xpdf-4.04\xpdf\;.\xpdf-4.04\goo\;.\xpdf-4.04\splash\;.\common\;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\xpdf-4.05\;.\xpdf-4.05\fofi\;.\xpdf-4.05\xpdf\;.\xpdf-4.05\goo\;.\xpdf-4.05\splash\;.\common\;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;NOSERVICE;NOMCX;NOIME;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>
@@ -202,7 +202,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseXP|Win32'">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>.\xpdf-4.04\;.\xpdf-4.04\fofi\;.\xpdf-4.04\xpdf\;.\xpdf-4.04\goo\;.\xpdf-4.04\splash\;.\common\;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\xpdf-4.05\;.\xpdf-4.05\fofi\;.\xpdf-4.05\xpdf\;.\xpdf-4.05\goo\;.\xpdf-4.05\splash\;.\common\;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_WIN32_WINNT=_WIN32_WINNT_WINXP;WIN32_LEAN_AND_MEAN;NOSERVICE;NOMCX;NOIME;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeader>
@@ -227,7 +227,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <Version>1.400</Version>
+      <Version>1.410</Version>
       <SetChecksum>true</SetChecksum>
       <ProgramDatabaseFile>
       </ProgramDatabaseFile>
@@ -236,7 +236,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>.\xpdf-4.04\;.\xpdf-4.04\fofi\;.\xpdf-4.04\xpdf\;.\xpdf-4.04\goo\;.\xpdf-4.04\splash\;.\common\;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\xpdf-4.05\;.\xpdf-4.05\fofi\;.\xpdf-4.05\xpdf\;.\xpdf-4.05\goo\;.\xpdf-4.05\splash\;.\common\;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError />
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -259,7 +259,7 @@
       <MinimumRequiredVersion>6.01</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.400</Version>
+      <Version>1.410</Version>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_WIN64</PreprocessorDefinitions>
@@ -267,7 +267,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='LLVM|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>.\xpdf-4.04\;.\xpdf-4.04\fofi\;.\xpdf-4.04\xpdf\;.\xpdf-4.04\goo\;.\xpdf-4.04\splash\;.\common\;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\xpdf-4.05\;.\xpdf-4.05\fofi\;.\xpdf-4.05\xpdf\;.\xpdf-4.05\goo\;.\xpdf-4.05\splash\;.\common\;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>
       </TreatWarningAsError>
@@ -294,7 +294,7 @@
       <MinimumRequiredVersion>6.01</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.400</Version>
+      <Version>1.410</Version>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_WIN64</PreprocessorDefinitions>
@@ -302,7 +302,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>.\xpdf-4.04\;.\xpdf-4.04\fofi\;.\xpdf-4.04\xpdf\;.\xpdf-4.04\goo\;.\xpdf-4.04\splash\;.\common\;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\xpdf-4.05\;.\xpdf-4.05\fofi\;.\xpdf-4.05\xpdf\;.\xpdf-4.05\goo\;.\xpdf-4.05\splash\;.\common\;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>
       </TreatWarningAsError>
@@ -329,7 +329,7 @@
       <MinimumRequiredVersion>6.01</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.400</Version>
+      <Version>1.410</Version>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <SetChecksum>true</SetChecksum>
@@ -341,7 +341,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseXP|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>.\xpdf-4.04\;.\xpdf-4.04\fofi\;.\xpdf-4.04\xpdf\;.\xpdf-4.04\goo\;.\xpdf-4.04\splash\;.\common\;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\xpdf-4.05\;.\xpdf-4.05\fofi\;.\xpdf-4.05\xpdf\;.\xpdf-4.05\goo\;.\xpdf-4.05\splash\;.\common\;.\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>
       </TreatWarningAsError>
@@ -368,7 +368,7 @@
       <MinimumRequiredVersion>5.02</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.400</Version>
+      <Version>1.410</Version>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <SetChecksum>true</SetChecksum>
@@ -380,58 +380,58 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="xpdf-4.04\fofi\FoFiBase.cc" />
-    <ClCompile Include="xpdf-4.04\fofi\FoFiEncodings.cc" />
-    <ClCompile Include="xpdf-4.04\fofi\FoFiIdentifier.cc" />
-    <ClCompile Include="xpdf-4.04\fofi\FoFiTrueType.cc" />
-    <ClCompile Include="xpdf-4.04\fofi\FoFiType1.cc" />
-    <ClCompile Include="xpdf-4.04\fofi\FoFiType1C.cc" />
-    <ClCompile Include="xpdf-4.04\goo\gfile.cc" />
-    <ClCompile Include="xpdf-4.04\goo\GHash.cc" />
-    <ClCompile Include="xpdf-4.04\goo\GList.cc" />
-    <ClCompile Include="xpdf-4.04\goo\gmem.cc" />
-    <ClCompile Include="xpdf-4.04\goo\GString.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\AcroForm.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\Annot.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\Array.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\BuiltinFont.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\BuiltinFontTables.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\Catalog.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\CharCodeToUnicode.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\CMap.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\Decrypt.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\Dict.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\Error.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\FontEncodingTables.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\Function.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\Gfx.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\GfxFont.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\GfxState.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\GlobalParams.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\JArithmeticDecoder.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\Lexer.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\Link.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\NameToCharCode.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\Object.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\OptionalContent.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\Outline.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\OutputDev.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\Page.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\Parser.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\PDFDoc.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\PDFDocEncoding.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\PSTokenizer.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\SecurityHandler.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\Stream.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\TextOutputDev.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\TextString.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\UnicodeMap.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\UnicodeRemapping.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\UnicodeTypeTable.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\UTF8.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\XFAScanner.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\XRef.cc" />
-    <ClCompile Include="xpdf-4.04\xpdf\Zoox.cc" />
+    <ClCompile Include="xpdf-4.05\fofi\FoFiBase.cc" />
+    <ClCompile Include="xpdf-4.05\fofi\FoFiEncodings.cc" />
+    <ClCompile Include="xpdf-4.05\fofi\FoFiIdentifier.cc" />
+    <ClCompile Include="xpdf-4.05\fofi\FoFiTrueType.cc" />
+    <ClCompile Include="xpdf-4.05\fofi\FoFiType1.cc" />
+    <ClCompile Include="xpdf-4.05\fofi\FoFiType1C.cc" />
+    <ClCompile Include="xpdf-4.05\goo\gfile.cc" />
+    <ClCompile Include="xpdf-4.05\goo\GHash.cc" />
+    <ClCompile Include="xpdf-4.05\goo\GList.cc" />
+    <ClCompile Include="xpdf-4.05\goo\gmem.cc" />
+    <ClCompile Include="xpdf-4.05\goo\GString.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\AcroForm.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\Annot.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\Array.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\BuiltinFont.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\BuiltinFontTables.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\Catalog.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\CharCodeToUnicode.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\CMap.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\Decrypt.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\Dict.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\Error.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\FontEncodingTables.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\Function.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\Gfx.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\GfxFont.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\GfxState.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\GlobalParams.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\JArithmeticDecoder.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\Lexer.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\Link.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\NameToCharCode.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\Object.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\OptionalContent.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\Outline.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\OutputDev.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\Page.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\Parser.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\PDFDoc.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\PDFDocEncoding.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\PSTokenizer.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\SecurityHandler.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\Stream.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\TextOutputDev.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\TextString.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\UnicodeMap.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\UnicodeRemapping.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\UnicodeTypeTable.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\UTF8.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\XFAScanner.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\XRef.cc" />
+    <ClCompile Include="xpdf-4.05\xpdf\Zoox.cc" />
     <ClCompile Include="PDFDocEx.cc" />
     <ClCompile Include="PDFExtractor.cc" />
     <ClCompile Include="TcOutputDev.cc" />

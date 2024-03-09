@@ -230,7 +230,7 @@ PDF 2.0 has deprecated usage of Document Info Directory. If PDF file does not ha
   <tr><td>Subject</td><td>dc:description</td></tr>
   <tr><td>Keywords</td><td>pdf:Keywords</td></tr>
   <tr><td>Author</td><td>dc:creator</td></tr>
-  <tr><td>Application</td><td>pdf:Producer</td></tr>
+  <tr><td>Producer</td><td>pdf:Producer</td></tr>
   <tr><td>Creator</td><td>xap:CreatorTool</td></tr>
   <tr><td>Created</td><td>xap:CreateDate</td></tr>
   <tr><td>Modified</td><td>xap:ModifyDate</td></tr>

@@ -270,7 +270,7 @@ int ThreadData::compareWaitForConsumers(ThreadData* searcher, DWORD timeout)
             result = ft_compare_abort;
             break;
         }
-        TRACE(L"%hs!consumers!dw=%lx result=%d\n", __FUNCTION__, dwRet, result);
+        TRACE(L"%hs!consumers!dw=0x%lx result=%d\n", __FUNCTION__, dwRet, result);
     }
     return result;
 }
@@ -554,4 +554,36 @@ int ThreadData::output(const char *text, ptrdiff_t len, bool textIsUnicode)
     } while (len);
 
     return 0;
+}
+
+void ThreadData::setGStringValue(GString* value, int type)
+{
+    if (value && value->getLength())
+    {
+        TextString ts(value);
+        if (ts.getLength())
+        {
+            ptrdiff_t len{ REQUEST_BUFFER_SIZE };
+
+            std::lock_guard lock(mutex);
+            UnicodeToUTF16(ts.getUnicode(), ts.getLength(), static_cast<wchar_t*>(getRequestBuffer()), &len);
+            if (len != REQUEST_BUFFER_SIZE)
+            {
+                setRequestResult(type);
+            }
+        }
+    }
+}
+void ThreadData::setWcharValue(wchar_t* value, int type)
+{
+    if (value)
+    {
+        auto len{ REQUEST_BUFFER_SIZE };
+        std::lock_guard lock(mutex);
+        auto dst{ static_cast<wchar_t*>(getRequestBuffer()) };
+        if (SUCCEEDED(StringCbCopyW(dst, len, value)))
+        {
+            setRequestResult(type);
+        }
+    }
 }

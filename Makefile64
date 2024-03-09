@@ -1,5 +1,5 @@
 #make
-XPDF_BASE = ./xpdf-4.04
+XPDF_BASE = ./xpdf-4.05
 DEFS = -DWIN32 -D_WIN32  -D_WIN64 -DCONSOLE -DNDEBUG -D_WIN32_WINNT=0x0502 -DWINVER=0x0502 -DNTDDI_VERSION=0x05020000 -D_WIN32_IE=0x0800 -DWIN32_LEAN_AND_MEAN -DMINGW_HAS_SECURE_API -DSTRSAFE_NO_DEPRECATE -D__MINGW_USE_VC2005_COMPAT 
 INCLUDE=-I$(XPDF_BASE) -I$(XPDF_BASE)/fofi -I$(XPDF_BASE)/xpdf -I$(XPDF_BASE)/goo -I$(XPDF_BASE)/splash -I./common -I.
 WARNINGS = -Wall -Wextra -Wno-format -Wno-missing-braces -Wno-unknown-pragmas -Wno-missing-field-initializers -Wno-unused-parameter -Wno-multichar

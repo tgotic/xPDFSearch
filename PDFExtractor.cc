@@ -1089,7 +1089,7 @@ void PDFExtractor::abort()
 }
 
 /**
-* Notify text extracting threads that eh state of requests is changed.
+* Notify text extracting threads that the state of requests is changed.
 * Threads should return back to idle point in #waitForProducer and close PdfDocs.
 */
 void PDFExtractor::stop()

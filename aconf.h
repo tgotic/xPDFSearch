@@ -1,13 +1,19 @@
 /**
  * @file aconf.h
  *
- * @copyright 2002-2015 Glyph & Cog, LLC
+ * @copyright 2002-2022 Glyph & Cog, LLC
  */
 
 #ifndef ACONF_H
 #define ACONF_H
 
-#include <aconf2.h>
+/*
+ * Speed up Windows compilation.  This will only work for the command
+ * line tools.
+ */
+#if defined(_WIN32) && !defined(WIN32_LEAN_AND_MEAN)
+#  define WIN32_LEAN_AND_MEAN
+#endif
 
 /*
  * Use A4 paper size instead of Letter for PostScript output.
@@ -24,7 +30,7 @@
  */
 #undef OPI_SUPPORT
 
-/**
+/*
  * Enable multithreading support.
  */
 #define MULTITHREADED   1
@@ -60,6 +66,18 @@
 #undef SYSTEM_XPDFRC
 
 /*
+ * Directory to use for the ${DATADIR} variable in the xpdfrc config
+ * file.
+ */
+#undef XPDFRC_DATADIR
+
+/*
+ * Directory where the Base14 fonts are installed -- URW Type 1 fonts
+ * on Linux, system TrueType fonts on Windows
+ */
+#undef BASE14_FONT_DIR
+
+/*
  * Various include files and functions.
  */
 #undef HAVE_MKSTEMP
@@ -87,6 +105,11 @@
  * This is defined if using libpaper.
  */
 #undef HAVE_PAPER_H
+
+/*
+ * This is defined if using libfontconfig.
+ */
+#undef HAVE_FONTCONFIG
 
 /*
  * Defined if the Splash library is avaiable.

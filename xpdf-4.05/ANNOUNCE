@@ -1,0 +1,50 @@
+Subject: ANNOUNCE: Xpdf 4.05 - a PDF viewer and related tools
+
+Glyph & Cog, LLC is pleased to announce a new version of Xpdf, the
+open source Portable Document Format (PDF) viewer.  The Xpdf project
+also includes a PDF text extractor, PDF-to-PostScript converter, and
+various other utilities.
+
+Xpdf uses the Qt toolkit and runs on Linux and Windows.  The
+non-graphical components (pdftops, pdftotext, etc.) run on Linux,
+Unix, Windows, MacOSX, and pretty much any other system with a decent
+C++ compiler.
+
+4.05 is primarily a bug fix release.  There are some new features:
+
+* New command line options/features:
+  - Added the '-overwrite' option to pdftohtml.
+  - Added the '-custom' flag to pdfinfo.
+  - Added the '-meta' flag to pdftohtml.
+  - Added the 'uses JavaScript' output to pdfinfo.
+
+* New configuration options:
+  - Added the 'ignoreWrongSizeToUnicode' xpdfrc setting.
+  - Added the zoomScaleFactor xpdfrc setting.
+  - Added the zoomValues xpdfrc setting.
+  - Added the separateRotatedText xpdfrc setting.
+  - Added the allowLinksToChangeZoom xpdfrc setting.
+
+* XpdfReader improvements:
+  - Added the loadSession and saveSession commands, and the 'Load last
+    session' menu item.
+  - Added code to automatically save and restore the xpdf session
+    under control of a session manager.  (This has not been thoroughly
+    tested yet.)
+  - Added a 'smart case' option for search in xpdf.
+  - Added a color/gray/mono switch to the 'save image' dialog.
+
+See the `CHANGES' file for a complete list of changes.
+
+Source (C++ and C) is available, and it should be fairly easy to
+compile for Linux and Windows.
+
+More information, source code, and precompiled binaries are on the
+xpdf web page:
+
+    http://www.xpdfreader.com/
+
+For information on commercial licensing and consulting, please see the
+Glyph & Cog web site:
+
+    http://www.glyphandcog.com/

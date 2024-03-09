@@ -1,3 +1,9 @@
+# Version 1.41
+
+CHANGED
+* Xpdf updated to version 4.05.
+* minor code and documentation changes 
+
 # Version 1.40
 
 ADDED

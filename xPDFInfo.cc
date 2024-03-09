@@ -170,7 +170,7 @@ BOOL WINAPI DllMain(HINSTANCE hDLL, DWORD reason, LPVOID)
 int __stdcall ContentGetDetectString(char* detectString, int maxlen)
 {
     // PDF files are all we can handle.
-    StringCchCopyA(detectString, maxlen, "EXT=\"PDF\"");
+    StringCchCopyA(detectString, maxlen, R"(EXT="PDF")");
     return 0;
 }
 
@@ -221,10 +221,11 @@ int __stdcall ContentGetSupportedField(int fieldIndex, char* fieldName, char* un
 
     return fieldTypes[fieldIndex];
 }
+
 /**
 * Plugin state change.
 * See "Content Plugin Interface" document.
-* When TC reads new directory or re-reads current one, close open PDF.
+* When TC reads new directory or re-reads current one, close current PDF.
 *
 * @param[in]    state   state value.
 * @param[in]    path    current path
@@ -244,6 +245,7 @@ void __stdcall ContentSendStateInformationW(int state, const wchar_t* path)
        break;
    }
 }
+
 /**
 * ANSI version of ContentGetValue is not supported
 */

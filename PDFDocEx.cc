@@ -33,7 +33,7 @@ bool PDFDocEx::hasSignature()
             if (acroForm->dictLookup("SigFlags", &obj)->isInt())
             {
                 // verify only bit position 1; 
-                // bit position 2 informs that signature will be invalidated
+                // bit position 2 marks that signature will be invalidated
                 // if document is not saved as incremental
                 ret = static_cast<bool>(obj.getInt() & 0x01);
             }
@@ -208,7 +208,7 @@ int PDFDocEx::getAdbeExtensionLevel()
     if (cat)
     {
         Object objExts;
-        const auto catObj = cat->getCatalogObj();
+        const auto catObj{ cat->getCatalogObj() };
         if (catObj->isDict() && catObj->dictLookup("Extensions", &objExts)->isDict())
         {
             Object objAdbe;
@@ -270,7 +270,7 @@ GString* PDFDocEx::getExtensions()
     if (cat)
     {
         Object objExts;
-        const auto catObj = cat->getCatalogObj();
+        const auto catObj{ cat->getCatalogObj() };
         if (catObj->isDict() && catObj->dictLookup("Extensions", &objExts)->isDict())
         {
             const auto nExts{ objExts.dictGetLength() };
@@ -332,7 +332,7 @@ double PDFDocEx::getPDFVersion()
     if (cat)
     {
         Object objVer;
-        const auto catObj = cat->getCatalogObj();
+        const auto catObj{ cat->getCatalogObj() };
         if (catObj->isDict() && catObj->dictLookup("Version", &objVer)->isName())
         {
             auto pdfVer{ strtod(objVer.getName(), nullptr) };
