@@ -749,7 +749,7 @@ GString *GString::del(int i, int n) {
     // for (j = i; j <= length - n; ++j) {
     //   s[j] = s[j + n];
     // }
-    memmove(s + i, s + i + n, length - n + 1);
+    memmove(s + i, s + i + n, length - (i + n) + 1);
     resize(length -= n);
   }
   return this;

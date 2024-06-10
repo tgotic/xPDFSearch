@@ -66,6 +66,14 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
       <td>The number of pages of the document.</td>
     </tr>
     <tr>
+      <td>Number Of Fontless Pages</td>
+      <td>The number of pages without Font resource. It might indicate that page does not have text.</td>
+    </tr>
+    <tr>
+      <td>Number Of Number Of Pages With Images</td>
+      <td>The number of pages with Image XObjects. Does not detect inline images.</td>
+    </tr>
+    <tr>
       <td>PDF Version</td>
       <td>The PDF version of the document.</td>
     </tr>
@@ -290,6 +298,7 @@ xPDFSearch plugin can be configured in xPDFSearch.ini file:
 *   MarginRight=0 discard all characters right of mediaBox - marginRight
 *   MarginTop=0 discard all characters above of mediaBox - marginTop
 *   MarginBottom=0 discard all characters bellow of mediaBox + marginBottom
+*   PageContentsLengthMin=32 Minimal value of page stream length so page is not considered empty. Used Used for "Number of Fontless pages"  and "Number of pages with images" fields.
 *   TextOutputMode=0 text formatting mode:
     *   0=reading order
     *   1=original physical layout

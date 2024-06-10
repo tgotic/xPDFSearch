@@ -697,6 +697,12 @@ void PDFExtractor::doWork()
     case fiNumberOfPages:
         m_data->setValue(m_doc->getNumPages(), ft_numeric_32);
         break;
+    case fiNumberOfFontlessPages:
+        m_data->setValue(m_doc->getNumFontlessPages(), ft_numeric_32);
+        break;
+    case fiNumberOfPagesWithImages:
+        m_data->setValue(m_doc->getNumPagesWithImages(), ft_numeric_32);
+        break;
     case fiPDFVersion:
         getVersion();
         break;

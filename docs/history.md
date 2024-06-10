@@ -1,8 +1,18 @@
+# Version 1.42
+
+ADDED
+* New fields: Number Of Fontless Pages, Number Of Pages With Images
+* Options in content plugin ini file:
+    * \[xPDFSearch\] PageContentsLengthMin
+
+CHANGED
+* Bugfix for crash in text search
+
 # Version 1.41
 
 CHANGED
 * Xpdf updated to version 4.05.
-* minor code and documentation changes 
+* minor code and documentation changes
 
 # Version 1.40
 

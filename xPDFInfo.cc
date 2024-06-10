@@ -27,7 +27,7 @@ options_t globalOptionsFromIni;
 static constexpr const char* fieldNames[]
 {
     "Title", "Subject", "Keywords", "Author", "Application", "PDF Producer", "Document Start", "First Row", "Extensions",
-    "Number Of Pages",
+    "Number Of Pages", "Number Of Fontless Pages", "Number Of Pages With Images",
     "PDF Version", "Page Width", "Page Height",
     "Copying Allowed", "Printing Allowed", "Adding Comments Allowed", "Changing Allowed", "Encrypted", "Tagged", "Linearized", "Incremental", "Signature Field", "Outlined", "Embedded Files",
     "Created", "Modified", "Metadata Date",
@@ -40,7 +40,7 @@ static_assert(_countof(fieldNames) == FIELD_COUNT, "fieldNames size error");
 constexpr int fieldTypes[]
 {
     ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw,
-    ft_numeric_32,
+    ft_numeric_32, ft_numeric_32, ft_numeric_32,
     ft_numeric_floating, ft_numeric_floating, ft_numeric_floating,
     ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean,
     ft_datetime, ft_datetime, ft_datetime,
@@ -53,7 +53,7 @@ static_assert(_countof(fieldTypes) == FIELD_COUNT, "fieldTypes size error");
 constexpr int fieldFlags[]
 {
     0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,
+    0, 0,0,
     0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0,
@@ -364,6 +364,7 @@ void __stdcall ContentSetDefaultParams(ContentDefaultParamStruct* dps)
     globalOptionsFromIni.marginRight = GetPrivateProfileIntA(appName, "MarginRight", 0, iniFileName);
     globalOptionsFromIni.marginTop = GetPrivateProfileIntA(appName, "MarginTop", 0, iniFileName);
     globalOptionsFromIni.marginBottom = GetPrivateProfileIntA(appName, "MarginBottom", 0, iniFileName);
+    globalOptionsFromIni.pageContentsLengthMin = GetPrivateProfileIntA(appName, "PageContentsLengthMin", 32, iniFileName);
     globalOptionsFromIni.textOutputMode = static_cast<TextOutputMode>(GetPrivateProfileIntA(appName, "TextOutputMode", 0, iniFileName) % (textOutRawOrder + 1));
 
     char tmp[2];

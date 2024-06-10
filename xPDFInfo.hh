@@ -35,6 +35,7 @@ typedef struct options_s
     int marginRight{ 0 };               /**< discard all characters right of mediaBox - marginRight */
     int marginTop{ 0 };                 /**< discard all characters above of mediaBox - marginTop */
     int marginBottom{ 0 };              /**< discard all characters bellow of mediaBox + marginBottom */
+    int pageContentsLengthMin{ 32 };    /**< minimal length of page Contents stream so page is not considered empty. Used for "Number of Fontless pages"  and "Number of pages with images"  fields */
     wchar_t attrCopyable{ L'\0' };
     wchar_t attrPrintable{ L'\0' };
     wchar_t attrCommentable{ L'\0' };
@@ -56,7 +57,7 @@ extern options_t globalOptionsFromIni;
 enum fieldIndexes
 {
     fiTitle, fiSubject, fiKeywords, fiAuthor, fiCreator, fiProducer, fiDocStart, fiFirstRow, fiExtensions,
-    fiNumberOfPages, 
+    fiNumberOfPages, fiNumberOfFontlessPages,fiNumberOfPagesWithImages,
     fiPDFVersion, fiPageWidth, fiPageHeight,
     fiCopyable, fiPrintable, fiCommentable, fiChangeable, fiEncrypted, fiTagged, fiLinearized, fiIncremental, fiSigned, fiOutlined, fiEmbeddedFiles,
     fiCreationDate, fiModifiedDate, fiMetadataDate,

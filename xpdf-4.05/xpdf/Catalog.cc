@@ -231,15 +231,19 @@ Catalog::~Catalog() {
 
   if (pageTree) {
     delete pageTree;
+    pageTree = NULL;
   }
   if (pages) {
     for (i = 0; i < numPages; ++i) {
       if (pages[i]) {
 	delete pages[i];
+	pages[i] = NULL;
       }
     }
     gfree(pages);
     gfree(pageRefs);
+    pages = NULL;
+    pageRefs = NULL;
   }
 #if MULTITHREADED
   gDestroyMutex(&pageMutex);
@@ -248,6 +252,7 @@ Catalog::~Catalog() {
   nameTree.free();
   if (baseURI) {
     delete baseURI;
+    baseURI = NULL;
   }
   metadata.free();
   structTreeRoot.free();
@@ -255,6 +260,7 @@ Catalog::~Catalog() {
   acroForm.free();
   if (form) {
     delete form;
+    form = NULL;
   }
   ocProperties.free();
 #ifndef NO_EMBEDDED_CONTENT
@@ -271,15 +277,17 @@ Catalog::~Catalog() {
 }
 
 Page *Catalog::getPage(int i) {
-  Page *page;
+  Page *page = NULL;
 
 #if MULTITHREADED
   gLockMutex(&pageMutex);
 #endif
-  if (!pages[i-1]) {
-    loadPage(i);
+  if (pages && (i > 0)) {
+      if (!pages[i - 1]) {
+          loadPage(i);
+      }
+      page = pages[i - 1];
   }
-  page = pages[i-1];
 #if MULTITHREADED
   gUnlockMutex(&pageMutex);
 #endif

@@ -4227,7 +4227,7 @@ GBool Gfx::doImage(Object *ref, Stream *str, GBool inlineImg) {
   StreamColorSpaceMode csMode;
   GBool mask, invert;
   GfxColorSpace *colorSpace, *maskColorSpace;
-  GfxImageColorMap *colorMap, *maskColorMap;
+  GfxImageColorMap *colorMap, *maskColorMap{ nullptr };
   Object maskObj, smaskObj, maskRef;
   GBool haveColorKeyMask, haveExplicitMask, haveSoftMask, haveMatte;
   int maskColors[2*gfxColorMaxComps];
@@ -4447,7 +4447,6 @@ GBool Gfx::doImage(Object *ref, Stream *str, GBool inlineImg) {
     maskStr = NULL; // make gcc happy
     maskWidth = maskHeight = 0; // make gcc happy
     maskInvert = gFalse; // make gcc happy
-    maskColorMap = NULL; // make gcc happy
     dict->lookup("Mask", &maskObj);
     dict->lookup("SMask", &smaskObj);
     if (smaskObj.isStream()) {
@@ -4708,7 +4707,6 @@ GBool Gfx::doImage(Object *ref, Stream *str, GBool inlineImg) {
 				 haveMatte ? matte : (double *)NULL,
 				 interpolate);
 	maskRef.free();
-	delete maskColorMap;
       } else if (haveExplicitMask) {
 	dict->lookupNF("Mask", &maskRef);
 	out->drawMaskedImage(state, ref, str, width, height, colorMap,
@@ -4721,7 +4719,7 @@ GBool Gfx::doImage(Object *ref, Stream *str, GBool inlineImg) {
 		       interpolate);
       }
     }
-
+    delete maskColorMap;
     delete colorMap;
     maskObj.free();
     smaskObj.free();
@@ -5038,7 +5036,7 @@ void Gfx::opBeginImage(Object args[], int numArgs) {
     } else if (haveLength) {
       // NB: getUndecodedStream() returns the EmbedStream created by
       // buildImageStream()
-      while ((c1 = str->getUndecodedStream()->getChar()) != EOF) ;
+      while (str->getUndecodedStream()->getChar() != EOF) ;
       delete str;
       str = parser->getStream();
       c1 = str->getChar();

@@ -2,6 +2,7 @@
 #include <Zoox.h>
 #include <Outline.h>
 #include <TextString.h>
+#include "xPDFInfo.hh"
 
 /**
 * Constructor
@@ -73,7 +74,7 @@ bool PDFDocEx::hasEmbeddedFiles()
     if (cat)
     {
         Object objNames;
-        const auto catObj = cat->getCatalogObj();
+        const auto catObj{ cat->getCatalogObj() };
         if (catObj->isDict() && catObj->dictLookup("Names", &objNames)->isDict())
         {
             Object objEF;
@@ -650,4 +651,216 @@ GString* PDFDocEx::getXmpValue(const char* nsURI, const char* key, const char* a
         }
     }
     return nullptr;
+}
+
+/**
+* Check if page content is empty or too short.
+* 
+* @param[in]    page       pointer to Page object
+* 
+* @return true if page content is empty or too short
+*/
+bool PDFDocEx::pageContentIsEmpty(Page* page)
+{
+    auto isEmpy{ true };
+    Object contentsObj;
+    if (page->getContents(&contentsObj)->isArray())
+    {
+        // there should be some content
+        isEmpy = false;
+    }
+    else if (contentsObj.isStream())
+    {
+        const auto dict{ contentsObj.streamGetDict() };
+        if (dict)
+        {
+            Object lenObj;
+            if (dict->lookup("Length", &lenObj)->isInt() && (lenObj.getInt() >= globalOptionsFromIni.pageContentsLengthMin))
+            {
+                isEmpy = false;
+            }
+            else
+            {
+                // empty page, stream too short
+                TRACE(L"%hs!%d!empty page, stream len=%d\n", __FUNCTION__, page->getNum(), lenObj.getInt());
+            }
+        }
+        else
+        {
+            TRACE(L"%hs!%d!stream has no dict\n", __FUNCTION__, page->getNum());
+        }
+    }
+    else
+    {
+        // empty page
+        TRACE(L"%hs!%d!empty page, no /Contents\n", __FUNCTION__, page->getNum());
+    }
+    contentsObj.free();
+
+    return isEmpy;
+}
+
+/**
+* Get number of pages without Font resource.
+*
+* It can be used to detect pages without searchable or extractable text.
+* 
+* @return Number of fontless pages.
+*/
+int PDFDocEx::getNumFontlessPages()
+{
+    int nPages{ 0 };
+    const auto cat{ getCatalog() };
+    if (cat)
+    {
+        const auto numPages{ getNumPages() };
+        for (int i{ 1 }; i <= numPages; i++)
+        {
+            const auto page{ cat->getPage(i) };
+            if (page)
+            {
+                auto countPageAsFontless{ true };
+                const auto attrs{ page->getAttrs() };
+                if (attrs)
+                {
+                    const auto resource{ attrs->getResourceDict() };
+                    if (resource)
+                    {
+                        Object fontObj;
+                        ;
+                        if (resource->lookup("Font", &fontObj)->isDict())
+                        {
+                            countPageAsFontless = false;
+                        }
+                        else
+                        {
+                            TRACE(L"%hs!%d!no /Font\n", __FUNCTION__, i);
+                        }
+                        fontObj.free();
+                    }
+                    else
+                    {
+                        TRACE(L"%hs!%d!no /Resources\n", __FUNCTION__, i);
+                    }
+                }
+                else
+                {
+                    TRACE(L"%hs!%d!no /Attrs\n", __FUNCTION__, i);
+                }
+
+                // don't count empty pages as fontless
+                if (countPageAsFontless && (globalOptionsFromIni.pageContentsLengthMin > 0) && pageContentIsEmpty(page))
+                {
+                    countPageAsFontless = false;
+                }
+                if (countPageAsFontless)
+                {
+                    ++nPages;
+                }
+            }
+            else
+            {
+                TRACE(L"%hs!%d!page is NULL\n", __FUNCTION__, i);
+            }
+        }
+    }
+    else
+    {
+        TRACE(L"%hs!no catalog\n", __FUNCTION__);
+    }
+    return nPages;
+}
+
+/**
+* Get number of pages with XObject Image.
+*
+* It can be used to detect pages with images.
+* If #globalOptionsFromIni.excludeEmptyPages is set to false,
+* empty pages are not counted as pages with images.
+* 
+* Inline images are not checked.
+*
+* @return Number of pages with images.
+*/
+int PDFDocEx::getNumPagesWithImages()
+{
+    int nPages{ 0 };
+    const auto cat{ getCatalog() };
+    if (cat)
+    {
+        const auto numPages{ getNumPages() };
+        for (int i{ 1 }; i <= numPages; i++)
+        {
+            const auto page{ cat->getPage(i) };
+            if (page)
+            {
+                auto pageHasImages{ false };
+                const auto attrs{ page->getAttrs() };
+                if (attrs)
+                {
+                    const auto resource{ attrs->getResourceDict() };
+                    if (resource)
+                    {
+                        Object xObjDict;
+                        if (resource->lookup("XObject", &xObjDict)->isDict())
+                        {
+                            const auto xObjDictLen{ xObjDict.dictGetLength() };
+                            for (int j{ 0 }; j < xObjDictLen; j++)
+                            {
+                                Object xObj;
+                                if (xObjDict.dictGetVal(j, &xObj)->isStream())
+                                {
+                                    Object subtypeObj;
+                                    xObj.streamGetDict()->lookup("Subtype", &subtypeObj);
+                                    if (subtypeObj.isName("Image"))
+                                    {
+                                        // image object
+                                        TRACE(L"%hs!%d!/XObject /Image\n", __FUNCTION__, i);
+                                        pageHasImages = true;
+                                        subtypeObj.free();
+                                        xObj.free();
+                                        break;
+                                    }
+                                    subtypeObj.free();
+                                }
+                                xObj.free();
+                            }
+                        }
+                        else
+                        {
+                            TRACE(L"%hs!%d!no /XObject\n", __FUNCTION__, i);
+                        }
+                        xObjDict.free();
+                    }
+                    else
+                    {
+                        TRACE(L"%hs!%d!no /Resources\n", __FUNCTION__, i);
+                    }
+                }
+                else
+                {
+                    TRACE(L"%hs!%d!no /Attrs\n", __FUNCTION__, i);
+                }
+
+                // Page has images, but stream is too short to show them, don't count it
+                if (pageHasImages && (globalOptionsFromIni.pageContentsLengthMin > 0) && pageContentIsEmpty(page))
+                {
+                    pageHasImages = false;
+                }
+                if (pageHasImages)
+                {
+                    ++nPages;
+                }
+            }
+            else
+            {
+                TRACE(L"%hs!%d!page is NULL\n", __FUNCTION__, i);
+            }
+        }
+    }
+    else
+    {
+        TRACE(L"%hs!no catalog\n", __FUNCTION__);
+    }
+    return nPages;
 }
