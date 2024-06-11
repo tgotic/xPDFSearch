@@ -70,7 +70,7 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
       <td>The number of pages without Font resource. It might indicate that page does not have text.</td>
     </tr>
     <tr>
-      <td>Number Of Number Of Pages With Images</td>
+      <td>Number Of Pages With Images</td>
       <td>The number of pages with Image XObjects. Does not detect inline images.</td>
     </tr>
     <tr>
