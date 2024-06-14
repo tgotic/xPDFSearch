@@ -1,6 +1,6 @@
 # xPDFSearch
 
-xPDFSearch is a content plugin for Total Commander.
+xPDFSearch is a content plugin for Total Commander.  
 
 ## Content
 
@@ -13,13 +13,13 @@ xPDFSearch is a content plugin for Total Commander.
 7.  [License](#7)
 8.  [History](history.md)
 
-## 1\. Plugin descriptionr<a id='1'></a>
+## 1\. Plugin description<a id='1'></a>
 
 xPDFSearch can be used to perform full text search in PDF files.  
 In addition xPDFSearch provides meta data information from PDF files.  
-It's possible to display title, subject, keywords, author, application, PDF producer, number of pages, PDF version, created and modified.
+It's possible to display title, subject, keywords, author, application, PDF producer, number of pages, PDF version, created and modified.  
 
-Plugin can be used in Synchronize Directories to compare content of PDF files.
+Plugin can be used in Synchronize Directories to compare content of PDF files.  
 
 ## 2\. Field descriptions<a id='2'></a>
 
@@ -27,11 +27,11 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
   <tbody>
     <tr>
       <td>Title</td>
-      <td>The document tile.</td>
+      <td>The document title.</td>
     </tr>
     <tr>
       <td>Subject</td>
-      <td>The doucment subject.</td>
+      <td>The document subject.</td>
     </tr>
     <tr>
       <td>Keywords</td>
@@ -129,7 +129,7 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
     </tr>
     <tr>
       <td>Embedded Files</td>
-      <td>Indicates if the PDF document has embedded files in Catalog direcory.
+      <td>Indicates if the PDF document has embedded files in Catalog directory.
       It is not checked for files in pages annotations.</td>
     </tr>
     <tr>
@@ -153,9 +153,7 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
       <td>
         <table>
           <tbody>
-            <tr>
-              <td>PDF indicators displayed as attributes</td>
-            </tr>
+            <thead>PDF indicators displayed as attributes</thead>
             <tr>
               <td>P</td>
               <td>Printing allowed</td>
@@ -231,7 +229,8 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
   </tbody>
 </table>
 
-PDF 2.0 has deprecated usage of Document Info Directory. If PDF file does not have Document Info Directory, fields are read from PDF metadata:
+PDF 2.0 has deprecated usage of Document Info Directory. If PDF file does not have Document Info Directory, fields are read from PDF metadata:  
+
 <table>
   <tbody>
   <tr><td>Title</td><td>dc:title</td></tr>
@@ -248,8 +247,8 @@ PDF 2.0 has deprecated usage of Document Info Directory. If PDF file does not ha
 
 ## 3\. System requirements<a id='3'></a>
 
-Total Commander 6.50 or higher is required for this plugin.
-To use the Created, Modified and Metadata Date fields Total Commander 6.53 or higher is required.
+Total Commander 6.50 or higher is required for this plugin.  
+To use the Created, Modified and Metadata Date fields Total Commander 6.53 or higher is required.  
 
 ## 4\. Use<a id='4'></a>
 
@@ -261,80 +260,86 @@ To use the Created, Modified and Metadata Date fields Total Commander 6.53 or hi
 4.  Enter the search text in the value field.
 5.  Press start search button.
 
-Of course it's possible to search for the other fields as well.
+Of course it's possible to search for the other fields as well.  
 
-![](./images/text_search_eng.png)
+![](./images/text_search_eng.png)  
 
-Search for all PDF documents containing the word bicyle.
+_Search for all PDF documents containing the word bicycle_  
 
-The other fields can be additionally used in files by file type, custom columns, tooltips, and thumbnail view.
+The other fields can be additionally used in files by file type, custom columns, tooltips, and thumbnail view.  
 
 ### Compare two or more files
 
-1.  Open Synchronize Directiories
-2.  Click on a small >> button to activate "User-defined compare functions by file type"
-3.  Check Use plugin compare functions
-4.  Click Add.. to add PDF file type
-5.  Specify \*.pdf as file type and click OK
-6.  Select xPDFSearch plugin and one of its properties, e.g. Compare Text
-7.  Close dialogs with OK, OK, OK
-8.  Click Compare
+1.  Open "Synchronize Directories"
+2.  Click on a small <kbd>>></kbd> button to activate "User-defined compare functions by file type"
+3.  Check "Use plugin compare functions"
+4.  Click <kbd>Add...</kbd> to add PDF file type
+5.  Specify `*.pdf` as file type and click OK
+6.  Select "xPDFSearch" plugin and one of its properties, e.g. "Compare Text"
+7.  Close dialogs with <kbd>OK</kbd> , <kbd>OK</kbd> , <kbd>OK</kbd>
+8.  Click <kbd>Compare</kbd>
 
-![](./images/compare.jpg)
+![](./images/compare.jpg)  
 
-Define xPDFSearch as compare plugin
+_Define xPDFSearch as compare plugin_  
 
 ## 5\. Configuration<a id='5'></a>
 
-xPDFSearch plugin can be configured in xPDFSearch.ini file:  
-\[xPDFSearch\]
-*   NoCache=0
-    *   0=file caching disabled, fast reading of fields, unable to rename or alter attributes of the open PDF file
-    *   1=disables file caching, slower reading of fields, allows renaming PDF file with values form xPDFSearch and changing PDF file attributes (not content of PDF file)
-*   DiscardInvisibleText=1 discard all invisible characters
-*   DiscardDiagonalText=1 discard all text that's not close to 0/90/180/270 degrees
-*   DiscardClippedText=1 discard all clipped characters
-*   MarginLeft=0 discard all characters left of mediaBox + marginLeft
-*   MarginRight=0 discard all characters right of mediaBox - marginRight
-*   MarginTop=0 discard all characters above of mediaBox - marginTop
-*   MarginBottom=0 discard all characters bellow of mediaBox + marginBottom
-*   PageContentsLengthMin=32 Minimal value of page stream length so page is not considered empty. Used Used for "Number of Fontless pages"  and "Number of pages with images" fields.
-*   TextOutputMode=0 text formatting mode:
-    *   0=reading order
-    *   1=original physical layout
-    *   2=simple one-column
-    *   3=simple one-column2
-    *   4=optimized for tables
-    *   5=fixed-pitch/height layout
-    *   6=keep text in content stream order
-*   AppendExtensionLevel=0 append PDF Extension Level to PDF Version (PDF 1.7 Ext. Level 3 = 1.73)
-*   RemoveDateRawDColon=0 remove D: from CreatedRaw and ModifiedRaw fields
-*   AttrPrintingAllowed=P symbol for "Printing Allowed" attribute
-*   AttrCopyingAllowed=C symbol for "Copying Allowed" attribute
-*   AttrChangingAllowed=M symbol for "Changing Allowed" attribute
-*   AttrAddingCommentsAllowed=N symbol for "Adding Comments Allowed" attribute
-*   AttrIncremental=I symbol for "Incremental" attribute
-*   AttrTagged=T symbol for "Tagged" attribute
-*   AttrLinearized=L symbol for "Linearized" attribute
-*   AttrEncrypted=E symbol for "Encrypted" attribute
-*   AttrSignatureField=S symbol for "Signature Field" attribute
-*   AttrOutlined=O symbol for "Outlined" attribute
-*   AttrEmbeddedFiles=F symbol for "Embedded Files" attribute
+xPDFSearch plugin can be configured in `xPDFSearch.ini` file:  
 
-To omit specific PDF Attribute field, clear attribute symbol, e.g. AttrEmbeddedFiles=
+```
+[xPDFSearch]
+•  NoCache=0
+   ◦  0=file caching disabled, fast reading of fields, unable to rename or alter attributes of the open PDF file
+   ◦  1=disables file caching, slower reading of fields, allows renaming PDF file with values form xPDFSearch and changing PDF file attributes (not content of PDF file)
+•  DiscardInvisibleText=1 discard all invisible characters
+•  DiscardDiagonalText=1 discard all text that's not close to 0/90/180/270 degrees
+•  DiscardClippedText=1 discard all clipped characters
+•  MarginLeft=0 discard all characters left of mediaBox + marginLeft
+•  MarginRight=0 discard all characters right of mediaBox - marginRight
+•  MarginTop=0 discard all characters above of mediaBox - marginTop
+•  MarginBottom=0 discard all characters bellow of mediaBox + marginBottom
+•  PageContentsLengthMin=32 Minimal value of page stream length so page is not considered empty. Used Used for "Number of Fontless pages"  and "Number of pages with images" fields.
+•  TextOutputMode=0 text formatting mode:
+   ◦  0=reading order
+   ◦  1=original physical layout
+   ◦  2=simple one-column
+   ◦  3=simple one-column2
+   ◦  4=optimized for tables
+   ◦  5=fixed-pitch/height layout
+   ◦  6=keep text in content stream order
+•  AppendExtensionLevel=0 append PDF Extension Level to PDF Version (PDF 1.7 Ext. Level 3 = 1.73)
+•  RemoveDateRawDColon=0 remove D: from CreatedRaw and ModifiedRaw fields
+•  AttrPrintingAllowed=P symbol for "Printing Allowed" attribute
+•  AttrCopyingAllowed=C symbol for "Copying Allowed" attribute
+•  AttrChangingAllowed=M symbol for "Changing Allowed" attribute
+•  AttrAddingCommentsAllowed=N symbol for "Adding Comments Allowed" attribute
+•  AttrIncremental=I symbol for "Incremental" attribute
+•  AttrTagged=T symbol for "Tagged" attribute
+•  AttrLinearized=L symbol for "Linearized" attribute
+•  AttrEncrypted=E symbol for "Encrypted" attribute
+•  AttrSignatureField=S symbol for "Signature Field" attribute
+•  AttrOutlined=O symbol for "Outlined" attribute
+•  AttrEmbeddedFiles=F symbol for "Embedded Files" attribute
+```
 
-If there is no xPDFSearch.ini file located in plugin directory, plugin uses options from TC content ini file.  
-Default location of TC content ini file is %COMMANDER_PATH%\contplug.ini.  
-Location of the \[xPDFSearch\] section in TC content ini file can be changed in wincmd.ini file, e.g.:  
-\[ReplaceIniLocation\]
-*   xPDFSearch.wdx=%COMMANDER_PATH%\Plugins\WDX\xPDFSearch\relocated.ini
+To omit specific PDF Attribute field, clear attribute symbol, e.g. `AttrEmbeddedFiles=`  
 
-xPDFSearch plugin uses slightly modified [Xpdf library](http://www.xpdfreader.com/about.html). Xpdf can be configured via [xpdfrc file](http://www.xpdfreader.com/xpdfrc-man.html).
+If there is no `xPDFSearch.ini` file located in plugin directory, plugin uses options from TC content ini file.  
+Default location of TC content ini file is `%COMMANDER_PATH%\contplug.ini` .  
+Location of the `[xPDFSearch]` section in TC content ini file can be changed in `wincmd.ini` file, e.g.:  
+
+```
+[ReplaceIniLocation]
+•  xPDFSearch.wdx=%COMMANDER_PATH%\Plugins\WDX\xPDFSearch\relocated.ini
+```
+
+xPDFSearch plugin uses slightly modified [Xpdf library](http://www.xpdfreader.com/about.html). Xpdf can be configured via [xpdfrc file](http://www.xpdfreader.com/xpdfrc-man.html).  
 
 ## 6\. Author contact<a id='6'></a>
 
-There is a [thread](https://www.ghisler.ch/board/viewtopic.php?t=78256) in the [Total Commander forum](http://www.ghisler.ch/) which can be used to discuss problems, bugs and suggestions.
+There is a [thread](https://www.ghisler.ch/board/viewtopic.php?t=78256) in the [Total Commander forum](http://www.ghisler.ch/) which can be used to discuss problems, bugs and suggestions.  
 
 ## 7\. License<a id='7'></a>
 
-This Total Commander Plugin is licensed under the General Public License (GPL). The license can be found in the [LICENSE.md](../LICENSE.md).
+This Total Commander Plugin is licensed under the General Public License (GPL). The license can be found in the [LICENSE.md](../LICENSE.md).  
