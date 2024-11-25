@@ -162,7 +162,7 @@ void ThreadData::closeWorker()
 * @param[in]    timeout     timeout in miliseconds
 * @return 1 if producer event is not created; for other return values check MSDN WaitForSingleObject
 */
-DWORD ThreadData::waitForProducer(DWORD timeout)
+DWORD ThreadData::waitForProducer(DWORD timeout) const
 {
     if (hasProducer())
         return WaitForSingleObject(handles[PRODUCER_HANDLE], timeout);
@@ -176,7 +176,7 @@ DWORD ThreadData::waitForProducer(DWORD timeout)
 * @param[in]    timeout     timeout in miliseconds
 * @return 1 if consumer event is not created; for other return values check MSDN WaitForSingleObject
 */
-DWORD ThreadData::waitForConsumer(DWORD timeout)
+DWORD ThreadData::waitForConsumer(DWORD timeout) const
 {
     if (hasConsumer())
         return WaitForSingleObject(handles[CONSUMER_HANDLE], timeout);
@@ -191,7 +191,7 @@ DWORD ThreadData::waitForConsumer(DWORD timeout)
 * @param[in]    timeout     timeout in miliseconds
 * @return 1 if producer event is not created; for other return values check MSDN SignalObjectAndWait
 */
-DWORD ThreadData::notifyProducerAndWait(DWORD timeout)
+DWORD ThreadData::notifyProducerAndWait(DWORD timeout) const
 {
     if (hasProducer() && hasWorker())
         return SignalObjectAndWait(handles[PRODUCER_HANDLE], handles[WORKER_HANDLE], timeout, FALSE);
@@ -207,7 +207,7 @@ DWORD ThreadData::notifyProducerAndWait(DWORD timeout)
 * @param[in]    timeout     timeout in miliseconds
 * @return 1 if producer event is not created; for other return values check MSDN SignalObjectAndWait
 */
-DWORD ThreadData::notifyProducerWaitForConsumer(DWORD timeout)
+DWORD ThreadData::notifyProducerWaitForConsumer(DWORD timeout) const
 {
     auto dwRet{ WAIT_FAILED };
     if (isActive() && hasProducer() && hasConsumer())

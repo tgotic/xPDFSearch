@@ -1,3 +1,15 @@
+# Version 1.43
+
+ADDED
+* Support for password protected PDF files, only detection and attributes extraction.
+Files are not decrypted and text cannot be extracted.
+* New fields: Protected
+* Options in content plugin ini file:
+    * \[xPDFSearch\] AttrProtected
+
+CHANGED
+* Bugfix for conversion from PDF Time to FILETIME
+
 # Version 1.42
 
 ADDED

@@ -296,7 +296,7 @@ void PDFExtractor::getOulines()
 */
 void PDFExtractor::getAttrStr()
 {
-    wchar_t attrs[]{ L"---------------"};
+    wchar_t attrs[]{ L"----------------"};
     size_t n{ 0 };
 
     if (globalOptionsFromIni.attrPrintable)
@@ -345,6 +345,12 @@ void PDFExtractor::getAttrStr()
     {
         if (m_doc->isEncrypted())
             attrs[n] = globalOptionsFromIni.attrEncrypted;
+        n++;
+    }
+    if (globalOptionsFromIni.attrProtected)
+    {
+        if (m_doc->getErrorCode() == errEncrypted)
+            attrs[n] = globalOptionsFromIni.attrProtected;
         n++;
     }
     if (globalOptionsFromIni.attrSigned)
@@ -421,30 +427,30 @@ bool PDFExtractor::PdfDateTimeToFileTime(const GString& pdfDateTime, FILETIME& f
         // YYYY is minimum
         if (len >= 4)
         {
-            SYSTEMTIME sysTime{ };
+            SYSTEMTIME pdfLocalTime{ };
             // default values, PDF 1.7
-            sysTime.wMonth = 1;
-            sysTime.wDay = 1;
+            pdfLocalTime.wMonth = 1;
+            pdfLocalTime.wDay = 1;
 
-            if (dateToInt(acrobatDateTimeString, 4U, sysTime.wYear))
+            if (dateToInt(acrobatDateTimeString, 4U, pdfLocalTime.wYear))
             {
                 int offset{ 0 };
                 // from gpdf/poppler, y2k bug in Distiller
                 // CCYYYMMDDHHmmSS
                 // CC - century = 19
-                if ((sysTime.wYear >= 1909) && (sysTime.wYear <= 1913) && (len > 14))
+                if ((pdfLocalTime.wYear >= 1909) && (pdfLocalTime.wYear <= 1913) && (len > 14))
                 {
                     // if year is between 199x and 203x
                     acrobatDateTimeString += 2U; // skip century
-                    if (dateToInt(acrobatDateTimeString, 3U, sysTime.wYear))
+                    if (dateToInt(acrobatDateTimeString, 3U, pdfLocalTime.wYear))
                     {
-                        sysTime.wYear += 1900;
+                        pdfLocalTime.wYear += 1900;
                         acrobatDateTimeString += 3U;
                         len -= 5U;
                     }
                     else
                     {
-                        sysTime.wYear = 0;  // mark error
+                        pdfLocalTime.wYear = 0;  // mark error
                     }
                 }
                 else
@@ -457,7 +463,7 @@ bool PDFExtractor::PdfDateTimeToFileTime(const GString& pdfDateTime, FILETIME& f
                     acrobatDateTimeString++;
                     len--;
                 }
-                if ((len >= 2) && dateToInt(acrobatDateTimeString, 2U, sysTime.wMonth))
+                if ((len >= 2) && dateToInt(acrobatDateTimeString, 2U, pdfLocalTime.wMonth))
                 {
                     acrobatDateTimeString += 2U;
                     len -= 2;
@@ -466,7 +472,7 @@ bool PDFExtractor::PdfDateTimeToFileTime(const GString& pdfDateTime, FILETIME& f
                         acrobatDateTimeString++;
                         len--;
                     }
-                    if ((len >= 2) && dateToInt(acrobatDateTimeString, 2U, sysTime.wDay))
+                    if ((len >= 2) && dateToInt(acrobatDateTimeString, 2U, pdfLocalTime.wDay))
                     {
                         acrobatDateTimeString += 2U;
                         len -= 2;
@@ -475,7 +481,7 @@ bool PDFExtractor::PdfDateTimeToFileTime(const GString& pdfDateTime, FILETIME& f
                             acrobatDateTimeString++;
                             len--;
                         }
-                        if ((len >= 2) && dateToInt(acrobatDateTimeString, 2U, sysTime.wHour))
+                        if ((len >= 2) && dateToInt(acrobatDateTimeString, 2U, pdfLocalTime.wHour))
                         {
                             acrobatDateTimeString += 2U;
                             len -= 2;
@@ -484,7 +490,7 @@ bool PDFExtractor::PdfDateTimeToFileTime(const GString& pdfDateTime, FILETIME& f
                                 acrobatDateTimeString++;
                                 len--;
                             }
-                            if ((len >= 2) && dateToInt(acrobatDateTimeString, 2U, sysTime.wMinute))
+                            if ((len >= 2) && dateToInt(acrobatDateTimeString, 2U, pdfLocalTime.wMinute))
                             {
                                 acrobatDateTimeString += 2U;
                                 len -= 2;
@@ -493,14 +499,14 @@ bool PDFExtractor::PdfDateTimeToFileTime(const GString& pdfDateTime, FILETIME& f
                                     acrobatDateTimeString++;
                                     len--;
                                 }
-                                if ((len >= 2) && dateToInt(acrobatDateTimeString, 2U, sysTime.wSecond))
+                                if ((len >= 2) && dateToInt(acrobatDateTimeString, 2U, pdfLocalTime.wSecond))
                                 {
                                     acrobatDateTimeString += 2U;
                                     len -= 2;
                                     if (len >= 3)
                                     {
                                         offset = 1;
-                                        if (*acrobatDateTimeString == '-')
+                                        if (*acrobatDateTimeString == '+')
                                         {
                                             offset = -1;
                                         }
@@ -521,22 +527,56 @@ bool PDFExtractor::PdfDateTimeToFileTime(const GString& pdfDateTime, FILETIME& f
                                                 dateToInt(acrobatDateTimeString, 2U, offsetMinutes);
                                             }
                                         }
-                                        offset *= offsetHours * 3600 + offsetMinutes * 60;
+                                        // offset in minutes
+                                        offset *= offsetHours * 60 + offsetMinutes;
                                     }
                                 }
                             }
                         }
                     }
                 }
+                {
+                    // from Windows 7
+                    using TzSpecificLocalTimeToSystemTimeEx_t = BOOL (*)(const PDYNAMIC_TIME_ZONE_INFORMATION, const LPSYSTEMTIME, LPSYSTEMTIME);
+                    auto TzSpecificLocalTimeToSystemTimeEx_fn{ (TzSpecificLocalTimeToSystemTimeEx_t)GetProcAddress(GetModuleHandleW(L"Kernel32.dll"), "TzSpecificLocalTimeToSystemTimeEx") };
+                    // from Windows 8, Advapi32.dll is loaded by RegCloseKey in DllMain
+                    using EnumDynamicTimeZoneInformation_t = DWORD (*)(const DWORD, PDYNAMIC_TIME_ZONE_INFORMATION);
+                    auto EnumDynamicTimeZoneInformation_fn{ (EnumDynamicTimeZoneInformation_t)GetProcAddress(GetModuleHandleW(L"Advapi32.dll"), "EnumDynamicTimeZoneInformation") };
 
-                if (SystemTimeToFileTime(&sysTime, &fileTime))
+                    if (EnumDynamicTimeZoneInformation_fn && TzSpecificLocalTimeToSystemTimeEx_fn)
+                    {
+                        DYNAMIC_TIME_ZONE_INFORMATION dtzi{ };
+                        DWORD dwResult;
+                        DWORD i{ 0 };
+                        do
+                        {
+                            dwResult = EnumDynamicTimeZoneInformation_fn(i++, &dtzi);
+                            if ((dwResult == ERROR_SUCCESS) && (dtzi.Bias == offset))
+                            {
+                                SYSTEMTIME utcTime{};
+                                if (TzSpecificLocalTimeToSystemTimeEx_fn(&dtzi, &pdfLocalTime, &utcTime))
+                                {
+                                    if (SystemTimeToFileTime(&utcTime, &fileTime))
+                                    {
+                                        return true;
+                                    }
+                                    TRACE(L"%hs!SystemTimeToFileTime(%s) failed: %lu\n", __FUNCTION__, acrobatDateTimeString, GetLastError());
+                                }
+                                else
+                                {
+                                    TRACE(L"%hs!TzSpecificLocalTimeToSystemTimeEx(%s) failed: %lu\n", __FUNCTION__, acrobatDateTimeString, GetLastError());
+                                }
+                            }
+                        } while (dwResult != ERROR_NO_MORE_ITEMS);
+
+                    }
+                }
+                if (SystemTimeToFileTime(&pdfLocalTime, &fileTime))
                 {
                     if (offset)
                     {
-                        LARGE_INTEGER timeValue{};
-                        timeValue.HighPart = fileTime.dwHighDateTime;
-                        timeValue.LowPart = fileTime.dwLowDateTime;
-                        timeValue.QuadPart -= offset * 10000000ULL;
+                        ULARGE_INTEGER timeValue{fileTime.dwLowDateTime, fileTime.dwHighDateTime};
+                        timeValue.QuadPart += offset * 600000000ULL; // minutes to 100ns units
 
                         fileTime.dwHighDateTime = timeValue.HighPart;
                         fileTime.dwLowDateTime = timeValue.LowPart;
@@ -745,6 +785,9 @@ void PDFExtractor::doWork()
     case fiEmbeddedFiles:
         m_data->setValue(m_doc->hasEmbeddedFiles(), ft_boolean);
         break;
+    case fiProtected:
+        m_data->setValue((m_doc->getErrorCode() == errEncrypted), ft_boolean);
+        break;
     case fiCreationDate:
         getMetadataDate("CreationDate");
         break;
@@ -851,7 +894,7 @@ void PDFExtractor::waitForProducer()
 * @param[in]    param   pointer to PDFExtractor object (this)
 * @return 0
 */
-unsigned int __stdcall threadFunc(void* param)
+static unsigned int __stdcall threadFunc(void* param)
 {
     auto extractor{ static_cast<PDFExtractor*>(param) };
     TRACE(L"%hs!worker thread start\n", __FUNCTION__);

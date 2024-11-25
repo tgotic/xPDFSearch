@@ -106,6 +106,10 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
       <td>Indicates if the PDF document is encrypted.</td>
     </tr>
     <tr>
+      <td>Protected</td>
+      <td>Indicates if the PDF document is protected and cannot be open without password.</td>
+    </tr>
+    <tr>
       <td>Tagged</td>
       <td>Indicates if the PDF document is tagged.</td>
     </tr>
@@ -185,6 +189,10 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
             <tr>
               <td>E</td>
               <td>Encrypted</td>
+            </tr>
+            <tr>
+              <td>X</td>
+              <td>Protected</td>
             </tr>
             <tr>
               <td>S</td>
@@ -318,6 +326,7 @@ xPDFSearch plugin can be configured in `xPDFSearch.ini` file:
 •  AttrTagged=T symbol for "Tagged" attribute
 •  AttrLinearized=L symbol for "Linearized" attribute
 •  AttrEncrypted=E symbol for "Encrypted" attribute
+•  AttrProtected=X symbol for "Protected" attribute
 •  AttrSignatureField=S symbol for "Signature Field" attribute
 •  AttrOutlined=O symbol for "Outlined" attribute
 •  AttrEmbeddedFiles=F symbol for "Embedded Files" attribute

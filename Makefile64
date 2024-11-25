@@ -17,7 +17,7 @@ SRC_CC = FoFiBase.cc FoFiEncodings.cc FoFiIdentifier.cc FoFiTrueType.cc FoFiType
         gfile.cc GHash.cc GList.cc gmem.cc GString.cc \
         AcroForm.cc Annot.cc Array.cc BuiltinFont.cc BuiltinFontTables.cc Catalog.cc CharCodeToUnicode.cc CMap.cc \
         Decrypt.cc Dict.cc Error.cc FontEncodingTables.cc Function.cc Gfx.cc GfxFont.cc \
-        GfxState.cc GlobalParams.cc JArithmeticDecoder.cc Lexer.cc Link.cc NameToCharCode.cc Object.cc \
+        GfxState.cc GlobalParams.cc Lexer.cc Link.cc NameToCharCode.cc Object.cc \
         OptionalContent.cc Outline.cc OutputDev.cc Page.cc Parser.cc PDFDoc.cc PDFDocEncoding.cc PSTokenizer.cc \
         SecurityHandler.cc Stream.cc TextOutputDev.cc TextString.cc UnicodeMap.cc UnicodeRemapping.cc UnicodeTypeTable.cc \
         UTF8.cc XRef.cc XFAScanner.cc Zoox.cc \

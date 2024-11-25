@@ -124,7 +124,7 @@ GString* PDFDocEx::getMetadataString(const char* key)
 {
     std::unique_ptr<GString> ret{ nullptr };
     Object objDocInfo;
-    if (getDocInfo(&objDocInfo)->isDict())
+    if (getDocInfo(&objDocInfo)->isDict() && (getErrorCode() != errEncrypted))
     {
         Object obj;
         if (objDocInfo.dictLookup(key, &obj)->isString())

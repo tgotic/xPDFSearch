@@ -29,7 +29,7 @@ static constexpr const char* fieldNames[]
     "Title", "Subject", "Keywords", "Author", "Application", "PDF Producer", "Document Start", "First Row", "Extensions",
     "Number Of Pages", "Number Of Fontless Pages", "Number Of Pages With Images",
     "PDF Version", "Page Width", "Page Height",
-    "Copying Allowed", "Printing Allowed", "Adding Comments Allowed", "Changing Allowed", "Encrypted", "Tagged", "Linearized", "Incremental", "Signature Field", "Outlined", "Embedded Files",
+    "Copying Allowed", "Printing Allowed", "Adding Comments Allowed", "Changing Allowed", "Encrypted", "Tagged", "Linearized", "Incremental", "Signature Field", "Outlined", "Embedded Files", "Protected",
     "Created", "Modified", "Metadata Date",
     "ID", "PDF Attributes", "Conformance", "Created Raw", "Modified Raw", "Metadata Date Raw",
     "Outlines", "Text"
@@ -42,7 +42,7 @@ constexpr int fieldTypes[]
     ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw,
     ft_numeric_32, ft_numeric_32, ft_numeric_32,
     ft_numeric_floating, ft_numeric_floating, ft_numeric_floating,
-    ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean,
+    ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean,
     ft_datetime, ft_datetime, ft_datetime,
     ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw,
     ft_fulltext, ft_fulltext
@@ -55,7 +55,7 @@ constexpr int fieldFlags[]
     0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0,0,
     0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0,
     0, contflags_substattributestr, 0, 0, 0, 0, 0 ,0,
     0, 0
@@ -138,13 +138,18 @@ BOOL WINAPI DllMain(HINSTANCE hDLL, DWORD reason, LPVOID)
     switch (reason)
     {
     case DLL_PROCESS_ATTACH:
+    {
         // Initialize globally used resources.
         globalParams = new GlobalParams(nullptr);
         globalParams->setTextEncoding("UCS-2");         // extracted text encoding (not for metadata)
         globalParams->setTextPageBreaks(gFalse);        // don't add \f for page breaks
         globalParams->setTextEOL("unix");               // extracted text line endings
         hModule = static_cast<HMODULE>(hDLL);
+
+        RegCloseKey(nullptr);   // load Advapi32.dll from system32 so GetModuleHandleW doesn't need full system path
+
         break;
+    }
     case DLL_PROCESS_DETACH:
         destroy();              // Release PDFExtractor instance, if any
         TRACE(L"%hs!globalParams\n", __FUNCTION__);
@@ -161,6 +166,7 @@ BOOL WINAPI DllMain(HINSTANCE hDLL, DWORD reason, LPVOID)
     }
     return TRUE;
 }
+
 /**
 * Returns PDF detection string.
 * @param[out]    detectString    detection buffer
@@ -390,6 +396,8 @@ void __stdcall ContentSetDefaultParams(ContentDefaultParamStruct* dps)
         mbtowc(&globalOptionsFromIni.attrOutlined, tmp, 1);
     if (GetPrivateProfileStringA(appName, "AttrEmbeddedFiles", "F", tmp, sizeof(tmp), iniFileName) == 1)
         mbtowc(&globalOptionsFromIni.attrEmbeddedFiles, tmp, 1);
+    if (GetPrivateProfileStringA(appName, "AttrProtected", "X", tmp, sizeof(tmp), iniFileName) == 1)
+        mbtowc(&globalOptionsFromIni.attrProtected, tmp, 1);
 }
 
 /**

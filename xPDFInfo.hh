@@ -47,6 +47,7 @@ typedef struct options_s
     wchar_t attrSigned{ L'\0' };
     wchar_t attrOutlined{ L'\0' };
     wchar_t attrEmbeddedFiles{ L'\0' };
+    wchar_t attrProtected{ L'\0' };
 } options_t;
 
 extern options_t globalOptionsFromIni;
@@ -59,7 +60,7 @@ enum fieldIndexes
     fiTitle, fiSubject, fiKeywords, fiAuthor, fiCreator, fiProducer, fiDocStart, fiFirstRow, fiExtensions,
     fiNumberOfPages, fiNumberOfFontlessPages,fiNumberOfPagesWithImages,
     fiPDFVersion, fiPageWidth, fiPageHeight,
-    fiCopyable, fiPrintable, fiCommentable, fiChangeable, fiEncrypted, fiTagged, fiLinearized, fiIncremental, fiSigned, fiOutlined, fiEmbeddedFiles,
+    fiCopyable, fiPrintable, fiCommentable, fiChangeable, fiEncrypted, fiTagged, fiLinearized, fiIncremental, fiSigned, fiOutlined, fiEmbeddedFiles, fiProtected,
     fiCreationDate, fiModifiedDate, fiMetadataDate,
     fiID, fiAttributesString, fiConformance, fiCreationDateRaw, fiModifiedDateRaw, fiMetadataDateRaw,
     fiOutlines, fiText

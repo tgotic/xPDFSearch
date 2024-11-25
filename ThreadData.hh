@@ -90,16 +90,15 @@ public:
     ThreadData& operator=(const ThreadData&) = delete;
     ~ThreadData();
 
-    inline void resetProducer() { ResetEvent(handles[PRODUCER_HANDLE]); }
-    inline void notifyConsumer() { SetEvent(handles[CONSUMER_HANDLE]); };
+    inline void resetProducer() const { ResetEvent(handles[PRODUCER_HANDLE]); }
+    inline void notifyConsumer() const { SetEvent(handles[CONSUMER_HANDLE]); };
     auto hasProducer() const { return (handles[PRODUCER_HANDLE] != nullptr); }
     auto hasConsumer() const { return (handles[CONSUMER_HANDLE] != nullptr); }
-    DWORD waitForProducer(DWORD timeout);
-    DWORD waitForConsumer(DWORD timeout);
+    DWORD waitForProducer(DWORD timeout) const;
+    DWORD waitForConsumer(DWORD timeout) const;
     int compareWaitForConsumers(ThreadData* searcher, DWORD timeout);
-    DWORD notifyProducerWaitForConsumer(DWORD timeout);
-    // DWORD notifyConsumerWaitForProducer(DWORD timeout);
-    DWORD notifyProducerAndWait(DWORD timeout);
+    DWORD notifyProducerWaitForConsumer(DWORD timeout) const;
+    DWORD notifyProducerAndWait(DWORD timeout) const;
     uint32_t start(_beginthreadex_proc_type func, void* args);
     void abort();
     void done();
@@ -140,8 +139,8 @@ public:
 
 private:
     Request request;                    /**< extraction request */
-    std::atomic_bool active{ false };   /**< thread status, true when active */
     HANDLE handles[MAX_THREAD_HANDLES]{ nullptr };  /**< thread, producer and consumer event handles */
+    std::atomic_bool active{ false };   /**< thread status, true when active */
     void createProducer();
     void createConsumer();
     uint32_t createWorker(_beginthreadex_proc_type func, void* args);
@@ -149,8 +148,8 @@ private:
     void closeConsumer();
     void closeWorker();
     inline auto hasWorker() const { return (handles[WORKER_HANDLE] != nullptr); }
-    inline void notifyProducer() { SetEvent(handles[PRODUCER_HANDLE]); }
-    inline void resetConsumer() { ResetEvent(handles[CONSUMER_HANDLE]); }
+    inline void notifyProducer() const { SetEvent(handles[PRODUCER_HANDLE]); }
+    inline void resetConsumer() const { ResetEvent(handles[CONSUMER_HANDLE]); }
     void setGStringValue(GString* value, int type);
     void setWcharValue(wchar_t* value, int type);
 

@@ -117,9 +117,6 @@
     <ClCompile Include="xpdf-4.05\xpdf\GlobalParams.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\JArithmeticDecoder.cc">
-      <Filter>xpdf\xpdf</Filter>
-    </ClCompile>
     <ClCompile Include="xpdf-4.05\xpdf\Lexer.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>

@@ -119,11 +119,9 @@
   <PropertyGroup Condition="'$(Platform)'=='x64'">
     <TargetExt>.wdx64</TargetExt>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseXP|x64'">
-    <IntDir>$(ShortProjectName)\$(Platform)\$(Configuration)\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseXP|Win32'">
-    <IntDir>$(ShortProjectName)\$(Platform)\$(Configuration)\</IntDir>
+  <PropertyGroup>
+    <IntDir>$(SolutionDir)$(Platform)\$(Configuration)\objs\</IntDir>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Label="LLVM" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClangClAdditionalOptions>-Wdocumentation  -Wno-unused-parameter</ClangClAdditionalOptions>
@@ -202,7 +200,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <Version>1.420</Version>
+      <Version>1.430</Version>
       <SetChecksum>true</SetChecksum>
       <ProgramDatabaseFile />
       <MinimumRequiredVersion>10</MinimumRequiredVersion>
@@ -236,7 +234,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <Version>1.420</Version>
+      <Version>1.430</Version>
       <SetChecksum>true</SetChecksum>
       <ProgramDatabaseFile>
       </ProgramDatabaseFile>
@@ -268,7 +266,7 @@
       <MinimumRequiredVersion>10</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.420</Version>
+      <Version>1.430</Version>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_WIN64;_DEBUG</PreprocessorDefinitions>
@@ -303,7 +301,7 @@
       <MinimumRequiredVersion>10</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.420</Version>
+      <Version>1.430</Version>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_WIN64</PreprocessorDefinitions>
@@ -316,7 +314,7 @@
       <TreatWarningAsError>
       </TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;NOSERVICE;NOMCX;NOIME;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;WIN32_LEAN_AND_MEAN;NOSERVICE;NOMCX;NOIME;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <Optimization>MaxSpeed</Optimization>
       <MinimalRebuild>
       </MinimalRebuild>
@@ -338,7 +336,7 @@
       <MinimumRequiredVersion>10</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.420</Version>
+      <Version>1.430</Version>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <SetChecksum>true</SetChecksum>
@@ -365,19 +363,19 @@
       </PrecompiledHeaderOutputFile>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DebugInformationFormat>None</DebugInformationFormat>
       <ExceptionHandling>Sync</ExceptionHandling>
       <ControlFlowGuard>Guard</ControlFlowGuard>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <MinimumRequiredVersion>5.02</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.420</Version>
+      <Version>1.430</Version>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <SetChecksum>true</SetChecksum>
@@ -417,7 +415,6 @@
     <ClCompile Include="xpdf-4.05\xpdf\GfxFont.cc" />
     <ClCompile Include="xpdf-4.05\xpdf\GfxState.cc" />
     <ClCompile Include="xpdf-4.05\xpdf\GlobalParams.cc" />
-    <ClCompile Include="xpdf-4.05\xpdf\JArithmeticDecoder.cc" />
     <ClCompile Include="xpdf-4.05\xpdf\Lexer.cc" />
     <ClCompile Include="xpdf-4.05\xpdf\Link.cc" />
     <ClCompile Include="xpdf-4.05\xpdf\NameToCharCode.cc" />

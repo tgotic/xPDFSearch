@@ -263,9 +263,9 @@ GBool PDFDoc::setup2(GString *ownerPassword, GString *userPassword,
   // check for encryption
   if (!checkEncryption(ownerPassword, userPassword)) {
     errCode = errEncrypted;
-    delete xref;
-    xref = NULL;
-    return gFalse;
+    // delete xref;
+    // xref = NULL;
+    // return gFalse;
   }
 
   // read catalog
@@ -359,20 +359,16 @@ GBool PDFDoc::checkEncryption(GString *ownerPassword, GString *userPassword) {
   if (encrypt.isDict()) {
     if ((secHdlr = SecurityHandler::make(this, &encrypt))) {
       if (secHdlr->isUnencrypted()) {
-	// no encryption
-	ret = gTrue;
-      } else if (secHdlr->checkEncryption(ownerPassword, userPassword)) {
-	// authorization succeeded
+       	// no encryption
+       	ret = gTrue;
+      } else {
+       	ret = secHdlr->checkEncryption(ownerPassword, userPassword);
        	xref->setEncryption(secHdlr->getPermissionFlags(),
 			    secHdlr->getOwnerPasswordOk(),
 			    secHdlr->getFileKey(),
 			    secHdlr->getFileKeyLength(),
 			    secHdlr->getEncVersion(),
 			    secHdlr->getEncAlgorithm());
-	ret = gTrue;
-      } else {
-	// authorization failed
-	ret = gFalse;
       }
       delete secHdlr;
     } else {
