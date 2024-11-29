@@ -1376,6 +1376,9 @@ Annots::~Annots() {
 }
 
 void Annots::loadAnnots(int page) {
+  if ((page <= 0) || (page > doc->getCatalog()->getNumPages())) {
+    return;
+  }
   if (pageAnnots[page - 1]) {
     return;
   }

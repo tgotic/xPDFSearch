@@ -31,7 +31,7 @@ static constexpr const char* fieldNames[]
     "PDF Version", "Page Width", "Page Height",
     "Copying Allowed", "Printing Allowed", "Adding Comments Allowed", "Changing Allowed", "Encrypted", "Tagged", "Linearized", "Incremental", "Signature Field", "Outlined", "Embedded Files", "Protected",
     "Created", "Modified", "Metadata Date",
-    "ID", "PDF Attributes", "Conformance", "Created Raw", "Modified Raw", "Metadata Date Raw",
+    "ID", "PDF Attributes", "Conformance", "Encryption", "Created Raw", "Modified Raw", "Metadata Date Raw",
     "Outlines", "Text"
 };
 static_assert(_countof(fieldNames) == FIELD_COUNT, "fieldNames size error");
@@ -44,7 +44,7 @@ constexpr int fieldTypes[]
     ft_numeric_floating, ft_numeric_floating, ft_numeric_floating,
     ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean,
     ft_datetime, ft_datetime, ft_datetime,
-    ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw,
+    ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw,
     ft_fulltext, ft_fulltext
 };
 static_assert(_countof(fieldTypes) == FIELD_COUNT, "fieldTypes size error");
@@ -57,7 +57,7 @@ constexpr int fieldFlags[]
     0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0,
-    0, contflags_substattributestr, 0, 0, 0, 0, 0 ,0,
+    0, contflags_substattributestr, 0, 0, 0, 0, 0 ,0, 0,
     0, 0
 };
 static_assert(_countof(fieldFlags) == FIELD_COUNT, "fieldFlags size error");

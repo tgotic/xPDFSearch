@@ -20,7 +20,7 @@
 
 // A '1' in this array means the character is white space.  A '1' or
 // '2' means the character ends a name or command.
-static char specialChars[256] = {
+static const char specialChars[256] = {
   1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0,   // 0x
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   // 1x
   1, 0, 0, 0, 0, 2, 0, 0, 2, 2, 0, 0, 0, 0, 0, 2,   // 2x
@@ -105,7 +105,7 @@ Object *Lexer::getObj(Object *obj) {
   int c, c2;
   GBool comment, neg, doubleMinus, done, invalid;
   int numParen, nErrors;
-  int xi;
+  int xi, decDigits;
   double xf, scale;
   GString *s;
   int n, m;
@@ -169,9 +169,16 @@ Object *Lexer::getObj(Object *obj) {
       c = lookChar();
       if (isdigit(c)) {
 	getChar();
-	xi = xi * 10 + (c - '0');
-	if (xf < 1e20) {
-	  xf = xf * 10 + (c - '0');
+	c -= '0';
+	if (xi < (INT_MAX - c) / 10) {
+	  xi = xi * 10 + c;
+	} else {
+	  error(errSyntaxError, getPos(), "Int to too big");
+	}
+	if (xf < 1e20) { // 1<<63
+	  xf = xf * 10 + c;
+	} else {
+	  error(errSyntaxError, getPos(), "Real to too big");
 	}
       } else if (c == '.') {
 	getChar();
@@ -192,6 +199,7 @@ Object *Lexer::getObj(Object *obj) {
     obj->initInt(xi);
     break;
   doReal:
+    decDigits = 1;
     scale = 0.1;
     while (1) {
       c = lookChar();
@@ -204,8 +212,12 @@ Object *Lexer::getObj(Object *obj) {
 	break;
       }
       getChar();
-      xf = xf + scale * (c - '0');
-      scale *= 0.1;
+      if (decDigits++ <= 15) {
+	xf = xf + scale * (c - '0');
+	scale *= 0.1;
+      } else {
+	error(errSyntaxError, getPos(), "Real to too small");
+      }
     }
     while ((c = lookChar()) == '-' || isdigit(c)) {
       getChar();

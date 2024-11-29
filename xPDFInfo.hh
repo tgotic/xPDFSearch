@@ -62,7 +62,7 @@ enum fieldIndexes
     fiPDFVersion, fiPageWidth, fiPageHeight,
     fiCopyable, fiPrintable, fiCommentable, fiChangeable, fiEncrypted, fiTagged, fiLinearized, fiIncremental, fiSigned, fiOutlined, fiEmbeddedFiles, fiProtected,
     fiCreationDate, fiModifiedDate, fiMetadataDate,
-    fiID, fiAttributesString, fiConformance, fiCreationDateRaw, fiModifiedDateRaw, fiMetadataDateRaw,
+    fiID, fiAttributesString, fiConformance, fiEncryption, fiCreationDateRaw, fiModifiedDateRaw, fiMetadataDateRaw,
     fiOutlines, fiText
 };
 

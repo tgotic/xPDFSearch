@@ -237,7 +237,7 @@ Catalog::~Catalog() {
     for (i = 0; i < numPages; ++i) {
       if (pages[i]) {
 	delete pages[i];
-	pages[i] = NULL;
+    pages[i] = NULL;
       }
     }
     gfree(pages);
@@ -282,7 +282,7 @@ Page *Catalog::getPage(int i) {
 #if MULTITHREADED
   gLockMutex(&pageMutex);
 #endif
-  if (pages && (i > 0)) {
+  if (pages && (i > 0) && (i <= numPages)) {
       if (!pages[i - 1]) {
           loadPage(i);
       }
@@ -295,32 +295,35 @@ Page *Catalog::getPage(int i) {
 }
 
 Ref *Catalog::getPageRef(int i) {
-  Ref *pageRef;
-
+  Ref *pageRef = NULL;
+  if ((i > 0) && (i <= numPages)) {
 #if MULTITHREADED
-  gLockMutex(&pageMutex);
+    gLockMutex(&pageMutex);
 #endif
-  if (!pages[i-1]) {
-    loadPage(i);
+    if (!pages[i-1]) {
+      loadPage(i);
+    }
+    pageRef = &pageRefs[i-1];
+#if MULTITHREADED
+    gUnlockMutex(&pageMutex);
+#endif
   }
-  pageRef = &pageRefs[i-1];
-#if MULTITHREADED
-  gUnlockMutex(&pageMutex);
-#endif
   return pageRef;
 }
 
 void Catalog::doneWithPage(int i) {
+  if ((i > 0) && (i <= numPages)) {
 #if MULTITHREADED
-  gLockMutex(&pageMutex);
+    gLockMutex(&pageMutex);
 #endif
-  if (pages[i-1]) {
-    delete pages[i-1];
-    pages[i-1] = NULL;
+    if (pages[i-1]) {
+      delete pages[i-1];
+      pages[i-1] = NULL;
+    }
+#if MULTITHREADED
+    gUnlockMutex(&pageMutex);
+#endif
   }
-#if MULTITHREADED
-  gUnlockMutex(&pageMutex);
-#endif
 }
 
 GString *Catalog::readMetadata() {
@@ -489,14 +492,16 @@ GBool Catalog::readPageTree() {
     error(errSyntaxError, -1, "Top-level pages reference is wrong type ({0:s})",
 	  topPagesRef.getTypeName());
     topPagesRef.free();
-    return gFalse;
+    // return gFalse;
+    return gTrue;
   }
   if (!topPagesRef.fetch(xref, &topPagesObj)->isDict()) {
     error(errSyntaxError, -1, "Top-level pages object is wrong type ({0:s})",
 	  topPagesObj.getTypeName());
     topPagesObj.free();
     topPagesRef.free();
-    return gFalse;
+    // return gFalse;
+    return gTrue;
   }
   if (topPagesObj.dictLookup("Count", &countObj)->isInt()) {
     numPages = countObj.getInt();
@@ -522,7 +527,8 @@ GBool Catalog::readPageTree() {
     topPagesObj.free();
     topPagesRef.free();
     numPages = 0;
-    return gFalse;
+    // return gFalse;
+    return gTrue;
   }
   pageTree = new PageTreeNode(topPagesRef.getRef(), numPages, NULL);
   topPagesObj.free();
@@ -588,7 +594,8 @@ int Catalog::countPageTree(Object *pagesNodeRef, char *touchedObjs) {
 }
 
 void Catalog::loadPage(int pg) {
-  loadPage2(pg, pg - 1, pageTree);
+  if ((pg > 0) && (pg <= numPages))
+    loadPage2(pg, pg - 1, pageTree);
 }
 
 void Catalog::loadPage2(int pg, int relPg, PageTreeNode *node) {

@@ -1,3 +1,14 @@
+# Version 1.44
+
+ADDED
+* Support for certificate protected PDF files, only detection and attributes extraction.
+Files are not decrypted and text cannot be extracted.
+* New fields: Encryption
+* Chinese translation
+
+CHANGED
+* Bugfix for error introduced in v1.43
+
 # Version 1.43
 
 ADDED

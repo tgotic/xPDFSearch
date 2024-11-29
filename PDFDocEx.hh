@@ -21,6 +21,7 @@ public:
     GString* getMetadataDateTime(const char* key);
     GString* getConformance();
     GString* getID();
+    GString* getEncryption();
     double getPDFVersion();
 
 private:

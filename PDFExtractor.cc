@@ -707,6 +707,17 @@ void PDFExtractor::getExtensions()
 }
 
 /**
+* Get PDF encryption string from PDF Trailer.
+* Encryption string is in format: "Filter (SubFilter) vV.R CFM Length-bits"
+*/
+void PDFExtractor::getEncryption()
+{
+    std::unique_ptr<GString> encryption{ m_doc->getEncryption() };
+    if (encryption)
+        m_data->setValue(encryption.get(), ft_stringw);
+}
+
+/**
 * Call specific extraction functions.
 */
 void PDFExtractor::doWork()
@@ -820,6 +831,9 @@ void PDFExtractor::doWork()
         break;
     case fiExtensions:
         getExtensions();
+        break;
+    case fiEncryption:
+        getEncryption();
         break;
     default:
         break;

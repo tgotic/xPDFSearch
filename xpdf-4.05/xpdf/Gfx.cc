@@ -4227,7 +4227,7 @@ GBool Gfx::doImage(Object *ref, Stream *str, GBool inlineImg) {
   StreamColorSpaceMode csMode;
   GBool mask, invert;
   GfxColorSpace *colorSpace, *maskColorSpace;
-  GfxImageColorMap *colorMap, *maskColorMap{ nullptr };
+  GfxImageColorMap* colorMap, * maskColorMap{ nullptr };
   Object maskObj, smaskObj, maskRef;
   GBool haveColorKeyMask, haveExplicitMask, haveSoftMask, haveMatte;
   int maskColors[2*gfxColorMaxComps];

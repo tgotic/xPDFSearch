@@ -200,7 +200,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <Version>1.430</Version>
+      <Version>1.440</Version>
       <SetChecksum>true</SetChecksum>
       <ProgramDatabaseFile />
       <MinimumRequiredVersion>10</MinimumRequiredVersion>
@@ -234,7 +234,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <Version>1.430</Version>
+      <Version>1.440</Version>
       <SetChecksum>true</SetChecksum>
       <ProgramDatabaseFile>
       </ProgramDatabaseFile>
@@ -266,7 +266,7 @@
       <MinimumRequiredVersion>10</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.430</Version>
+      <Version>1.440</Version>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_WIN64;_DEBUG</PreprocessorDefinitions>
@@ -301,7 +301,7 @@
       <MinimumRequiredVersion>10</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.430</Version>
+      <Version>1.440</Version>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_WIN64</PreprocessorDefinitions>
@@ -336,7 +336,7 @@
       <MinimumRequiredVersion>10</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.430</Version>
+      <Version>1.440</Version>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <SetChecksum>true</SetChecksum>
@@ -375,7 +375,7 @@
       <MinimumRequiredVersion>5.02</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.430</Version>
+      <Version>1.440</Version>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <SetChecksum>true</SetChecksum>

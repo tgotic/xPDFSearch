@@ -212,7 +212,11 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
     </tr>
     <tr>
       <td>Conformance</td>
-      <td>Indicates conformances of the document to the PDF/A, PDF/E PDF/X, PDF/UA or PDF/R standards.<br> Multiple conformances are semicolon separated, e.g. "PDF/A-1a;PDF/R-1.0"</td>
+      <td>Indicates conformances of the document to the PDF/A, PDF/E PDF/X, PDF/UA or PDF/R standards.<br> Multiple conformances are semicolon separated, e.g. "PDF/A-1a;PDF/R-1.0".</td>
+    </tr>
+    <tr>
+      <td>Encryption</td>
+      <td>Indicates PDF encryption type.</td>
     </tr>
     <tr>
       <td>Created Raw</td>

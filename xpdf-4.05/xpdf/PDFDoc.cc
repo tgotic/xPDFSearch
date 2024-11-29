@@ -359,8 +359,8 @@ GBool PDFDoc::checkEncryption(GString *ownerPassword, GString *userPassword) {
   if (encrypt.isDict()) {
     if ((secHdlr = SecurityHandler::make(this, &encrypt))) {
       if (secHdlr->isUnencrypted()) {
-       	// no encryption
-       	ret = gTrue;
+	// no encryption
+	ret = gTrue;
       } else {
        	ret = secHdlr->checkEncryption(ownerPassword, userPassword);
        	xref->setEncryption(secHdlr->getPermissionFlags(),
@@ -373,7 +373,8 @@ GBool PDFDoc::checkEncryption(GString *ownerPassword, GString *userPassword) {
       delete secHdlr;
     } else {
       // couldn't find the matching security handler
-      ret = gFalse;
+        xref->setEncryption(0, gFalse, NULL, 0, 0, cryptRC4);
+        ret = gFalse;
     }
   } else {
     // document is not encrypted
@@ -391,9 +392,12 @@ void PDFDoc::displayPage(OutputDev *out, int page,
   if (globalParams->getPrintCommands()) {
     printf("***** page %d *****\n", page);
   }
-  catalog->getPage(page)->display(out, hDPI, vDPI,
-				  rotate, useMediaBox, crop, printing,
-				  abortCheckCbk, abortCheckCbkData);
+  auto pdfPage{ catalog->getPage(page) };
+  if (pdfPage) {
+    pdfPage->display(out, hDPI, vDPI,
+		     rotate, useMediaBox, crop, printing,
+		     abortCheckCbk, abortCheckCbkData);
+  }
 }
 
 void PDFDoc::displayPages(OutputDev *out, int firstPage, int lastPage,
@@ -421,19 +425,29 @@ void PDFDoc::displayPageSlice(OutputDev *out, int page,
 			      int sliceX, int sliceY, int sliceW, int sliceH,
 			      GBool (*abortCheckCbk)(void *data),
 			      void *abortCheckCbkData) {
-  catalog->getPage(page)->displaySlice(out, hDPI, vDPI,
-				       rotate, useMediaBox, crop,
-				       sliceX, sliceY, sliceW, sliceH,
-				       printing,
-				       abortCheckCbk, abortCheckCbkData);
+  auto pdfPage{ catalog->getPage(page) };
+  if (pdfPage) {
+    pdfPage->displaySlice(out, hDPI, vDPI,
+			  rotate, useMediaBox, crop,
+			  sliceX, sliceY, sliceW, sliceH,
+			  printing,
+			  abortCheckCbk, abortCheckCbkData);
+  }
 }
 
 Links *PDFDoc::getLinks(int page) {
-  return catalog->getPage(page)->getLinks();
+  auto pdfPage{ catalog->getPage(page) };
+  if (pdfPage) {
+    return pdfPage->getLinks();
+  }
+  return nullptr;
 }
 
 void PDFDoc::processLinks(OutputDev *out, int page) {
-  catalog->getPage(page)->processLinks(out);
+  auto pdfPage{ catalog->getPage(page) };
+  if (pdfPage) {
+      pdfPage->processLinks(out);
+  }
 }
 
 #ifndef DISABLE_OUTLINE

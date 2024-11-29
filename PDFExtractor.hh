@@ -56,6 +56,7 @@ private:
     void getVersion();
     void getConformance();
     void getExtensions();
+    void getEncryption();
 
     static double getPaperSize(int units);
     static size_t removeDelimiters(wchar_t* str, size_t cchStr, const wchar_t* delims);

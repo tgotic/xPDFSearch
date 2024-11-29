@@ -864,3 +864,102 @@ int PDFDocEx::getNumPagesWithImages()
     }
     return nPages;
 }
+
+/**
+* Get encryption string from PDF Trailer.
+*
+* @return pointer to allocated GString, needs to be deleted/released after usage.
+*/
+GString* PDFDocEx::getEncryption()
+{
+    auto encryption{ std::make_unique<GString>() };
+    Object encryptObj;
+    if (getXRef()->getTrailerDict()->dictLookup("Encrypt", &encryptObj)->isDict())
+    {
+        int v{ 0 };
+        Object tmpObj;
+        if (encryptObj.dictLookup("Filter", &tmpObj)->isName()) 
+        {
+            encryption->append(tmpObj.getName());
+        }
+        tmpObj.free();
+
+        if (encryptObj.dictLookup("SubFilter", &tmpObj)->isName()) 
+        {
+            encryption->append(GString::format(" ({0:s})", tmpObj.getName()));
+        }
+        tmpObj.free();
+
+        if (encryptObj.dictLookup("V", &tmpObj)->isInt()) 
+        {
+            v = tmpObj.getInt();
+            encryption->append(GString::format(" v{0:d}", v));
+            tmpObj.free();
+
+            if (encryptObj.dictLookup("R", &tmpObj)->isInt())
+            {
+                encryption->append(GString::format(".{0:d}", tmpObj.getInt()));
+            }
+        }
+        tmpObj.free();
+
+        int bits{ 0 };
+        if (v >= 4)
+        {
+            Object cfNameObj;
+            if (!encryptObj.dictLookup("StmF", &cfNameObj)->isName())
+            {
+                cfNameObj.free();
+                if (!encryptObj.dictLookup("StrF", &cfNameObj)->isName())
+                {
+                    cfNameObj.free();
+                }
+            }
+
+            if (!cfNameObj.isNone())
+            {
+                Object cfObj;
+                if (encryptObj.dictLookup("CF", &cfObj)->isDict())
+                {
+                    Object cffObj;
+                    if (cfObj.dictLookup(cfNameObj.getName(), &cffObj)->isDict())
+                    {
+                        if (cffObj.dictLookup("CFM", &tmpObj)->isName())
+                        {
+                            encryption->append(GString::format(" {0:s}", tmpObj.getName()));
+                        }
+                        tmpObj.free();
+
+                        if (cffObj.dictLookup("Length", &tmpObj)->isInt())
+                        {
+                            bits = tmpObj.getInt();
+                        }
+                        tmpObj.free();
+                    }
+                    cffObj.free();
+                }
+                cfObj.free();
+                cfNameObj.free();
+            }
+        }
+        else
+        {
+            if (encryptObj.dictLookup("Length", &tmpObj)->isInt()) 
+            {
+                bits = tmpObj.getInt();
+            }
+            tmpObj.free();
+        }
+        if (bits)
+        { 
+            if (bits < 40)
+                bits *= 8;
+
+            encryption->append(GString::format(" {0:d}-bit", bits));
+        }
+
+    }
+    encryptObj.free();
+
+    return encryption.release();
+}

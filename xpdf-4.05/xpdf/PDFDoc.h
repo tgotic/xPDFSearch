@@ -81,15 +81,15 @@ public:
 
   // Get page parameters.
   double getPageMediaWidth(int page)
-    { return catalog->getPage(page)->getMediaWidth(); }
+    { return (page <= getNumPages()) ? catalog->getPage(page)->getMediaWidth() : 0; }
   double getPageMediaHeight(int page)
-    { return catalog->getPage(page)->getMediaHeight(); }
+    { return (page <= getNumPages()) ? catalog->getPage(page)->getMediaHeight() : 0; }
   double getPageCropWidth(int page)
-    { return catalog->getPage(page)->getCropWidth(); }
+    { return (page <= getNumPages()) ? catalog->getPage(page)->getCropWidth() : 0; }
   double getPageCropHeight(int page)
-    { return catalog->getPage(page)->getCropHeight(); }
+    { return (page <= getNumPages()) ? catalog->getPage(page)->getCropHeight() : 0; }
   int getPageRotate(int page)
-    { return catalog->getPage(page)->getRotate(); }
+    { return (page <= getNumPages()) ? catalog->getPage(page)->getRotate() : 0; }
 
   // Get number of pages.
   int getNumPages() { return catalog->getNumPages(); }
