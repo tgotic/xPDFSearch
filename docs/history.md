@@ -1,3 +1,8 @@
+# Version 1.45
+
+CHANGED
+* Bugfix for crash in date conversion introduced in v1.42 (only for 32-bit plugin)
+
 # Version 1.44
 
 ADDED

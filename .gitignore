@@ -1,3 +1,5 @@
-
-.vscode/c_cpp_properties.json
-.vscode/settings.json
+*.bak
+**/.vscode
+**/x64
+**/Debug
+**/Release

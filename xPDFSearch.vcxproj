@@ -43,7 +43,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v141_xp</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='LLVM|Win32'" Label="Configuration">
@@ -141,6 +141,8 @@
       <PrecompiledHeader />
       <WarningLevel>Level3</WarningLevel>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>.\xPDFSearch.def</ModuleDefinitionFile>
@@ -148,6 +150,7 @@
       <SubSystem>Console</SubSystem>
       <DataExecutionPrevention />
       <TargetMachine>MachineX86</TargetMachine>
+      <MinimumRequiredVersion>5.01</MinimumRequiredVersion>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -200,7 +203,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <Version>1.440</Version>
+      <Version>1.450</Version>
       <SetChecksum>true</SetChecksum>
       <ProgramDatabaseFile />
       <MinimumRequiredVersion>10</MinimumRequiredVersion>
@@ -234,7 +237,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <Version>1.440</Version>
+      <Version>1.450</Version>
       <SetChecksum>true</SetChecksum>
       <ProgramDatabaseFile>
       </ProgramDatabaseFile>
@@ -266,7 +269,7 @@
       <MinimumRequiredVersion>10</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.440</Version>
+      <Version>1.450</Version>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_WIN64;_DEBUG</PreprocessorDefinitions>
@@ -301,7 +304,7 @@
       <MinimumRequiredVersion>10</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.440</Version>
+      <Version>1.450</Version>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_WIN64</PreprocessorDefinitions>
@@ -329,6 +332,7 @@
       <ControlFlowGuard>Guard</ControlFlowGuard>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <GuardEHContMetadata>true</GuardEHContMetadata>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -336,11 +340,12 @@
       <MinimumRequiredVersion>10</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.440</Version>
+      <Version>1.450</Version>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <SetChecksum>true</SetChecksum>
       <ProgramDatabaseFile />
+      <CETCompat>true</CETCompat>
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>_WIN64</PreprocessorDefinitions>
@@ -375,7 +380,7 @@
       <MinimumRequiredVersion>5.02</MinimumRequiredVersion>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <Version>1.440</Version>
+      <Version>1.450</Version>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <SetChecksum>true</SetChecksum>
