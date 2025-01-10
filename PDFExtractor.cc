@@ -537,11 +537,11 @@ bool PDFExtractor::PdfDateTimeToFileTime(const GString& pdfDateTime, FILETIME& f
                 }
                 {
                     // from Windows 7
-                    using TzSpecificLocalTimeToSystemTimeEx_t = BOOL (*)(const PDYNAMIC_TIME_ZONE_INFORMATION, const LPSYSTEMTIME, LPSYSTEMTIME);
-                    auto TzSpecificLocalTimeToSystemTimeEx_fn{ (TzSpecificLocalTimeToSystemTimeEx_t)GetProcAddress(GetModuleHandleW(L"Kernel32.dll"), "TzSpecificLocalTimeToSystemTimeEx") };
+                    using TzSpecificLocalTimeToSystemTimeEx_t = BOOL (WINAPI*)(const DYNAMIC_TIME_ZONE_INFORMATION*, const SYSTEMTIME*, LPSYSTEMTIME);
+                    const auto TzSpecificLocalTimeToSystemTimeEx_fn{ (TzSpecificLocalTimeToSystemTimeEx_t)GetProcAddress(GetModuleHandleW(L"Kernel32.dll"), "TzSpecificLocalTimeToSystemTimeEx") };
                     // from Windows 8, Advapi32.dll is loaded by RegCloseKey in DllMain
-                    using EnumDynamicTimeZoneInformation_t = DWORD (*)(const DWORD, PDYNAMIC_TIME_ZONE_INFORMATION);
-                    auto EnumDynamicTimeZoneInformation_fn{ (EnumDynamicTimeZoneInformation_t)GetProcAddress(GetModuleHandleW(L"Advapi32.dll"), "EnumDynamicTimeZoneInformation") };
+                    using EnumDynamicTimeZoneInformation_t = DWORD (WINAPI*)(const DWORD, PDYNAMIC_TIME_ZONE_INFORMATION);
+                    const auto EnumDynamicTimeZoneInformation_fn{ (EnumDynamicTimeZoneInformation_t)GetProcAddress(GetModuleHandleW(L"Advapi32.dll"), "EnumDynamicTimeZoneInformation") };
 
                     if (EnumDynamicTimeZoneInformation_fn && TzSpecificLocalTimeToSystemTimeEx_fn)
                     {
