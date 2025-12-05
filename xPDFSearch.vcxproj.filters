@@ -36,154 +36,154 @@
     <ClCompile Include="PDFExtractor.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\fofi\FoFiEncodings.cc">
+    <ClCompile Include="xpdf-4.06\fofi\FoFiEncodings.cc">
       <Filter>xpdf\fofi</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\fofi\FoFiIdentifier.cc">
+    <ClCompile Include="xpdf-4.06\fofi\FoFiIdentifier.cc">
       <Filter>xpdf\fofi</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\fofi\FoFiTrueType.cc">
+    <ClCompile Include="xpdf-4.06\fofi\FoFiTrueType.cc">
       <Filter>xpdf\fofi</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\fofi\FoFiType1.cc">
+    <ClCompile Include="xpdf-4.06\fofi\FoFiType1.cc">
       <Filter>xpdf\fofi</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\fofi\FoFiType1C.cc">
+    <ClCompile Include="xpdf-4.06\fofi\FoFiType1C.cc">
       <Filter>xpdf\fofi</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\goo\gfile.cc">
+    <ClCompile Include="xpdf-4.06\goo\gfile.cc">
       <Filter>xpdf\goo</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\goo\GHash.cc">
+    <ClCompile Include="xpdf-4.06\goo\GHash.cc">
       <Filter>xpdf\goo</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\goo\GList.cc">
+    <ClCompile Include="xpdf-4.06\goo\GList.cc">
       <Filter>xpdf\goo</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\goo\gmem.cc">
+    <ClCompile Include="xpdf-4.06\goo\gmem.cc">
       <Filter>xpdf\goo</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\goo\GString.cc">
+    <ClCompile Include="xpdf-4.06\goo\GString.cc">
       <Filter>xpdf\goo</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\AcroForm.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\AcroForm.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\Annot.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\Annot.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\Array.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\Array.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\BuiltinFont.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\BuiltinFont.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\BuiltinFontTables.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\BuiltinFontTables.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\Catalog.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\Catalog.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\CharCodeToUnicode.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\CharCodeToUnicode.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\CMap.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\CMap.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\Decrypt.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\Decrypt.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\Dict.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\Dict.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\Error.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\Error.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\FontEncodingTables.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\FontEncodingTables.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\Function.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\Function.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\Gfx.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\Gfx.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\GfxFont.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\GfxFont.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\GfxState.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\GfxState.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\GlobalParams.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\GlobalParams.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\Lexer.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\Lexer.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\Link.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\Link.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\NameToCharCode.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\NameToCharCode.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\Object.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\Object.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\OptionalContent.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\OptionalContent.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\Outline.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\Outline.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\OutputDev.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\OutputDev.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\Page.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\Page.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\Parser.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\Parser.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\PDFDoc.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\PDFDoc.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\PDFDocEncoding.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\PDFDocEncoding.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\PSTokenizer.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\PSTokenizer.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\SecurityHandler.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\SecurityHandler.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\Stream.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\Stream.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\TextOutputDev.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\TextOutputDev.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\TextString.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\TextString.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\UnicodeMap.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\UnicodeMap.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\UnicodeRemapping.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\UnicodeRemapping.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\UnicodeTypeTable.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\UnicodeTypeTable.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\UTF8.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\UTF8.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\XRef.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\XRef.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\Zoox.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\Zoox.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\xpdf\XFAScanner.cc">
+    <ClCompile Include="xpdf-4.06\xpdf\XFAScanner.cc">
       <Filter>xpdf\xpdf</Filter>
     </ClCompile>
     <ClCompile Include="ThreadData.cc">
@@ -192,8 +192,11 @@
     <ClCompile Include="PDFDocEx.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="xpdf-4.05\fofi\FoFiBase.cc">
+    <ClCompile Include="xpdf-4.06\fofi\FoFiBase.cc">
       <Filter>xpdf\fofi</Filter>
+    </ClCompile>
+    <ClCompile Include="xpdf-4.06\xpdf\LocalParams.cc">
+      <Filter>xpdf\xpdf</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
