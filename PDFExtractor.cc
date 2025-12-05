@@ -4,6 +4,7 @@
 #include <locale.h>
 #include <wchar.h>
 #include <charconv>
+#include <array>
 
 /**
 * @file
@@ -79,9 +80,14 @@
 /**
 * The keys required to read the Document Info Directory fields.
 */
-static constexpr const char* DocInfoFields[] =
+static constexpr std::array DocInfoFields
 {
     "Title", "Subject", "Keywords", "Author", "Creator", "Producer"
+};
+
+static constexpr std::array DocDateFields
+{
+    "CreationDate", "ModDate", "MetadataDate"
 };
 
 /**
@@ -800,22 +806,18 @@ void PDFExtractor::doWork()
         m_data->setValue((m_doc->getErrorCode() == errEncrypted), ft_boolean);
         break;
     case fiCreationDate:
-        getMetadataDate("CreationDate");
-        break;
+        [[fallthrough]];
     case fiModifiedDate:
-        getMetadataDate("ModDate");
-        break;
+        [[fallthrough]];
     case fiMetadataDate:
-        getMetadataDate("MetadataDate");
+        getMetadataDate(DocDateFields[field - fiCreationDate]);
         break;
     case fiCreationDateRaw:
-        getMetadataDateRaw("CreationDate");
-        break;
+        [[fallthrough]];
     case fiModifiedDateRaw:
-        getMetadataDateRaw("ModDate");
-        break;
+        [[fallthrough]];
     case fiMetadataDateRaw:
-        getMetadataDateRaw("MetadataDate");
+        getMetadataDateRaw(DocDateFields[field - fiCreationDateRaw]);
         break;
     case fiID:
         getDocID();

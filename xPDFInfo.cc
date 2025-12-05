@@ -10,6 +10,7 @@
 #include "PDFExtractor.hh"
 #include <GlobalParams.h>
 #include <strsafe.h>
+#include <array>
 
 /** enableDateTimeField is used to indicate if date time fields are supported by currently used Total Commander version. */
 static auto enableDateTimeField{ false };
@@ -24,7 +25,7 @@ options_t globalOptionsFromIni;
 * Names of fields returned to TC.
 * Names are grouped by field types.
 */
-static constexpr const char* fieldNames[]
+static constexpr std::array fieldNames
 {
     "Title", "Subject", "Keywords", "Author", "Application", "PDF Producer", "Document Start", "First Row", "Extensions",
     "Number Of Pages", "Number Of Fontless Pages", "Number Of Pages With Images",
@@ -34,10 +35,10 @@ static constexpr const char* fieldNames[]
     "ID", "PDF Attributes", "Conformance", "Encryption", "Created Raw", "Modified Raw", "Metadata Date Raw",
     "Outlines", "Text"
 };
-static_assert(_countof(fieldNames) == FIELD_COUNT, "fieldNames size error");
+static_assert(fieldNames.size() == FIELD_COUNT, "fieldNames size error");
 
 /** Array used to simplify fieldType returning. */
-constexpr int fieldTypes[]
+constexpr std::array fieldTypes
 {
     ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw,
     ft_numeric_32, ft_numeric_32, ft_numeric_32,
@@ -47,10 +48,10 @@ constexpr int fieldTypes[]
     ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw,
     ft_fulltext, ft_fulltext
 };
-static_assert(_countof(fieldTypes) == FIELD_COUNT, "fieldTypes size error");
+static_assert(fieldTypes.size() == FIELD_COUNT, "fieldTypes size error");
 
 /** Supported field flags, special value for attributes */
-constexpr int fieldFlags[]
+constexpr std::array fieldFlags
 {
     0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0,0,
@@ -60,7 +61,7 @@ constexpr int fieldFlags[]
     0, contflags_substattributestr, 0, 0, 0, 0, 0 ,0, 0,
     0, 0
 };
-static_assert(_countof(fieldFlags) == FIELD_COUNT, "fieldFlags size error");
+static_assert(fieldFlags.size() == FIELD_COUNT, "fieldFlags size error");
 
 /**< Only one instance of PDFExtractor per thread. */
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
