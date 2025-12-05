@@ -957,7 +957,7 @@ int PDFExtractor::waitForConsumer(DWORD timeout)
         result = ft_timeout;
         break;
     default:
-        TRACE(L"%hs!%ls!ret=%lx err=%lu\n", __FUNCTION__, dwRet, GetLastError());
+        TRACE(L"%hs!ret=%lx err=%lu\n", __FUNCTION__, dwRet, GetLastError());
         m_data->setStatusCond(requestStatus::cancelled, requestStatus::active);
         break;
     }
