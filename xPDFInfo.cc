@@ -2,7 +2,7 @@
 * @file
 *
 * TotalCommander context plugin (wdx, wdx64) for PDF data extraction and comparision.
-* Based on xPDF v4.04 from Glyph & Cog, LLC.
+* Based on xPDF v4.06 from Glyph & Cog, LLC.
 */
 
 #include "xPDFInfo.hh"
@@ -187,9 +187,9 @@ int __stdcall ContentGetDetectString(char* detectString, int maxlen)
 * Range above 10000 is reserved for directory synchronization functions.
 *
 * @param[in]    fieldIndex     index
-* @param[out]   fieldName      name of requested FieldIndex
-* @param[in]    units          "mm|cm|in|pt" for FieldIndex=fiPageWidth and fiPageHeight
-* @param[in]    maxlen         size of Units and FieldName in chars
+* @param[out]   fieldName      name of requested fieldIndex
+* @param[in]    units          "mm|cm|in|pt" for fieldIndex=fiPageWidth and fiPageHeight
+* @param[in]    maxlen         size of Units and fieldName in chars
 * @return type of requested field
 */
 int __stdcall ContentGetSupportedField(int fieldIndex, char* fieldName, char* units, int maxlen)
