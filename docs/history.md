@@ -1,3 +1,9 @@
+# Version 1.46
+
+CHANGED
+* Xpdf updated to version 4.06.
+* Bugfix for memory leaks.
+
 # Version 1.45
 
 CHANGED
