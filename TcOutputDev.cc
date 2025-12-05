@@ -84,7 +84,7 @@ void TcOutputDev::output(PDFDoc* doc, ThreadData* data)
             // for each page
             for (int page{ 1 }; (page <= doc->getNumPages()) && (requestStatus::active == data->getStatus()); ++page) {
                 // extract text from page
-                doc->displayPage(m_dev.get(), page, 72.0, 72.0, 0, gFalse, gTrue, gFalse, abortExtraction, data);
+                doc->displayPage(m_dev.get(), nullptr, page, 72.0, 72.0, 0, gFalse, gTrue, gFalse, abortExtraction, data);
                 // release page resources
                 doc->getCatalog()->doneWithPage(page);
             }
