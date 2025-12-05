@@ -38,27 +38,21 @@
 class XRefPosSet {
 public:
 
-  XRefPosSet();
+  XRefPosSet() { };
   ~XRefPosSet();
   void add(GFileOffset pos);
   GBool check(GFileOffset pos);
   int getLength() const { return len; }
-  GFileOffset get(int idx) { return tab[idx]; }
+  GFileOffset get(int idx) const { return tab[idx]; }
 
 private:
 
   int find(GFileOffset pos);
 
-  GFileOffset *tab;
-  int size;
-  int len;
+  int size{ 16 };
+  int len{ 0 };
+  GFileOffset* tab{(GFileOffset *)gmallocn(size, sizeof(GFileOffset))};
 };
-
-XRefPosSet::XRefPosSet() {
-  size = 16;
-  len = 0;
-  tab = (GFileOffset *)gmallocn(size, sizeof(GFileOffset));
-}
 
 XRefPosSet::~XRefPosSet() {
   gfree(tab);
@@ -158,7 +152,7 @@ ObjectStream::ObjectStream(XRef *xref, int objStrNumA, int recursion)
     goto err1;
   }
 
-  if (!objStr.streamGetDict()->lookup("N", &obj1)->isInt()) {
+  if (!objStr.streamGetDict()->lookup("N", &obj1, recursion)->isInt()) {
     obj1.free();
     goto err1;
   }
@@ -168,7 +162,7 @@ ObjectStream::ObjectStream(XRef *xref, int objStrNumA, int recursion)
     goto err1;
   }
 
-  if (!objStr.streamGetDict()->lookup("First", &obj1)->isInt()) {
+  if (!objStr.streamGetDict()->lookup("First", &obj1, recursion)->isInt()) {
     obj1.free();
     goto err1;
   }
@@ -452,7 +446,7 @@ GBool XRef::readXRef(GFileOffset *pos, XRefPosSet *posSet, GBool hybrid) {
     if (!parser->getObj(&obj)->isStream()) {
       goto err;
     }
-    more = readXRefStream(obj.getStream(), pos, hybrid);
+    more = readXRefStream(obj.getStream(), pos);
     obj.free();
     delete parser;
   }
@@ -462,7 +456,11 @@ GBool XRef::readXRef(GFileOffset *pos, XRefPosSet *posSet, GBool hybrid) {
  err:
   obj.free();
   delete parser;
-  ok = gFalse;
+  if (hybrid) {
+    error(errSyntaxError, -1, "Invalid XRefStm link in trailer");
+  } else {
+    ok = gFalse;
+  }
   return gFalse;
 }
 
@@ -521,12 +519,13 @@ GBool XRef::readXRefTable(GFileOffset *pos, int offset, XRefPosSet *posSet) {
       goto err1;
     }
     if (first + n > size) {
-      for (newSize = size ? 2 * size : 1024;
-	   first + n > newSize && newSize > 0;
-	   newSize <<= 1) ;
-      if (newSize < 0) {
+      newSize = size ? size : 512;
+      do {
+	if (newSize > INT_MAX / 2) {
 	goto err1;
       }
+	newSize <<= 1;
+      } while (first + n > newSize);
       entries = (XRefEntry *)greallocn(entries, newSize, sizeof(XRefEntry));
       for (i = size; i < newSize; ++i) {
 	entries[i].offset = (GFileOffset)-1;
@@ -647,7 +646,7 @@ GBool XRef::readXRefTable(GFileOffset *pos, int offset, XRefPosSet *posSet) {
   return gFalse;
 }
 
-GBool XRef::readXRefStream(Stream *xrefStr, GFileOffset *pos, GBool hybrid) {
+GBool XRef::readXRefStream(Stream *xrefStr, GFileOffset *pos) {
   Dict *dict;
   int w[3] = { 0 };
   GBool more;
@@ -1273,6 +1272,10 @@ Object *XRef::fetch(int num, int gen, Object *obj, int recursion) {
 
 GBool XRef::getObjectStreamObject(int objStrNum, int objIdx,
 				  int objNum, Object *obj, int recursion) {
+  if (recursion >= objectRecursionLimit) {
+    return gFalse;
+  }
+
   // check for a cached ObjectStream
 #if MULTITHREADED
   gLockMutex(&objStrsMutex);
@@ -1292,7 +1295,7 @@ GBool XRef::getObjectStreamObject(int objStrNum, int objIdx,
   }
 
   // load a new ObjectStream
-  objStr = new ObjectStream(this, objStrNum, recursion);
+  objStr = new ObjectStream(this, objStrNum, recursion + 1);
   if (!objStr->isOk()) {
     delete objStr;
     return gFalse;

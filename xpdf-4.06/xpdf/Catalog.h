@@ -86,7 +86,7 @@ public:
 
   Object *getAcroForm() { return &acroForm; }
 
-  AcroForm* getForm();
+  AcroForm *getForm();
 
   GBool getNeedsRendering() { return needsRendering; }
 
@@ -116,7 +116,7 @@ public:
 
   Object *getViewerPreferences() { return &viewerPrefs; }
 
-  Object* getCatalogObj() { return &catDict; }
+  Object *getCatalogObj() { return &catDict; }
 
   // Return true if the document uses JavaScript.
   GBool usesJavaScript();
@@ -124,32 +124,33 @@ public:
 private:
 
   PDFDoc *doc;
-  XRef *xref;			// the xref table for this PDF file
+  XRef *xref;				// the xref table for this PDF file
   PageTreeNode *pageTree{ nullptr };	// the page tree
-  Page **pages{ nullptr };			// array of pages
+  Page **pages{ nullptr };		// array of pages
   Ref *pageRefs{ nullptr };		// object ID for each page
 #if MULTITHREADED
   GMutex pageMutex;
 #endif
   int numPages{ 0 };			// number of pages
-  Object dests;			// named destination dictionary
-  Object nameTree;		// name tree
+  Object dests;				// named destination dictionary
+  Object nameTree;			// name tree
   GString *baseURI{ nullptr };		// base URI for URI-type links
-  Object metadata;		// metadata stream
-  Object structTreeRoot;	// structure tree root dictionary
-  Object outline;		// outline dictionary
-  Object acroForm;		// AcroForm dictionary
-  GBool needsRendering{ gFalse };		// NeedsRendering flag
+  Object metadata;			// metadata stream
+  Object structTreeRoot;		// structure tree root dictionary
+  Object outline;			// outline dictionary
+  Object acroForm;			// AcroForm dictionary
   AcroForm *form{ nullptr };		// parsed form
-  Object ocProperties;		// OCProperties dictionary
-  GList *embeddedFiles{ nullptr };		// embedded file list [EmbeddedFile]
-  Object pageLabelsObj;		// PageLabel object
+  Object ocProperties;			// OCProperties dictionary
+  GList *embeddedFiles{ nullptr };	// embedded file list [EmbeddedFile]
+  Object pageLabelsObj;			// PageLabel object
   GList *pageLabels{ nullptr };		// page labels [PageLabelNode]
-  Object viewerPrefs;		// ViewerPreferences object
+  Object viewerPrefs;			// ViewerPreferences object
   Object catDict;			// This catalog object
+  GBool needsRendering{ gFalse };	// NeedsRendering flag
   GBool ok{ gFalse };			// true if catalog is valid
 
-  Object *findDestInTree(Object *tree, GString *name, Object *obj);
+  Object *findDestInTree(Object *treeRef, Object *tree, GString *name,
+			 Object *obj, char *touchedObjs);
   GBool readPageTree();
   int countPageTree(Object *pagesNodeRef, char *touchedObjs);
   void loadPage(int pg);
@@ -170,6 +171,10 @@ private:
 			      char style, int *n);
   GBool scanPageTreeForJavaScript(Object *pageNodeRef, char *touchedObjs);
   GBool scanAAForJavaScript(Object *aaObj);
+  Object *checkDictLookup(Object *dictObj, const char *key,
+			  Object *element, char *touchedObjs);
+  Object *checkArrayGet(Object *arrayObj, int i,
+			Object *element, char *touchedObjs);
 };
 
 #endif

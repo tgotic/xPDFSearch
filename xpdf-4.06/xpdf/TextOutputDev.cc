@@ -25,10 +25,12 @@
 #include "gfile.h"
 #include "config.h"
 #include "Error.h"
+#include "Object.h"
 #include "GlobalParams.h"
 #include "UnicodeMap.h"
 #include "UnicodeRemapping.h"
 #include "UnicodeTypeTable.h"
+#include "PDFDoc.h"
 #include "GfxState.h"
 #include "Link.h"
 #include "TextOutputDev.h"
@@ -166,9 +168,9 @@
 // underline (as a fraction of font size).
 #define underlineBaselineSlack 0.2
 
-// Max distance between edge of text and edge of link border (as a
-// fraction of font size).
-#define hyperlinkSlack 0.2
+// A word is assigned the link which covers the largest portion of the
+// word, as long as the coverage is at least this much.
+#define minHyperlinkCoverage 0.2
 
 // Text is considered diagonal if abs(tan(angle)) > diagonalThreshold.
 // (Or 1/tan(angle) for 90/270 degrees.)
@@ -186,6 +188,10 @@
 // fraction of character bbox width/height for a character to be
 // treated as overlapping.
 #define minCharOverlap 0.3
+
+// A fill or image rectangle will be treated as full-page if it falls
+// within this many points of the edges of the page.
+#define fullPageSlack 10
 
 #define maxUnicodeLen 16
 
@@ -210,7 +216,7 @@ public:
 	   double xMinA, double yMinA, double xMaxA, double yMaxA,
 	   int rotA, GBool rotatedA, GBool clippedA, GBool invisibleA,
 	   TextFontInfo *fontA, double fontSizeA,
-	   double colorRA, double colorGA, double colorBA);
+	   double colorRA, double colorGA, double colorBA, double colorKA);
 
   static int cmpX(const void *p1, const void *p2);
   static int cmpY(const void *p1, const void *p2);
@@ -226,7 +232,8 @@ public:
   double fontSize;
   double colorR,
          colorG,
-         colorB;
+         colorB,
+         colorK;
 
   // group the byte-size fields to minimize object size
   Guchar rot;
@@ -241,7 +248,8 @@ TextChar::TextChar(Unicode cA, int charPosA, int charLenA,
 		   double xMinA, double yMinA, double xMaxA, double yMaxA,
 		   int rotA, GBool rotatedA, GBool clippedA, GBool invisibleA,
 		   TextFontInfo *fontA, double fontSizeA,
-		   double colorRA, double colorGA, double colorBA) {
+		   double colorRA, double colorGA, double colorBA,
+		   double colorKA) {
   double t;
 
   c = cA;
@@ -293,9 +301,9 @@ TextChar::TextChar(Unicode cA, int charPosA, int charLenA,
   if (xMax - xMin < 1e-6) {
     xMax = xMin + 1e-6;
   }
-    if (yMax - yMin < 1e-6) {
-      yMax = yMin + 1e-6;
-    }
+  if (yMax - yMin < 1e-6) {
+    yMax = yMin + 1e-6;
+  }
   rot = (Guchar)rotA;
   rotated = (char)rotatedA;
   clipped = (char)clippedA;
@@ -306,6 +314,7 @@ TextChar::TextChar(Unicode cA, int charPosA, int charLenA,
   colorR = colorRA;
   colorG = colorGA;
   colorB = colorBA;
+  colorK = colorKA;
   overlap = gFalse;
 }
 
@@ -673,12 +682,19 @@ class TextLink {
 public:
 
   TextLink(double xMinA, double yMinA, double xMaxA, double yMaxA,
-	   GString *uriA)
-    { xMin = xMinA; yMin = yMinA; xMax = xMaxA; yMax = yMaxA; uri = uriA; }
+	   GString *uriA, int pageNumA, Ref pageRefA)
+    { xMin = xMinA; yMin = yMinA; xMax = xMaxA; yMax = yMaxA;
+      uri = uriA; pageNum = pageNumA; pageRef = pageRefA; }
   ~TextLink();
 
   double xMin, yMin, xMax, yMax;
+  // three cases:
+  // (1) uri != null, pageNum = 0, pageRef.num = -1
+  // (2) uri == null, pageNum > 0, pageRef.num = -1
+  // (3) uri == null, pageNum = 0, pageRef.num >= 0
   GString *uri;
+  int pageNum;
+  Ref pageRef;
 };
 
 TextLink::~TextLink() {
@@ -709,6 +725,7 @@ TextOutputControl::TextOutputControl() {
   marginRight = 0;
   marginTop = 0;
   marginBottom = 0;
+  cmykColors = gFalse;
 }
 
 
@@ -735,26 +752,31 @@ TextFontInfo::TextFontInfo(GfxState *state) {
     if (descent < -0.5) {
       descent = -0.25;
     }
+    fontName = gfxFont->getName() ? gfxFont->getName()->copy()
+                                  : (GString *)NULL;
+    flags = gfxFont->getFlags();
+    mWidth = 0;
+    if (!gfxFont->isCIDFont()) {
+      char *name;
+      int code;
+      for (code = 0; code < 256; ++code) {
+	if ((name = ((Gfx8BitFont *)gfxFont)->getCharName(code)) &&
+	    name[0] == 'm' && name[1] == '\0') {
+	  mWidth = ((Gfx8BitFont *)gfxFont)->getWidth((Guchar)code);
+	  break;
+	}
+      }
+    }
+    problematic = gfxFont->problematicForUnicode();
   } else {
     fontID.num = -1;
     fontID.gen = -1;
     ascent = 0.75;
     descent = -0.25;
-  }
-  fontName = (gfxFont && gfxFont->getName()) ? gfxFont->getName()->copy()
-                                             : (GString *)NULL;
-  flags = gfxFont ? gfxFont->getFlags() : 0;
-  mWidth = 0;
-  if (gfxFont && !gfxFont->isCIDFont()) {
-    char *name;
-    int code;
-    for (code = 0; code < 256; ++code) {
-      if ((name = ((Gfx8BitFont *)gfxFont)->getCharName(code)) &&
-	  name[0] == 'm' && name[1] == '\0') {
-	mWidth = ((Gfx8BitFont *)gfxFont)->getWidth((Guchar)code);
-	break;
-      }
-    }
+    fontName = NULL;
+    flags = 0;
+    mWidth = 0;
+    problematic = gFalse;
   }
 }
 
@@ -764,6 +786,7 @@ TextFontInfo::TextFontInfo()
   , mWidth(0)
   , ascent(0)
   , descent(0)
+  , problematic(gFalse)
 {
   fontID.num = -1;
   fontID.gen = -1;
@@ -864,6 +887,7 @@ TextWord::TextWord(GList *chars, int start, int lenA,
   colorR = ch->colorR;
   colorG = ch->colorG;
   colorB = ch->colorB;
+  colorK = ch->colorK;
   invisible = ch->invisible;
 }
 
@@ -967,7 +991,17 @@ double TextWord::getBaseline() {
 }
 
 GString *TextWord::getLinkURI() {
-  return link ? link->uri : (GString *)NULL;
+  return link ? link->uri : NULL;
+}
+
+int TextWord::getLinkPage(PDFDoc *doc) {
+  if (link && link->pageNum > 0) {
+    return link->pageNum;
+  } else if (link && link->pageRef.num >= 0) {
+    return doc->findPage(link->pageRef.num, link->pageRef.gen);
+  } else {
+    return 0;
+  }
 }
 
 //------------------------------------------------------------------------
@@ -1025,9 +1059,10 @@ TextLine::TextLine(GList *wordsA, double xMinA, double yMinA,
     }
   }
   //~ need to check for other Unicode chars used as hyphens
-  if (len)
+  if (len) {
     hyphenated = text[len - 1] == (Unicode)'-'  ||
                  text[len - 1] == (Unicode)0xad;
+  }
 }
 
 TextLine::~TextLine() {
@@ -1452,7 +1487,8 @@ void TextPage::addChar(GfxState *state, double x, double y,
   double xMin, yMin, xMax, yMax, xMid, yMid;
   double clipXMin, clipYMin, clipXMax, clipYMax;
   GfxRGB rgb;
-  double alpha;
+  GfxCMYK cmyk;
+  double colorR, colorG, colorB, colorK, alpha;
   GBool clipped, rtl;
   int uBufLen, i, j;
 
@@ -1522,8 +1558,16 @@ void TextPage::addChar(GfxState *state, double x, double y,
   if (i == uLen && uLen >= 1) {
     charPos += nBytes;
     if (chars->getLength() > 0) {
-      ((TextChar *)chars->get(chars->getLength() - 1))->spaceAfter =
-	  (char)gTrue;
+      TextChar *lastChar = (TextChar *)chars->get(chars->getLength() - 1);
+      // check to see if the space character is near the previous
+      // character -- this could use a more sophisticated
+      // rotation-dependent check, but this is faster and good enough
+      if (x1 > lastChar->xMin - lastChar->fontSize &&
+	  x1 < lastChar->xMax + lastChar->fontSize &&
+	  y1 > lastChar->yMin - lastChar->fontSize &&
+	  y1 < lastChar->yMax + lastChar->fontSize) {
+	    lastChar->spaceAfter = gTrue;
+      }
     }
     return;
   }
@@ -1604,12 +1648,30 @@ void TextPage::addChar(GfxState *state, double x, double y,
 	}
       }
 
-      if ((state->getRender() & 3) == 1) {
-	state->getStrokeRGB(&rgb);
-	alpha = state->getStrokeOpacity();
+      if (control.cmykColors) {
+	if ((state->getRender() & 3) == 1) {
+	  state->getStrokeCMYK(&cmyk);
+	  alpha = state->getStrokeOpacity();
+	} else {
+	  state->getFillCMYK(&cmyk);
+	  alpha = state->getFillOpacity();
+	}
+	colorR = colToDbl(cmyk.c);
+	colorG = colToDbl(cmyk.m);
+	colorB = colToDbl(cmyk.y);
+	colorK = colToDbl(cmyk.k);
       } else {
-	state->getFillRGB(&rgb);
-	alpha = state->getFillOpacity();
+	if ((state->getRender() & 3) == 1) {
+	  state->getStrokeRGB(&rgb);
+	  alpha = state->getStrokeOpacity();
+	} else {
+	  state->getFillRGB(&rgb);
+	  alpha = state->getFillOpacity();
+	}
+	colorR = colToDbl(rgb.r);
+	colorG = colToDbl(rgb.g);
+	colorB = colToDbl(rgb.b);
+	colorK = 0;
       }
       if (rtl) {
 	j = uBufLen - 1 - i;
@@ -1621,8 +1683,7 @@ void TextPage::addChar(GfxState *state, double x, double y,
 				 xMin, yMin, xMax, yMax,
 				 curRot, rotated, clipped, invisible,
 				 curFont, curFontSize,
-				 colToDbl(rgb.r), colToDbl(rgb.g),
-				 colToDbl(rgb.b)));
+				 colorR, colorG, colorB, colorK));
       if (invisible) {
 	++nInvisibleChars;
       } else {
@@ -1639,7 +1700,8 @@ void TextPage::addSpecialChar(double xMin, double yMin,
 			      int rot, TextFontInfo *font, double fontSize,
 			      Unicode u) {
   chars->append(new TextChar(u, 0, 0, xMin, yMin, xMax, yMax, rot,
-			     gFalse, gFalse, gFalse, font, fontSize, 0, 0, 0));
+			     gFalse, gFalse, gFalse, font, fontSize,
+			     0, 0, 0, 0));
 }
 
 //~ this is inefficient -- consider using some sort of tree
@@ -1703,11 +1765,26 @@ void TextPage::addUnderline(double x0, double y0, double x1, double y1) {
 
 void TextPage::addLink(double xMin, double yMin, double xMax, double yMax,
 		       Link *link) {
-  GString *uri;
-
-  if (link && link->getAction() && link->getAction()->getKind() == actionURI) {
-    uri = ((LinkURI *)link->getAction())->getURI()->copy();
-    links->append(new TextLink(xMin, yMin, xMax, yMax, uri));
+  if (link && link->getAction()) {
+    GString *uri = NULL;
+    int pageNum = 0;
+    Ref pageRef = {-1, -1};
+    if (link->getAction()->getKind() == actionURI) {
+      uri = ((LinkURI *)link->getAction())->getURI()->copy();
+    } else if (link->getAction()->getKind() == actionGoTo) {
+      LinkDest *dest = ((LinkGoTo *)link->getAction())->getDest();
+      if (dest) {
+	if (dest->isPageRef()) {
+	  pageRef = dest->getPageRef();
+	} else {
+	  pageNum = dest->getPageNum();
+	}
+      }
+    }
+    if (uri || pageNum > 0 || pageRef.num >= 0) {
+      links->append(new TextLink(xMin, yMin, xMax, yMax,
+				 uri, pageNum, pageRef));
+    }
   }
 }
 
@@ -2144,11 +2221,11 @@ void TextPage::writeLinePrinter(void *outputStream,
   double y, x;
   int n, i, j, k, abort = 0;
 
-  primaryRot = rotateChars(chars);
-  chars->sort(&TextChar::cmpX);
-  // don't call removeDuplicates here, because it expects to be
-  // working on a secondary list that doesn't own the TextChar objects
-  chars->sort(&TextChar::cmpY);
+  GList *chars2 = chars->copy();
+  primaryRot = rotateChars(chars2);
+  chars2->sort(&TextChar::cmpX);
+  removeDuplicates(chars2, 0);
+  chars2->sort(&TextChar::cmpY);
 
   // get character pitch
   if (control.fixedPitch > 0) {
@@ -2156,10 +2233,10 @@ void TextPage::writeLinePrinter(void *outputStream,
   } else {
     // compute (approximate) character pitch
     pitch = pageWidth;
-    for (i = 0; i < chars->getLength(); ++i) {
-      ch = (TextChar *)chars->get(i);
-      for (j = i + 1; j < chars->getLength(); ++j) {
-	ch2 = (TextChar *)chars->get(j);
+    for (i = 0; i < chars2->getLength(); ++i) {
+      ch = (TextChar *)chars2->get(i);
+      for (j = i + 1; j < chars2->getLength(); ++j) {
+	ch2 = (TextChar *)chars2->get(j);
 	if (ch2->yMin + ascentAdjustFactor * (ch2->yMax - ch2->yMin) <
 	      ch->yMax - descentAdjustFactor * (ch->yMax - ch->yMin) &&
 	    ch->yMin + ascentAdjustFactor * (ch->yMax - ch->yMin) <
@@ -2180,13 +2257,13 @@ void TextPage::writeLinePrinter(void *outputStream,
     // compute (approximate) line spacing
     lineSpacing = pageHeight;
     i = 0;
-    while (i < chars->getLength()) {
-      ch = (TextChar *)chars->get(i);
+    while (i < chars2->getLength()) {
+      ch = (TextChar *)chars2->get(i);
       // look for the first char that does not (substantially)
       // vertically overlap this one
       delta = 0;
-      for (++i; delta == 0 && i < chars->getLength(); ++i) {
-	ch2 = (TextChar *)chars->get(i);
+      for (++i; delta == 0 && i < chars2->getLength(); ++i) {
+	ch2 = (TextChar *)chars2->get(i);
 	if (ch2->yMin + ascentAdjustFactor * (ch2->yMax - ch2->yMin) >
 	    ch->yMax - descentAdjustFactor * (ch->yMax - ch->yMin)) {
 	  delta = ch2->yMin - ch->yMin;
@@ -2201,8 +2278,8 @@ void TextPage::writeLinePrinter(void *outputStream,
   // shift the grid to avoid problems with floating point accuracy --
   // for fixed line spacing, this avoids problems with
   // dropping/inserting blank lines
-  if (chars->getLength()) {
-    yMin0 = ((TextChar *)chars->get(0))->yMin;
+  if (chars2->getLength()) {
+    yMin0 = ((TextChar *)chars2->get(0))->yMin;
     yShift = yMin0 - (int)(yMin0 / lineSpacing + 0.5) * lineSpacing
              - 0.5 * lineSpacing;
   } else {
@@ -2211,14 +2288,14 @@ void TextPage::writeLinePrinter(void *outputStream,
 
   // for each line...
   i = 0;
-  j = chars->getLength() - 1;
+  j = chars2->getLength() - 1;
   for (y = yShift; (y < pageHeight) && !abort; y += lineSpacing) {
 
     // get the characters in this line
     line = new GList;
-    while (i < chars->getLength() &&
-	   ((TextChar *)chars->get(i))->yMin < y + lineSpacing) {
-      line->append(chars->get(i++));
+    while (i < chars2->getLength() &&
+	   ((TextChar *)chars2->get(i))->yMin < y + lineSpacing) {
+      line->append(chars2->get(i++));
     }
     line->sort(&TextChar::cmpX);
 
@@ -2254,7 +2331,7 @@ void TextPage::writeLinePrinter(void *outputStream,
     delete line;
   }
 
-  unrotateChars(chars, primaryRot);
+  delete chars2;
 }
 
 void TextPage::writeRaw(void *outputStream,
@@ -3424,7 +3501,8 @@ GList *TextPage::separateOverlappingText(GList *charsA) {
 	for (TextCharNode *p1 = p0->next; p1; p1 = p1->next) {
 	  if (p0->ch->colorR != p1->ch->colorR ||
 	      p0->ch->colorG != p1->ch->colorG ||
-	      p0->ch->colorB != p1->ch->colorB) {
+	      p0->ch->colorB != p1->ch->colorB ||
+	      p0->ch->colorK != p1->ch->colorK) {
 	    double ovx = (dmin(p0->ch->xMax, p1->ch->xMax)
 			  - dmax(p0->ch->xMin, p1->ch->xMin))
 	                 / dmin(p0->ch->xMax - p0->ch->xMin,
@@ -3435,11 +3513,20 @@ GList *TextPage::separateOverlappingText(GList *charsA) {
 			       p1->ch->yMax - p1->ch->yMin);
 	    if (ovx > minCharOverlap && ovy > minCharOverlap) {
 	      // assume the lighter colored text is extraneous
-	      if (p0->ch->colorR + p0->ch->colorG + p0->ch->colorB
-		  < p1->ch->colorR + p1->ch->colorG + p1->ch->colorB) {
-		p1->ch->overlap = gTrue;
+	      GBool lighter;
+	      if (control.cmykColors) {
+		lighter = p0->ch->colorR + p0->ch->colorG + p0->ch->colorB
+		              + p0->ch->colorK
+		          < p1->ch->colorR + p1->ch->colorG + p1->ch->colorB
+		              + p1->ch->colorK;
 	      } else {
+		lighter = p0->ch->colorR + p0->ch->colorG + p0->ch->colorB
+		          > p1->ch->colorR + p1->ch->colorG + p1->ch->colorB;
+	      }
+	      if (lighter) {
 		p0->ch->overlap = gTrue;
+	      } else {
+		p1->ch->overlap = gTrue;
 	      }
 	      foundOverlaps = gTrue;
 	    }
@@ -3466,6 +3553,7 @@ GList *TextPage::separateOverlappingText(GList *charsA) {
 	  if (ch1->colorR != ch0->colorR ||
 	      ch1->colorG != ch0->colorG ||
 	      ch1->colorB != ch0->colorB ||
+	      ch1->colorK != ch0->colorK ||
 	      ch1->rot != ch0->rot) {
 	    break;
 	  }
@@ -3476,6 +3564,7 @@ GList *TextPage::separateOverlappingText(GList *charsA) {
 	  if (ch1->colorR != ch0->colorR ||
 	      ch1->colorG != ch0->colorG ||
 	      ch1->colorB != ch0->colorB ||
+	      ch1->colorK != ch0->colorK ||
 	      ch1->rot != ch0->rot) {
 	    break;
 	  }
@@ -3866,7 +3955,7 @@ TextBlock *TextPage::split(GList *charsA, int rot) {
 		(horizGapSize > gapThreshold &&
 		 minHorizChunkWidth > minChunk))) {
       doHorizSplit = gTrue;
-      smallSplit = horizGapSize < smallSplitThreshold;
+      smallSplit = horizGapSize < smallSplitThreshold && nVertGaps == 0;
     } else if (nVertGaps > 0) {
       doVertSplit = gTrue;
     } else if (nLargeChars > 0 &&
@@ -3893,7 +3982,7 @@ TextBlock *TextPage::split(GList *charsA, int rot) {
 		(vertGapSize > gapThreshold &&
 		 minVertChunkWidth > minChunk))) {
       doVertSplit = gTrue;
-      smallSplit = vertGapSize < smallSplitThreshold;
+      smallSplit = vertGapSize < smallSplitThreshold && nHorizGaps == 0;
     } else if (nHorizGaps > 0) {
       doHorizSplit = gTrue;
     } else if (nLargeChars > 0 &&
@@ -4389,7 +4478,7 @@ void TextPage::mergeSplitLines(GList *charsA, int rot, GList *splitLines) {
 	    if (ch->xMax > prevLine->yMax) {
 	      prevLine->yMax = ch->xMax;
 	    }
-	  } else {
+	  } else if (nextLine) {
 	    while (idxBelow < nextLine->chars->getLength()) {
 	      TextChar *ch2 = (TextChar *)nextLine->chars->get(idxBelow);
 	      if (ch2->yMin > ch->yMin && ch2->xMin < ch->xMax && ch2->xMax > ch->xMin) {
@@ -5502,9 +5591,8 @@ double TextPage::computeWordSpacingThreshold(GList *charsA, int rot) {
 
 // Move Unicode combining characters around so that they come
 // immediately after the correct base characters.
-//~ this currently won't work for RtL scripts
 void TextPage::adjustCombiningChars(GList *charsA, int rot) {
-  int i = 1;
+  int i = 0;
   while (i < charsA->getLength()) {
     TextChar *ch = (TextChar *)charsA->get(i);
 
@@ -5532,16 +5620,23 @@ void TextPage::adjustCombiningChars(GList *charsA, int rot) {
       }
     }
 
-    // identify the two previous chars
-    TextChar *prev1 = (i >= 2) ? (TextChar *)charsA->get(i - 2) : NULL;
-    TextChar *prev2 = (TextChar *)charsA->get(i - 1);
-
-    //~ this code currently makes things worse for RtL scripts, so
-    //~   skip any RtL text
-    if (unicodeTypeR(prev2->c)) {
-      ++i;
-      continue;
+    // sort the diacritics into content stream order
+    // (slight negative char spacing, used for kerning, will push
+    // zero-width diacritics out of order)
+    if (j - i > 1) {
+      charsA->sort(i, j - i, &TextChar::cmpCharPos);
     }
+
+    // identify the two previous chars and the next char
+    TextChar *prev1 = (i >= 2) ? (TextChar *)charsA->get(i - 2) : NULL;
+    TextChar *prev2 = (i >= 1) ? (TextChar *)charsA->get(i - 1) : NULL;
+    TextChar *next3 = (j < charsA->getLength()) ? (TextChar *)charsA->get(j)
+                                                : NULL;
+    int dir2 = prev2 ? getCharDirection(prev2) : 0;
+    int dir3 = next3 ? getCharDirection(next3) : 0;
+
+    //--- LtR
+    if (prev2 && dir2 >= 0) {
 
     // if the combining chars are placed in the left 3/4 of prev2,
     // assume the base char is prev1, not prev2, and reorder the chars
@@ -5561,13 +5656,6 @@ void TextPage::adjustCombiningChars(GList *charsA, int rot) {
       base = prev2;
     }
 
-    // sort the diacritics into content stream order
-    // (slight negative char spacing, used for kerning, will push
-    // zero-width diacritics out of order)
-    if (j - i > 1) {
-      charsA->sort(i, j - i, &TextChar::cmpCharPos);
-    }
-
     // set the diacritics' positions immediately to the right of the
     // base char
     for (int k = i; k < j; ++k) {
@@ -5579,7 +5667,42 @@ void TextPage::adjustCombiningChars(GList *charsA, int rot) {
       }
     }
 
+    //--- RtL
+    } else if (next3 && dir3 < 0 && dir2 <= 0) {
+
+      // if the combining chars are placed in the left 1/2 of prev2,
+      // assume the base char is prev2, not next3, and reorder the chars
+      // accordingly
+      TextChar *base;
+      if (prev2 &&
+	  ((rot & 1) ? (ch->yMin < 0.5 * prev2->yMin + 0.5 * prev2->yMax)
+	             : (ch->xMin < 0.5 * prev2->xMin + 0.5 * prev2->xMax))) {
+	for (int k = i; k < j; ++k) {
+	  charsA->put(k - 1, charsA->get(k));
+	}
+	charsA->put(j - 1, prev2);
+	--i;
+	--j;
+	base = prev2;
+      } else {
+	base = next3;
+      }
+
+      // set the diacritics' positions immediately to the left of the
+      // base char
+      for (int k = i; k < j; ++k) {
+	TextChar *ch2 = (TextChar *)charsA->get(k);
+	if (rot & 1) {
+	  ch2->yMin = ch2->yMax = base->yMin;
+	} else {
+	  ch2->xMin = ch2->xMax = base->xMin;
+	}
+      }
+
+    }
+
     i = j;
+
   }
 }
 
@@ -5842,7 +5965,7 @@ void TextPage::generateUnderlinesAndLinks(GList *columns) {
   TextWord *word;
   TextUnderline *underline;
   TextLink *link;
-  double base, uSlack, ubSlack, hSlack;
+  double base, uSlack, ubSlack;
   int colIdx, parIdx, lineIdx, wordIdx, i;
 
   for (colIdx = 0; colIdx < columns->getLength(); ++colIdx) {
@@ -5856,7 +5979,6 @@ void TextPage::generateUnderlinesAndLinks(GList *columns) {
 	  base = word->getBaseline();
 	  uSlack = underlineSlack * word->fontSize;
 	  ubSlack = underlineBaselineSlack * word->fontSize;
-	  hSlack = hyperlinkSlack * word->fontSize;
 
 	  //----- handle underlining
 	  for (i = 0; i < underlines->getLength(); ++i) {
@@ -5881,14 +6003,26 @@ void TextPage::generateUnderlinesAndLinks(GList *columns) {
 	  }
 
 	  //----- handle links
+	  if (word->yMax - word->yMin > 0) {
+	    double bestCoverage = minHyperlinkCoverage;
+	    TextLink *bestLink = NULL;
 	  for (i = 0; i < links->getLength(); ++i) {
 	    link = (TextLink *)links->get(i);
-	    if (link->xMin < word->xMin + hSlack &&
-		word->xMax - hSlack < link->xMax &&
-		link->yMin < word->yMin + hSlack &&
-		word->yMax - hSlack < link->yMax) {
-	      word->link = link;
+	      double xMin = (link->xMin > word->xMin) ? link->xMin : word->xMin;
+	      double yMin = (link->yMin > word->yMin) ? link->yMin : word->yMin;
+	      double xMax = (link->xMax < word->xMax) ? link->xMax : word->xMax;
+	      double yMax = (link->yMax < word->yMax) ? link->yMax : word->yMax;
+	      if (xMax > xMin && yMax > yMin) {
+		double c = ((xMax - xMin) * (yMax - yMin)) /
+		           ((word->xMax - word->xMin) *
+			    (word->yMax - word->yMin));
+		if (c > bestCoverage) {
+		  bestCoverage = c;
+		  bestLink = link;
 	    }
+	  }
+	}
+	    word->link = bestLink;
 	  }
 	}
       }
@@ -7034,6 +7168,13 @@ void TextOutputDev::fill(GfxState *state) {
       text->addUnderline(rx0, ry0, rx0, ry1);
     }
   }
+
+  if (fabs(rx0) < fullPageSlack &&
+      fabs(rx1 - text->pageWidth) < fullPageSlack &&
+      fabs(ry0) < fullPageSlack &&
+      fabs(ry1 - text->pageHeight) < fullPageSlack) {
+    handleCoveredText();
+  }
 }
 
 void TextOutputDev::eoFill(GfxState *state) {
@@ -7041,6 +7182,24 @@ void TextOutputDev::eoFill(GfxState *state) {
     return;
   }
   fill(state);
+}
+
+// This is called whenever a full-page fill is encountered.
+void TextOutputDev::handleCoveredText() {
+  if (globalParams->getDiscardCoveredText()) {
+    deleteGList(text->chars, TextChar);
+    text->chars = new GList();
+    deleteGList(text->underlines, TextUnderline);
+    text->underlines = new GList();
+    deleteGList(text->links, TextLink);
+    text->links = new GList();
+  } else {
+    // mark covered text as invisible
+    for (int i = 0; i < text->chars->getLength(); ++i) {
+      TextChar *ch = (TextChar *)text->chars->get(i);
+      ch->invisible = 1;
+    }
+  }
 }
 
 void TextOutputDev::processLink(Link *link) {

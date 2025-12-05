@@ -10,6 +10,9 @@
 #define ANNOT_H
 
 #include <aconf.h>
+#if MULTITHREADED
+#include "GMutex.h"
+#endif
 
 class XRef;
 class Catalog;
@@ -48,9 +51,9 @@ public:
 private:
 
   AnnotBorderType type;
+  int dashLength;
   double width;
   double *dash;
-  int dashLength;
   double color[4];
   int nColorComps;
 };
@@ -138,9 +141,9 @@ private:
   GString *appearBuf;
   double xMin, yMin,		// annotation rectangle
          xMax, yMax;
-  Guint flags;
   AnnotBorderStyle *borderStyle;
   Object ocObj;			// optional content entry
+  Guint flags;
   GBool ok;
 };
 
@@ -176,11 +179,13 @@ private:
   void loadAnnots(int page);
   void loadFormFieldRefs();
 
-
   PDFDoc *doc;
   PageAnnots **pageAnnots;	// list of annots for each page
   int formFieldRefsSize;	// number of entries in formFieldRefs[]
   char *formFieldRefs;		// set of AcroForm field refs
+#if MULTITHREADED
+  GMutex mutex;
+#endif
 };
 
 #endif

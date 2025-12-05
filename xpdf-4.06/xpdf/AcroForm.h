@@ -48,10 +48,10 @@ private:
 
   PDFDoc *doc;
   Object acroFormObj;
-  GBool needAppearances;
   GList *annotPages;		// [AcroFormAnnotPage]
   GList *fields;		// [AcroFormField]
   XFAScanner *xfaScanner;
+  GBool needAppearances;
   GBool isStaticXFA;
 
   friend class AcroFormField;

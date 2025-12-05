@@ -42,9 +42,13 @@
 //------------------------------------------------------------------------
 
 XFAFieldLayoutInfo::XFAFieldLayoutInfo(XFAFieldLayoutHAlign hAlignA,
-				       XFAFieldLayoutVAlign vAlignA) {
+				       XFAFieldLayoutVAlign vAlignA,
+				       double marginLeftA,
+				       double marginRightA) {
   hAlign = hAlignA;
   vAlign = vAlignA;
+  marginLeft = marginLeftA;
+  marginRight = marginRightA;
 }
 
 //------------------------------------------------------------------------
@@ -497,7 +501,16 @@ XFAFieldLayoutInfo *XFAScanner::getFieldLayoutInfo(ZxElement *elem) {
       vAlign = xfaFieldLayoutVAlignBottom;
     }
   }
-  return new XFAFieldLayoutInfo(hAlign, vAlign);
+  double marginLeft = 0;
+  double marginRight = 0;
+  ZxAttr *marginAttr;
+  if ((marginAttr = paraElem->findAttr("marginLeft"))) {
+    marginLeft = getMeasurement(marginAttr->getValue());
+  }
+  if ((marginAttr = paraElem->findAttr("marginRight"))) {
+    marginRight = getMeasurement(marginAttr->getValue());
+  }
+  return new XFAFieldLayoutInfo(hAlign, vAlign, marginLeft, marginRight);
 }
 
 XFAFieldPictureInfo *XFAScanner::getFieldPictureInfo(ZxElement *elem) {

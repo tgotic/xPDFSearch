@@ -1,11 +1,11 @@
 Xpdf
 ====
 
-version 4.05
-2024-feb-08
+version 4.06
+2025-nov-14
 
 The Xpdf software and documentation are
-copyright 1996-2024 Glyph & Cog, LLC.
+copyright 1996-2025 Glyph & Cog, LLC.
 
 Email: xpdf@xpdfreader.com
 WWW: http://www.xpdfreader.com/
@@ -112,6 +112,10 @@ different systems.
     -DXPDFWIDGET_PRINTING=OFF
         Disable printing support.
 
+    -DUSE_XDG=ON
+        Enables use of the XDG directories for config and state files.
+        This defaults to ON for Linux, and OFF for everything else.
+
     -DSYSTEM_XPDFRC="/etc/xpdfrc"
         Look for a system-wide xpdfrc config file in this directory.
 
@@ -125,9 +129,9 @@ different systems.
         adds another directory to that search path.  On Windows, this
         does the same thing, except for the system TrueType fonts.
 
-    -DCMAKE_DISABLE_FIND_PACKAGE_Qt4=1
     -DCMAKE_DISABLE_FIND_PACKAGE_Qt5Widgets=1
-        Do not search for the Qt4/Qt5 libraries.  This will disable
+    -DCMAKE_DISABLE_FIND_PACKAGE_Qt6Widgets=1
+        Do not search for the Qt5/Qt6 libraries.  This will disable
         building the GUI viewer (xpdf).  Cmake will look for a "qmake"
         binary -- make sure the first qmake binary on your executable
         search path matches the desired version of Qt.

@@ -115,11 +115,11 @@ private:
   int encRevision;
   CryptAlgorithm encAlgorithm;
   GBool encryptMetadata;
+  GBool ok;
 
   GString *ownerKey, *userKey;
   GString *ownerEnc, *userEnc;
   GString *fileID;
-  GBool ok;
 };
 
 #endif

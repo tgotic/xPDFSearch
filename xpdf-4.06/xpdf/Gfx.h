@@ -30,6 +30,7 @@ class GfxFont;
 class Gfx;
 class PDFRectangle;
 class AnnotBorderStyle;
+class LocalParams;
 
 //------------------------------------------------------------------------
 
@@ -131,15 +132,16 @@ class Gfx {
 public:
 
   // Constructor for regular output.
-  Gfx(PDFDoc *docA, OutputDev *outA, int pageNum, Dict *resDict,
+  Gfx(PDFDoc *docA, OutputDev *outA, LocalParams *localParams,
+      int pageNum, Dict *resDict,
       double hDPI, double vDPI, PDFRectangle *box,
       PDFRectangle *cropBox, int rotate,
       GBool (*abortCheckCbkA)(void *data) = NULL,
       void *abortCheckCbkDataA = NULL);
 
   // Constructor for a sub-page object.
-  Gfx(PDFDoc *docA, OutputDev *outA, Dict *resDict,
-      PDFRectangle *box, PDFRectangle *cropBox,
+  Gfx(PDFDoc *docA, OutputDev *outA, LocalParams *localParams,
+      Dict *resDict, PDFRectangle *box, PDFRectangle *cropBox,
       GBool (*abortCheckCbkA)(void *data) = NULL,
       void *abortCheckCbkDataA = NULL);
 
@@ -164,6 +166,9 @@ public:
 
   // Get the current graphics state object.
   GfxState *getState() { return state; }
+
+  // Get the current base matrix.
+  double *getBaseMatrix() { return baseMatrix; }
 
   void drawForm(Object *strRef, Dict *resDict, double *matrix, double *bbox,
 		GBool transpGroup = gFalse, GBool softMask = gFalse,

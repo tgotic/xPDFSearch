@@ -22,6 +22,7 @@ class GfxDeviceNColorSpace;
 class GfxSeparationColorSpace;
 class GfxShading;
 class GfxState;
+class LocalParams;
 
 //------------------------------------------------------------------------
 // GfxBlendMode
@@ -576,12 +577,12 @@ private:
 		       GBool nonMarkingA, Guint overprintMaskA);
 
   int nComps;			// number of components
+  GBool nonMarking;
   GString			// colorant names
     *names[gfxColorMaxComps];
   GfxColorSpace *alt;		// alternate color space
   Function *func;		// tint transform (into alternate color space)
   Object attrs;
-  GBool nonMarking;
 };
 
 //------------------------------------------------------------------------
@@ -744,8 +745,8 @@ protected:
   GfxColorSpace *colorSpace;
   GfxColor background;
   GBool hasBackground;
-  double xMin, yMin, xMax, yMax;
   GBool hasBBox;
+  double xMin, yMin, xMax, yMax;
 };
 
 //------------------------------------------------------------------------
@@ -1070,7 +1071,7 @@ public:
     { return new GfxPath(justMoved, firstX, firstY, subpaths, n, size); }
 
   // Is there a current point?
-  GBool isCurPt() { return n > 0 || justMoved; }
+  GBool isCurPt() { return (n > 0) || justMoved; }
 
   // Is the path non-empty, i.e., is there at least one segment?
   GBool isPath() { return n > 0; }
@@ -1128,7 +1129,8 @@ public:
   // Construct a default GfxState, for a device with resolution <hDPI>
   // x <vDPI>, page box <pageBox>, page rotation <rotateA>, and
   // coordinate system specified by <upsideDown>.
-  GfxState(double hDPIA, double vDPIA, PDFRectangle *pageBox,
+  GfxState(LocalParams *localParamsA,
+	   double hDPIA, double vDPIA, PDFRectangle *pageBox,
 	   int rotateA, GBool upsideDown
 	   );
   GfxState(const GfxState&) = delete;
@@ -1185,6 +1187,7 @@ public:
   int getLineCap() { return lineCap; }
   double getMiterLimit() { return miterLimit; }
   GBool getStrokeAdjust() { return strokeAdjust; }
+  GBool getAlphaIsShape() { return alphaIsShape; }
   GfxFont *getFont() { return font; }
   double getFontSize() { return fontSize; }
   double *getTextMat() { return textMat; }
@@ -1246,7 +1249,7 @@ public:
   void setFillOverprint(GBool op) { fillOverprint = op; }
   void setStrokeOverprint(GBool op) { strokeOverprint = op; }
   void setOverprintMode(int opm) { overprintMode = opm; }
-  void setRenderingIntent(GfxRenderingIntent ri) { renderingIntent = ri; }
+  void setRenderingIntent(GfxRenderingIntent ri);
   void setTransfer(Function **funcs);
   void setLineWidth(double width) { lineWidth = width; }
   void setLineDash(double *dash, int length, double start);
@@ -1255,6 +1258,7 @@ public:
   void setLineCap(int lineCap1) { lineCap = lineCap1; }
   void setMiterLimit(double limit) { miterLimit = limit; }
   void setStrokeAdjust(GBool sa) { strokeAdjust = sa; }
+  void setAlphaIsShape(GBool ais) { alphaIsShape = ais; }
   void setFont(GfxFont *fontA, double fontSizeA)
     { font = fontA; fontSize = fontSizeA; }
   void setTextMat(double a, double b, double c,
@@ -1314,11 +1318,12 @@ public:
 
 private:
 
+  LocalParams *localParams;
+
   double hDPI, vDPI;		// resolution
   double ctm[6];		// coord transform matrix
   double px1, py1, px2, py2;	// page corners (user coords)
   double pageWidth, pageHeight;	// page size (pixels)
-  int rotate;			// page rotation angle
 
   GfxColorSpace *fillColorSpace;   // fill color space
   GfxColorSpace *strokeColorSpace; // stroke color space
@@ -1326,13 +1331,14 @@ private:
   GfxColor strokeColor;		// stroke color
   GfxPattern *fillPattern;	// fill pattern
   GfxPattern *strokePattern;	// stroke pattern
-  GfxBlendMode blendMode;	// transparency blend mode
   double fillOpacity;		// fill opacity
   double strokeOpacity;		// stroke opacity
   GBool fillOverprint;		// fill overprint
   GBool strokeOverprint;	// stroke overprint
   int overprintMode;		// overprint mode ("OPM")
   GfxRenderingIntent renderingIntent;	// rendering intent
+  GfxBlendMode blendMode;	// transparency blend mode
+  int rotate;			// page rotation angle
   Function *transfer[4];	// transfer function (entries may be: all
 				//   NULL = identity; last three NULL =
 				//   single function; all four non-NULL =
@@ -1347,6 +1353,7 @@ private:
   int lineCap;			// line cap style
   double miterLimit;		// line miter limit
   GBool strokeAdjust;		// stroke adjustment
+  GBool alphaIsShape;
 
   GfxFont *font;		// font
   double fontSize;		// font size
@@ -1356,7 +1363,6 @@ private:
   double horizScaling;		// horizontal scaling
   double leading;		// text leading
   double rise;			// text rise
-  int render;			// text rendering mode
 
   GfxPath *path;		// array of path elements
   double curX, curY;		// current point (user coords)
@@ -1365,6 +1371,7 @@ private:
   double clipXMin, clipYMin,	// bounding box for clip region
          clipXMax, clipYMax;
 
+  int render;			// text rendering mode
   GBool ignoreColorOps;		// ignore color ops (in cached/uncolored
 				//   Type 3 chars, and uncolored tiling
 				//   patterns)

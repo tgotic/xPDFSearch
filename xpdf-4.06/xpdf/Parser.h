@@ -14,6 +14,12 @@
 #include "Lexer.h"
 
 //------------------------------------------------------------------------
+
+// Max number of nested objects.  This is used to catch infinite loops
+// in the object structure.
+#define objectRecursionLimit 500
+
+//------------------------------------------------------------------------
 // Parser
 //------------------------------------------------------------------------
 
@@ -47,8 +53,8 @@ private:
 
   XRef *xref;			// the xref table for this PDF file
   Lexer *lexer;			// input stream
-  GBool allowStreams;		// parse stream objects?
   Object buf1, buf2;		// next two tokens
+  GBool allowStreams;		// parse stream objects?
   int inlineImg{ 0 };		// set when inline image data is encountered
 
   Stream *makeStream(Object *dict, Guchar *fileKey,

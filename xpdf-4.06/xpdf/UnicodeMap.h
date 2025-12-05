@@ -83,19 +83,19 @@ private:
   UnicodeMap(GString *encodingNameA);
 
   GString *encodingName;
-  UnicodeMapKind kind;
-  GBool unicodeOut;
   union {
-    UnicodeMapRange *ranges;	// (user, resident)
-    UnicodeMapFunc func;	// (func)
+    UnicodeMapRange *ranges{ nullptr };	// (user, resident)
+    UnicodeMapFunc func;		// (func)
   };
-  int len;			// (user, resident)
-  UnicodeMapExt *eMaps;		// (user)
-  int eMapsLen;			// (user)
+  UnicodeMapExt* eMaps{ nullptr };	// (user)
+  UnicodeMapKind kind;
+  GBool unicodeOut{ gFalse };
+  int len{ 0 };				// (user, resident)
+  int eMapsLen{ 0 };			// (user)
 #if MULTITHREADED
-  GAtomicCounter refCnt;
+  GAtomicCounter refCnt{ 1 };
 #else
-  int refCnt;
+  int refCnt{ 1 };
 #endif
 };
 

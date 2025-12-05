@@ -384,7 +384,7 @@ GBool PDFDoc::checkEncryption(GString *ownerPassword, GString *userPassword) {
   return ret;
 }
 
-void PDFDoc::displayPage(OutputDev *out, int page,
+void PDFDoc::displayPage(OutputDev *out, LocalParams *localParams, int page,
 			 double hDPI, double vDPI, int rotate,
 			 GBool useMediaBox, GBool crop, GBool printing,
 			 GBool (*abortCheckCbk)(void *data),
@@ -394,13 +394,14 @@ void PDFDoc::displayPage(OutputDev *out, int page,
   }
   auto pdfPage{ catalog->getPage(page) };
   if (pdfPage) {
-    pdfPage->display(out, hDPI, vDPI,
+    pdfPage->display(out, localParams, hDPI, vDPI,
 		     rotate, useMediaBox, crop, printing,
 		     abortCheckCbk, abortCheckCbkData);
   }
 }
 
-void PDFDoc::displayPages(OutputDev *out, int firstPage, int lastPage,
+void PDFDoc::displayPages(OutputDev *out, LocalParams *localParams,
+			  int firstPage, int lastPage,
 			  double hDPI, double vDPI, int rotate,
 			  GBool useMediaBox, GBool crop, GBool printing,
 			  GBool (*abortCheckCbk)(void *data),
@@ -413,21 +414,22 @@ void PDFDoc::displayPages(OutputDev *out, int firstPage, int lastPage,
       printf("[processing page %d]\n", page);
       fflush(stdout);
     }
-    displayPage(out, page, hDPI, vDPI, rotate, useMediaBox, crop, printing,
+    displayPage(out, localParams, page, hDPI, vDPI, rotate,
+		useMediaBox, crop, printing,
 		abortCheckCbk, abortCheckCbkData);
     catalog->doneWithPage(page);
   }
 }
 
-void PDFDoc::displayPageSlice(OutputDev *out, int page,
-			      double hDPI, double vDPI, int rotate,
+void PDFDoc::displayPageSlice(OutputDev *out, LocalParams *localParams,
+			      int page, double hDPI, double vDPI, int rotate,
 			      GBool useMediaBox, GBool crop, GBool printing,
 			      int sliceX, int sliceY, int sliceW, int sliceH,
 			      GBool (*abortCheckCbk)(void *data),
 			      void *abortCheckCbkData) {
   auto pdfPage{ catalog->getPage(page) };
   if (pdfPage) {
-    pdfPage->displaySlice(out, hDPI, vDPI,
+    pdfPage->displaySlice(out, localParams, hDPI, vDPI,
 			  rotate, useMediaBox, crop,
 			  sliceX, sliceY, sliceW, sliceH,
 			  printing,
@@ -539,6 +541,7 @@ GBool PDFDoc::saveAs(GString *name) {
   fclose(f);
   return gTrue;
 }
+
 #ifndef NO_EMBEDDED_CONTENT
 GBool PDFDoc::saveEmbeddedFile(int idx, const char *path) {
   FILE *f;

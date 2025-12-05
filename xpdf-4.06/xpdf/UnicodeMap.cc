@@ -107,38 +107,29 @@ UnicodeMap *UnicodeMap::parse(GString *encodingNameA) {
   return map;
 }
 
-UnicodeMap::UnicodeMap(GString *encodingNameA) {
-  encodingName = encodingNameA;
-  unicodeOut = gFalse;
-  kind = unicodeMapUser;
-  ranges = NULL;
-  len = 0;
-  eMaps = NULL;
-  eMapsLen = 0;
-  refCnt = 1;
+UnicodeMap::UnicodeMap(GString *encodingNameA)
+  : encodingName{ encodingNameA }
+  , kind{ unicodeMapUser }
+{
 }
 
 UnicodeMap::UnicodeMap(const char *encodingNameA, GBool unicodeOutA,
-		       UnicodeMapRange *rangesA, int lenA) {
-  encodingName = new GString(encodingNameA);
-  unicodeOut = unicodeOutA;
-  kind = unicodeMapResident;
-  ranges = rangesA;
-  len = lenA;
-  eMaps = NULL;
-  eMapsLen = 0;
-  refCnt = 1;
+		       UnicodeMapRange *rangesA, int lenA)
+  : encodingName{ new GString(encodingNameA) }
+  , unicodeOut{ unicodeOutA }
+  , kind{ unicodeMapResident }
+  , ranges{ rangesA }
+  , len{ lenA }
+{
 }
 
 UnicodeMap::UnicodeMap(const char *encodingNameA, GBool unicodeOutA,
-		       UnicodeMapFunc funcA) {
-  encodingName = new GString(encodingNameA);
-  unicodeOut = unicodeOutA;
-  kind = unicodeMapFunc;
-  func = funcA;
-  eMaps = NULL;
-  eMapsLen = 0;
-  refCnt = 1;
+		       UnicodeMapFunc funcA)
+  : encodingName{ new GString(encodingNameA) }
+  , unicodeOut{ unicodeOutA }
+  , kind{ unicodeMapFunc }
+  , func{ funcA }
+{
 }
 
 UnicodeMap::~UnicodeMap() {

@@ -70,8 +70,6 @@ UnicodeRemapping::UnicodeRemapping() {
   for (int i = 0; i < 256; ++i) {
     page0[i] = (Unicode)i;
   }
-  sMap = NULL;
-  sMapLen = sMapSize = 0;
 }
 
 UnicodeRemapping::~UnicodeRemapping() {
@@ -169,6 +167,10 @@ int UnicodeRemapping::findSMap(Unicode u) {
 
 int UnicodeRemapping::map(Unicode in, Unicode *out, int size) {
   int a, b, m, i;
+
+  if (size <= 0) {
+    return 0;
+  }
 
   if (in < 256 && page0[in] != 0xffffffff) {
     out[0] = page0[in];

@@ -46,15 +46,15 @@ enum XRefEntryType {
 };
 
 struct XRefEntry {
-	GFileOffset offset{ 0 };
+  GFileOffset offset{ 0 };
   int gen{ -1 };
   XRefEntryType type{ xrefEntryFree };
 };
 
 struct XRefCacheEntry {
-	int num{ -1 };
-	int gen{ -1 };
-	Object obj;
+  int num{ -1 };
+  int gen{ -1 };
+  Object obj;
 };
 
 #define xrefCacheSize 16
@@ -139,7 +139,7 @@ private:
   BaseStream *str;		// input stream
   GFileOffset start{ 0 };		// offset in file (to allow for garbage
 				//   at beginning of file)
-  XRefEntry* entries{ nullptr };		// xref entries
+  XRefEntry *entries{ nullptr };		// xref entries
   int size{ 0 };			// size of <entries> array
   int last{ -1 };			// last used index in <entries>
   int rootNum, rootGen;		// catalog dict
@@ -156,10 +156,10 @@ private:
 				//   damaged files
   int streamEndsLen{ 0 };		// number of valid entries in streamEnds
   ObjectStream *		// cached object streams
-	  objStrs[objStrCacheSize]{ nullptr };
+    objStrs[objStrCacheSize]{ nullptr };
   int objStrCacheLength{ 0 };	// number of valid entries in objStrs[]
   Guint				// time of last use for each obj stream
-	  objStrLastUse[objStrCacheSize]{ 0 };
+    objStrLastUse[objStrCacheSize]{ 0 };
   Guint objStrTime{ 0 };		// current time for the obj stream cache
 #if MULTITHREADED
   GMutex objStrsMutex;
@@ -172,7 +172,7 @@ private:
   int encVersion{ 0 };		// encryption version
   CryptAlgorithm encAlgorithm;	// encryption algorithm
   XRefCacheEntry		// cache of recently accessed objects
-	  cache[xrefCacheSize]{ };
+    cache[xrefCacheSize]{ };
 #if MULTITHREADED
   GMutex cacheMutex;
 #endif
@@ -180,7 +180,7 @@ private:
   GFileOffset getStartXref();
   GBool readXRef(GFileOffset *pos, XRefPosSet *posSet, GBool hybrid);
   GBool readXRefTable(GFileOffset *pos, int offset, XRefPosSet *posSet);
-  GBool readXRefStream(Stream *xrefStr, GFileOffset *pos, GBool hybrid);
+  GBool readXRefStream(Stream *xrefStr, GFileOffset *pos);
   GBool readXRefStreamSection(Stream *xrefStr, int *w, int first, int n);
   GBool constructXRef();
   void constructTrailerDict(GFileOffset pos);

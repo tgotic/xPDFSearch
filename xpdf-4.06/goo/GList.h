@@ -93,12 +93,14 @@ private:
 #define deleteGList(list, T)                        \
   do {                                              \
     GList *_list = (list);                          \
+    if (_list)                                      \
     {                                               \
       int _i;                                       \
       for (_i = 0; _i < _list->getLength(); ++_i) { \
         delete (T*)_list->get(_i);                  \
       }                                             \
       delete _list;                                 \
+      _list = NULL;                                 \
     }                                               \
   } while (0)
 

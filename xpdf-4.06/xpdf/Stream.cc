@@ -139,6 +139,7 @@ Stream *Stream::addFilters(Object *dict, int recursion) {
   Object obj, obj2;
   Object params, params2;
   Stream *str;
+  GBool ok;
   int i;
 
   str = this;
@@ -152,20 +153,23 @@ Stream *Stream::addFilters(Object *dict, int recursion) {
     params.free();
     dict->dictLookup("DP", &params, recursion);
   }
+  ok = gTrue;
   if (obj.isName()) {
-    str = makeFilter(obj.getName(), str, &params, recursion);
+    str = makeFilter(obj.getName(), str, &params, recursion, &ok);
   } else if (obj.isArray()) {
-    for (i = 0; i < obj.arrayGetLength(); ++i) {
+    for (i = 0; ok && i < obj.arrayGetLength(); ++i) {
       obj.arrayGet(i, &obj2, recursion);
-      if (params.isArray() && i < params.arrayGetLength())
+      if (params.isArray() && i < params.arrayGetLength()) {
 	params.arrayGet(i, &params2, recursion);
-      else
+      } else {
 	params2.initNull();
+      }
       if (obj2.isName()) {
-	str = makeFilter(obj2.getName(), str, &params2, recursion);
+	str = makeFilter(obj2.getName(), str, &params2, recursion, &ok);
       } else {
 	error(errSyntaxError, getPos(), "Bad filter name");
 	str = new EOFStream(str);
+	ok = gFalse;
       }
       obj2.free();
       params2.free();
@@ -180,7 +184,7 @@ Stream *Stream::addFilters(Object *dict, int recursion) {
 }
 
 Stream *Stream::makeFilter(char *name, Stream *str, Object *params,
-			   int recursion) {
+			   int recursion, GBool *ok) {
   int pred;			// parameters
   int colors;
   int bits;
@@ -333,6 +337,7 @@ Stream *Stream::makeFilter(char *name, Stream *str, Object *params,
   } else {
     error(errSyntaxError, getPos(), "Unknown filter '{0:s}'", name);
     str = new EOFStream(str);
+    *ok = gFalse;
   }
   return str;
 }
@@ -987,10 +992,10 @@ void MemStream::moveStart(int delta) {
 
 EmbedStream::EmbedStream(Stream *strA, Object *dictA,
 			 GBool limitedA, GFileOffset lengthA)
-    : BaseStream(dictA) 
-    , str{ strA }
-    , limited{ limitedA }
-    , length{ lengthA }
+  : BaseStream(dictA) 
+  , str{ strA }
+  , limited{ limitedA }
+  , length{ lengthA }
 {
 }
 
@@ -1235,7 +1240,9 @@ GBool ASCII85Stream::isBinary(GBool last) {
 
 LZWStream::LZWStream(Stream *strA, int predictor, int columns, int colors,
 		     int bits, int earlyA):
-    FilterStream(strA), early(earlyA)
+    FilterStream(strA), early(earlyA),
+    table(new LZWStreamTable[4097]),
+    seqBuf(new Guchar[4097])		// buffer for current sequence
 {
   if (predictor != 1) {
     pred = new StreamPredictor(this, predictor, columns, colors, bits);
@@ -1244,6 +1251,8 @@ LZWStream::LZWStream(Stream *strA, int predictor, int columns, int colors,
       pred = NULL;
     }
   }
+  memset(table, 0, sizeof(LZWStreamTable) * 4097);
+  memset(seqBuf, 0, sizeof(Guchar) * 4097);
 }
 
 LZWStream::~LZWStream() {
@@ -1251,6 +1260,12 @@ LZWStream::~LZWStream() {
     delete pred;
   }
   delete str;
+  if (table) {
+    delete[] table;
+  }
+  if (seqBuf) {
+    delete[] seqBuf;
+  }
 }
 
 Stream *LZWStream::copy() {
@@ -2341,6 +2356,7 @@ GBool CCITTFaxStream::isBinary(GBool last) {
   return str->isBinary(gTrue);
 }
 #endif /* NO_CCITT_STREAM */
+
 #ifndef NO_DCT_STREAM
 //------------------------------------------------------------------------
 // DCTStream
@@ -2851,10 +2867,10 @@ int DCTStream::getBlock(char *blk, int size) {
   if (!prepared) {
     prepare();
   }
+  if (y >= height) {
+    return 0;
+  }
   if (progressive || !interleaved) {
-    if (y >= height) {
-      return 0;
-    }
     for (nRead = 0; nRead < size; ++nRead) {
       blk[nRead] = (char)frameBuf[comp][y * bufWidth + x];
       if (++comp == numComps) {
@@ -2952,6 +2968,7 @@ void DCTStream::prepare() {
     if (bufWidth <= 0 || bufWidth > INT_MAX / numComps / mcuHeight) {
       error(errSyntaxError, getPos(), "Invalid image size in DCT stream");
       y = height;
+      rowBuf = rowBufPtr = rowBufEnd = NULL;
       prepared = gTrue;
       return;
     }
@@ -4974,8 +4991,10 @@ FlateHuffmanTab FlateStream::fixedDistCodeTab = {
 };
 
 FlateStream::FlateStream(Stream *strA, int predictor, int columns,
-			 int colors, int bits):
-    FilterStream(strA), buf(new Guchar[flateWindow])
+			 int colors, int bits)
+  : FilterStream(strA)
+  , codeLengths(new int[flateMaxLitCodes + flateMaxDistCodes])
+  , buf(new Guchar[flateWindow])
 {
   if (!buf)
       exit(1);
@@ -5000,11 +5019,15 @@ FlateStream::~FlateStream() {
   if (pred) {
     delete pred;
   }
-  delete str;
+  if (str) {
+    delete str;
+  }
+  if (codeLengths) {
+    delete[] codeLengths;
+  }
   if (buf) {
     delete[] buf;
   }
-
 }
 
 Stream *FlateStream::copy() {
@@ -5926,8 +5949,10 @@ GBool RunLengthEncoder::fillBuf() {
 // LZWEncoder
 //------------------------------------------------------------------------
 
-LZWEncoder::LZWEncoder(Stream *strA):
-  FilterStream(strA)
+LZWEncoder::LZWEncoder(Stream *strA)
+  : FilterStream(strA)
+  , table(new LZWEncoderNode[4096])
+  , inBuf(new Guchar[8192])
 {
 }
 
@@ -5935,6 +5960,8 @@ LZWEncoder::~LZWEncoder() {
   if (str->isEncoder()) {
     delete str;
   }
+  delete[] table;
+  delete[] inBuf;
 }
 
 Stream *LZWEncoder::copy() {

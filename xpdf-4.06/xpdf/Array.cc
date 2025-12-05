@@ -19,11 +19,9 @@
 // Array
 //------------------------------------------------------------------------
 
-Array::Array(XRef *xrefA) {
-  xref = xrefA;
-  elems = NULL;
-  size = length = 0;
-  ref = 1;
+Array::Array(XRef *xrefA)
+    : xref{ xrefA }
+{
 }
 
 Array::~Array() {

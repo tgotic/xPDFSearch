@@ -19,6 +19,7 @@
 class GList;
 class UnicodeMap;
 class UnicodeRemapping;
+class PDFDoc;
 
 class TextBlock;
 class TextChar;
@@ -58,6 +59,7 @@ public:
   ~TextOutputControl() {}
 
   TextOutputMode mode;		// formatting mode
+  GBool cmykColors;		// false for RGB, true for CMYK
   double fixedPitch;		// if this is non-zero, assume fixed-pitch
 				//   characters with this width
 				//   (only relevant for PhysLayout, Table,
@@ -121,15 +123,18 @@ public:
   double getAscent() { return ascent; }
   double getDescent() { return descent; }
 
+  GBool isProblematic() { return problematic; }
+
   Ref getFontID() { return fontID; }
 
 private:
 
   Ref fontID;
   GString *fontName;
-  int flags;
   double mWidth;
   double ascent, descent;
+  int flags;
+  GBool problematic;
 
   friend class TextLine;
   friend class TextPage;
@@ -157,6 +162,8 @@ public:
   GString *getFontName() { return font->fontName; }
   void getColor(double *r, double *g, double *b)
     { *r = colorR; *g = colorG; *b = colorB; }
+  void getCMYKColor(double *c, double *m, double *y, double *k)
+    { *c = colorR; *m = colorG; *y = colorB; *k = colorK; }
   GBool isInvisible() { return invisible; }
   void getBBox(double *xMinA, double *yMinA, double *xMaxA, double *yMaxA)
     { *xMinA = xMin; *yMinA = yMin; *xMaxA = xMax; *yMaxA = yMax; }
@@ -172,6 +179,7 @@ public:
   double getBaseline();
   GBool isUnderlined() { return underlined; }
   GString *getLinkURI();
+  int getLinkPage(PDFDoc *doc);
 
 private:
 
@@ -187,13 +195,14 @@ private:
 				//   the last char)
   double *edge;			// "near" edge x or y coord of each char
 				//   (plus one extra entry for the last char)
-  int len;			// number of characters
   TextFontInfo *font;		// font information
   double fontSize;		// font size
   TextLink *link;
-  double colorR,		// word color
+  double colorR,		// word color (RGB or CMYK)
          colorG,
-         colorB;
+         colorB,
+         colorK;
+  int len;			// number of characters
   GBool invisible;		// set for invisible text (render mode 3)
 
   // group the byte-size fields to minimize object size
@@ -630,10 +639,10 @@ private:
   UnicodeRemapping *remapping;
   Unicode *uBuf;
   int uBufSize;
-
-  double pageWidth, pageHeight;	// width and height of current page
   int charPos;			// next character position (within content
 				//   stream)
+
+  double pageWidth, pageHeight;	// width and height of current page
   TextFontInfo *curFont;	// current font
   double curFontSize;		// current font size
   int curRot;			// current rotation
@@ -643,16 +652,15 @@ private:
   int nTinyChars;		// number of "tiny" chars seen so far
   Unicode *actualText;		// current "ActualText" span
   int actualTextLen;
+  int actualTextNBytes;
   double actualTextX0,
          actualTextY0,
          actualTextX1,
          actualTextY1;
-  int actualTextNBytes;
 
   GList *chars;			// [TextChar]
   GList *fonts;			// all font info objects used on this
 				//   page [TextFontInfo]
-  int primaryRot;		// primary rotation
 
   GList *underlines;		// [TextUnderline]
   GList *links;			// [TextLink]
@@ -660,6 +668,7 @@ private:
   int nVisibleChars;		// number of visible chars on the page
   int nInvisibleChars;		// number of invisible chars on the page
   int nRemovedDupChars;		// number of duplicate chars removed
+  int primaryRot;		// primary rotation
 
   GList *findCols;		// text used by the findText**/findPoint**
 				//   functions [TextColumn]
@@ -812,6 +821,7 @@ public:
 private:
 
   void generateBOM();
+  void handleCoveredText();
 
   TextOutputFunc outputFunc;	// output function
   void *outputStream;		// output stream

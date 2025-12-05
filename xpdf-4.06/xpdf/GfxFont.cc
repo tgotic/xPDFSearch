@@ -408,12 +408,19 @@ GfxFontType GfxFont::getFontType(XRef *xref, Dict *fontDict, Ref *embID) {
 	error(errSyntaxError, -1, "Embedded font file may be invalid");
 	break;
       }
+    } else {
+      error(errSyntaxError, -1, "Embedded font object is wrong type");
     }
     obj4.free();
     obj3.free();
   }
 
+  // If the embedded font doesn't exist, or it's not a stream object,
+  // or we couldn't identify its type, then remove the reference so
+  // nothing tries to use it later.
   if (t == fontUnknownType) {
+    embID->num = -1;
+    embID->gen = -1;
     t = expectedType;
   }
 
@@ -462,8 +469,18 @@ void GfxFont::readFontDescriptor(XRef *xref, Dict *fontDict) {
     }
     obj2.free();
 
-    // get Ascent
-    // (CapHeight is a little more reliable - so use it if present)
+    // font FontBBox
+    if (obj1.dictLookup("FontBBox", &obj2)->isArray()) {
+      for (i = 0; i < 4 && i < obj2.arrayGetLength(); ++i) {
+	if (obj2.arrayGet(i, &obj3)->isNum()) {
+	  fontBBox[i] = 0.001 * obj3.getNum();
+	}
+	obj3.free();
+      }
+    }
+    obj2.free();
+
+    // get Ascent (but also look at CapHeight)
     obj1.dictLookup("Ascent", &obj2);
     obj1.dictLookup("CapHeight", &obj3);
     if (obj2.isNum() || obj3.isNum()) {
@@ -488,15 +505,25 @@ void GfxFont::readFontDescriptor(XRef *xref, Dict *fontDict) {
       if (t != 0 && t < 1.9) {
 	declaredAscent = t;
       }
-      // if both Ascent and CapHeight are set, use the smaller one
-      // (because the most common problem is that Ascent is too large)
-      if (t2 != 0 && (t == 0 || t2 < t)) {
-	t = t2;
+      // The ascent is generally expected to be in the (0.55, 1.9) range.
+      // If Ascent and/or CapHeight is in that range, use the smaller one
+      // (because the most common problem is that Ascent is too large).
+      // Otherwise check for a value in (0, 0.55], and use that.
+      if (t > 0.55 && t < 1.9) {
+	if (t2 > 0.55 && t2 < 1.9) {
+	  ascent = (t < t2) ? t : t2;
+	} else {
+	  ascent = t;
       }
-      // some broken font descriptors set ascent and descent to 0;
-      // others set it to ridiculous values (e.g., 32768)
-      if (t != 0 && t < 1.9) {
+      } else if (t2 > 0.55 && t2 < 1.9) {
+	ascent = t2;
+      } else if (fontBBox[3] > 0.55 && fontBBox[3] < 1.9 &&
+		 fontBBox[1] < fontBBox[3]) {
+	ascent = fontBBox[3];
+      } else if (t > 0 && t < 1.9) {
 	ascent = t;
+      } else if (t2 > 0 && t2 < 1.9) {
+	ascent = t2;
       }
     }
     obj2.free();
@@ -511,20 +538,12 @@ void GfxFont::readFontDescriptor(XRef *xref, Dict *fontDict) {
 	t = -t;
       }
       // some broken font descriptors set ascent and descent to 0
-      if (t != 0 && t > -1.9) {
+      if (t < 0 && t > -1.9) {
 	descent = t;
-      }
-    }
-    obj2.free();
-
-    // font FontBBox
-    if (obj1.dictLookup("FontBBox", &obj2)->isArray()) {
-      for (i = 0; i < 4 && i < obj2.arrayGetLength(); ++i) {
-	if (obj2.arrayGet(i, &obj3)->isNum()) {
-	  fontBBox[i] = 0.001 * obj3.getNum();
+      } else if (fontBBox[1] > -1.9 && fontBBox[1] <= 0 &&
+		 fontBBox[1] < fontBBox[3]) {
+	descent = fontBBox[1];
 	}
-	obj3.free();
-      }
     }
     obj2.free();
 
@@ -547,11 +566,13 @@ void GfxFont::readFontDescriptor(XRef *xref, Dict *fontDict) {
       flags |= fontItalic;
       i -= 7;
     }
-    char c = name->getChar(i-1);
-    if (!((c >= 'A' && c <= 'Z') ||
-	  (c >= 'a' && c <= 'z') ||
-	  (c >= '0' && c <= '9'))) {
-      --i;
+    if (i > 0) {
+      char c = name->getChar(i-1);
+      if (!((c >= 'A' && c <= 'Z') ||
+	    (c >= 'a' && c <= 'z') ||
+	    (c >= '0' && c <= '9'))) {
+        --i;
+      }
     }
     if (i > 4 && !strncmp(name->getCString() + i - 4, "Bold", 4)) {
       flags |= fontBold;
@@ -689,40 +710,42 @@ GfxFontLoc *GfxFont::locateFont(XRef *xref, GBool ps) {
     fontLoc->locType = gfxFontLocExternal;
     fontLoc->path = path;
     fontLoc->fontNum = fontNum;
-    if (isCIDFont()) {
-      if (sysFontType == sysFontTTF || sysFontType == sysFontTTC) {
-	fontLoc->fontType = fontCIDType2;
-	return fontLoc;
-      } else if (sysFontType == sysFontOTF) {
 	fft = FoFiIdentifier::identifyFile(fontLoc->path->getCString());
-	if (fft == fofiIdOpenTypeCFFCID) {
+    switch (fft) {
+    case fofiIdType1PFA:
+    case fofiIdType1PFB:
+      fontLoc->fontType = fontType1;
+      break;
+    case fofiIdCFF8Bit:
+      fontLoc->fontType = fontType1C;
+      break;
+    case fofiIdCFFCID:
+      fontLoc->fontType = fontCIDType0C;
+      break;
+    case fofiIdTrueType:
+    case fofiIdTrueTypeCollection:
+      fontLoc->fontType = isCIDFont() ? fontCIDType2 : fontTrueType;
+      break;
+    case fofiIdOpenTypeCFF8Bit:
+      fontLoc->fontType = fontType1COT;
+      break;
+    case fofiIdOpenTypeCFFCID:
 	  fontLoc->fontType = fontCIDType0COT;
-	  return fontLoc;
-	} else if (fft == fofiIdTrueType) {
-	  fontLoc->fontType = fontCIDType2;
-	  return fontLoc;
-	}
-      }
-    } else {
-      if (sysFontType == sysFontTTF || sysFontType == sysFontTTC) {
-	fontLoc->fontType = fontTrueType;
-	return fontLoc;
-      } else if (sysFontType == sysFontPFA || sysFontType == sysFontPFB) {
-	fontLoc->fontType = fontType1;
-	return fontLoc;
-      } else if (sysFontType == sysFontOTF) {
-	fft = FoFiIdentifier::identifyFile(fontLoc->path->getCString());
-	if (fft == fofiIdOpenTypeCFF8Bit) {
-	  fontLoc->fontType = fontType1COT;
-	  return fontLoc;
-	} else if (fft == fofiIdTrueType) {
-	  fontLoc->fontType = fontTrueTypeOT;
-	  return fontLoc;
-	}
-      }
+      break;
+    case fofiIdDfont:
+      fontLoc->fontType = isCIDFont() ? fontCIDType2 : fontTrueType;
+      break;
+    case fofiIdUnknown:
+    case fofiIdError:
+    default:
+      delete fontLoc;
+      fontLoc = NULL;
+      break;
     }
-    delete fontLoc;
-  }
+    if (fontLoc) {
+	  return fontLoc;
+	}
+      }
 
   if (!isCIDFont()) {
 
@@ -1104,6 +1127,17 @@ Gfx8BitFont::Gfx8BitFont(XRef *xref, const char *tagA, Ref idA, GString *nameA,
   } else if (obj1.isName("WinAnsiEncoding")) {
     hasEncoding = gTrue;
     baseEnc = winAnsiEncoding;
+  }
+
+  // a non-embedded Symbol or ZapfDingbats font should never use one
+  // of the non-symbol encodings -- I've encountered PDF files that
+  // set the Encoding to WinAnsiEncoding, which doesn't make any sense
+  // (and other viewers also seem to ignore it)
+  if (builtinFont && embFontID.num < 0 &&
+      (builtinFont->defaultBaseEnc == symbolEncoding ||
+       builtinFont->defaultBaseEnc == zapfDingbatsEncoding) &&
+      !obj1.isDict()) {
+    baseEnc = NULL;
   }
 
   // check embedded font file for base encoding
@@ -1656,7 +1690,8 @@ GBool Gfx8BitFont::problematicForUnicode() {
       return !hasToUnicode && (!hasEncoding || usedNumericHeuristic);
 
     case fontType3:
-      return !hasToUnicode && !hasEncoding;
+      // this never happens -- Type 3 fonts don't set embFontID
+      return !hasToUnicode && (!hasEncoding || usedNumericHeuristic);
 
     case fontTrueType:
     case fontTrueTypeOT:
@@ -1666,12 +1701,19 @@ GBool Gfx8BitFont::problematicForUnicode() {
       return !hasToUnicode;
     }
 
+  } else if (type == fontType3) {
+    return !hasToUnicode && (!hasEncoding || usedNumericHeuristic);
+
   } else {
     // NB: type will be fontTypeUnknown if the PDF specifies an
     // invalid font type -- which is ok, if we have a ToUnicode map or
     // an encoding
     return !hasToUnicode && !hasEncoding;
   }
+}
+
+GBool Gfx8BitFont::parensAreSwapped(XRef *xref) {
+  return gFalse;
 }
 
 //------------------------------------------------------------------------
@@ -2034,7 +2076,7 @@ void GfxCIDFont::readTrueTypeUnicodeMapping(XRef *xref) {
   int nGlyphs, nMappings, gid, i;
 
   // must be an embedded TrueType font, with an unknown char collection
-  if ((type != fontCIDType2 && type == fontCIDType2OT) ||
+  if ((type != fontCIDType2 && type != fontCIDType2OT) ||
       embFontID.num < 0 ||
       hasKnownCollection) {
     goto err0;
@@ -2250,6 +2292,100 @@ GBool GfxCIDFont::problematicForUnicode() {
   } else {
     return !hasToUnicode;
   }
+}
+
+GBool GfxCIDFont::parensAreSwapped(XRef *xref) {
+  char *buf = NULL;
+  FoFiTrueType *ff = NULL;
+  int bufLen;
+  int unicodeCmap, leftParenGID, rightParenGID, leftParenCID, rightParenCID;
+  Unicode leftParenUnicode, rightParenUnicode;
+  GBool swapped;
+
+  // only relevant for embedded TrueType fonts, with unknown char
+  // collections, and with ToUnicode maps
+  if ((type != fontCIDType2 && type != fontCIDType2OT) ||
+      embFontID.num < 0 ||
+      hasKnownCollection ||
+      !hasToUnicode) {
+    return gFalse;
+  }
+
+  // read the embedded font and construct a FoFiTrueType
+  if (!(buf = readEmbFontFile(xref, &bufLen))) {
+    goto err;
+  }
+  if (!(ff = FoFiTrueType::make(buf, bufLen, 0))) {
+    goto err;
+  }
+
+  // find the TrueType Unicode cmap
+  unicodeCmap = -1;
+  for (int i = 0; i < ff->getNumCmaps(); ++i) {
+    int cmapPlatform = ff->getCmapPlatform(i);
+    int cmapEncoding = ff->getCmapEncoding(i);
+    if ((cmapPlatform == 3 && cmapEncoding == 1) ||
+	(cmapPlatform == 0 && cmapEncoding <= 4)) {
+      unicodeCmap = i;
+      break;
+    }
+  }
+  if (unicodeCmap < 0) {
+    goto err;
+  }
+
+  // map parens to GIDs using the TrueType Unicode cmap
+  leftParenGID = ff->mapCodeToGID(unicodeCmap, 0x28);
+  rightParenGID = ff->mapCodeToGID(unicodeCmap, 0x29);
+  if (leftParenGID == 0 || rightParenGID == 0) {
+    goto err;
+  }
+
+  // map GIDs to CIDs using the inverted CIDToGID map
+  leftParenCID = -1;
+  rightParenCID = -1;
+  if (cidToGID) {
+    for (int i = 0;
+	 i <= cidToGIDLen && leftParenCID < 0 && rightParenCID < 0;
+	 ++i) {
+      if (cidToGID[i] == leftParenGID) {
+	leftParenCID = i;
+      } else if (cidToGID[i] == rightParenGID) {
+	rightParenCID = i;
+      }
+    }
+    if (leftParenCID < 0 || rightParenCID < 0) {
+      goto err;
+    }
+  } else {
+    leftParenCID = leftParenGID;
+    rightParenCID = rightParenGID;
+  }
+
+  // map CIDs to Unicode using the ToUnicode map
+  if (ctu->mapToUnicode((CharCode)leftParenCID, &leftParenUnicode, 1) < 1 ||
+      ctu->mapToUnicode((CharCode)rightParenCID, &rightParenUnicode, 1) < 1) {
+    goto err;
+  }
+
+  // check for swap
+  swapped = leftParenUnicode == 0x29 && rightParenUnicode == 0x28;
+
+  delete ff;
+  ff = NULL;
+  gfree(buf);
+  buf = NULL;
+
+  return swapped;
+
+ err:
+  if (ff) {
+    delete ff;
+  }
+  if (buf) {
+    gfree(buf);
+  }
+  return gFalse;
 }
 
 //------------------------------------------------------------------------

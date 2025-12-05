@@ -92,8 +92,8 @@ private:
 
   GString *tag;
   Unicode *map;
-  CharCode mapLen;
   CharCodeToUnicodeString *sMap;
+  CharCode mapLen;
   unsigned int sMapLen, sMapSize;
 #if MULTITHREADED
   GAtomicCounter refCnt;

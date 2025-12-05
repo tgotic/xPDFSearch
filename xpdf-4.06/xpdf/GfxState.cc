@@ -15,6 +15,7 @@
 #include "gmempp.h"
 #include "Error.h"
 #include "GlobalParams.h"
+#include "LocalParams.h"
 #include "Object.h"
 #include "Array.h"
 #include "Page.h"
@@ -3127,6 +3128,11 @@ GfxGouraudTriangleShading *GfxGouraudTriangleShading::parse(
   delete bitBuf;
   if (typeA == 5) {
     nRows = nVerticesA / vertsPerRow;
+    if (nRows == 0) {
+      error(errSyntaxError, -1,
+	    "Invalid VerticesPerRow in shading dictionary");
+      goto err3;
+    }
     nTrianglesA = (nRows - 1) * 2 * (vertsPerRow - 1);
     trianglesA = (int (*)[3])gmallocn(nTrianglesA * 3, sizeof(int));
     k = 0;
@@ -3173,6 +3179,12 @@ GfxGouraudTriangleShading *GfxGouraudTriangleShading::parse(
 
   return shading;
 
+ err3:
+  gfree(trianglesA);
+  gfree(verticesA);
+  for (i = 0; i < nFuncsA; ++i) {
+    delete funcsA[i];
+  }
  err2:
   obj1.free();
  err1:
@@ -4487,11 +4499,13 @@ void GfxPath::offset(double dx, double dy) {
 // GfxState
 //------------------------------------------------------------------------
 
-GfxState::GfxState(double hDPIA, double vDPIA, PDFRectangle *pageBox,
+GfxState::GfxState(LocalParams *localParamsA,
+		   double hDPIA, double vDPIA, PDFRectangle *pageBox,
 		   int rotateA, GBool upsideDown
 		   ) {
   double kx, ky;
 
+  localParams = localParamsA;
   hDPI = hDPIA;
   vDPI = vDPIA;
   rotate = rotateA;
@@ -4550,7 +4564,11 @@ GfxState::GfxState(double hDPIA, double vDPIA, PDFRectangle *pageBox,
   strokeOpacity = 1;
   fillOverprint = gFalse;
   strokeOverprint = gFalse;
-  renderingIntent = gfxRenderingIntentRelativeColorimetric;
+  if (localParams) {
+    renderingIntent = localParams->getDefaultRenderingIntent();
+  } else {
+    renderingIntent = gfxRenderingIntentRelativeColorimetric;
+  }
   overprintMode = 0;
   transfer[0] = transfer[1] = transfer[2] = transfer[3] = NULL;
 
@@ -4563,6 +4581,7 @@ GfxState::GfxState(double hDPIA, double vDPIA, PDFRectangle *pageBox,
   lineCap = 0;
   miterLimit = 10;
   strokeAdjust = gFalse;
+  alphaIsShape = gFalse;
 
   font = NULL;
   fontSize = 0;
@@ -4822,6 +4841,12 @@ void GfxState::setStrokePattern(GfxPattern *pattern) {
     delete strokePattern;
   }
   strokePattern = pattern;
+}
+
+void GfxState::setRenderingIntent(GfxRenderingIntent ri) {
+  if (!(localParams && localParams->getForceRenderingIntent())) {
+    renderingIntent = ri;
+  }
 }
 
 void GfxState::setTransfer(Function **funcs) {

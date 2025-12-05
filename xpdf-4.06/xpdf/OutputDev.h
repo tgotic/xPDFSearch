@@ -136,6 +136,7 @@ public:
   virtual void updateOverprintMode(GfxState *state) {}
   virtual void updateRenderingIntent(GfxState *state) {}
   virtual void updateTransfer(GfxState *state) {}
+  virtual void updateAlphaIsShape(GfxState *state) {}
 
   //----- update text state
   virtual void updateFont(GfxState *state) {}

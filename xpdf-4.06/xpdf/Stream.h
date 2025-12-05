@@ -158,7 +158,8 @@ public:
 
 private:
 
-  Stream *makeFilter(char *name, Stream *str, Object *params, int recursion);
+  Stream *makeFilter(char *name, Stream *str, Object *params,
+		     int recursion, GBool *ok);
 };
 
 //------------------------------------------------------------------------
@@ -255,9 +256,9 @@ private:
   int nBits;			// bits per component
   int nVals;			// components per line
   int inputLineSize;		// input line buffer size
+  int imgIdx;			// current index in imgLine
   char *inputLine;		// input line buffer
   Guchar *imgLine;		// line buffer
-  int imgIdx;			// current index in imgLine
 };
 
 
@@ -300,7 +301,7 @@ private:
   int nVals;			// components per line
   int pixBytes;			// bytes per pixel
   int rowBytes;			// bytes per line
-  Guchar* predLine{ nullptr };		// line buffer
+  Guchar *predLine{ nullptr };		// line buffer
   int predIdx{ 0 };			// current index in predLine
   GBool ok{ gFalse };
 };
@@ -345,7 +346,7 @@ private:
   GBool limited;
   GFileOffset length;
   char buf[fileStreamBufSize]{};
-  char* bufPtr{ buf };
+  char *bufPtr{ buf };
   char *bufEnd{ buf };
   GFileOffset bufPos;
 };
@@ -500,23 +501,23 @@ public:
   virtual GBool hasStrongCompression() { return gTrue; }
 
 private:
-
-  StreamPredictor *pred{ nullptr };	// predictor
-  int early;			// early parameter
-  GBool eof{ gFalse };			// true if at eof
-  int inputBuf{ 0 };			// input buffer
-  int inputBits{ 0 };		// number of bits in input buffer
-  struct {			// decoding table
+  struct LZWStreamTable {
     int length{ 0 };
     int head{ 0 };
     Guchar tail{ 0 };
-  } table[4097]{};
+  };
+  StreamPredictor *pred{ nullptr };	// predictor
+  LZWStreamTable *table{ nullptr };	// decoding table
+  Guchar *seqBuf{ nullptr };		// buffer for current sequence
+  int early;				// early parameter
+  GBool eof{ gFalse };			// true if at eof
+  int inputBuf{ 0 };			// input buffer
+  int inputBits{ 0 };			// number of bits in input buffer
   int nextCode{ 258 };			// next code to be used
   int nextBits{ 9 };			// number of bits in next code word
   int prevCode{ 0 };			// previous code used in stream
   int newChar{ 0 };			// next char to be added to table
-  Guchar seqBuf[4097]{};		// buffer for current sequence
-  int seqLength{ 0 };		// length of current sequence
+  int seqLength{ 0 };			// length of current sequence
   int seqIndex{ 0 };			// index into current sequence
   GBool first{ gTrue };			// first code after a table clear
   GBool checkForDecompressionBombs{ gTrue };
@@ -553,11 +554,12 @@ private:
 
   char buf[128]{ };		// buffer
   char *bufPtr{ buf };			// next char to read
-  char* bufEnd{ buf };			// end of buffer
+  char *bufEnd{ buf };			// end of buffer
   GBool eof{ gFalse };
 
   GBool fillBuf();
 };
+
 #ifndef NO_CCITT_STREAM
 //------------------------------------------------------------------------
 // CCITTFaxStream
@@ -615,6 +617,7 @@ private:
   void eatBits(int n) { if ((inputBits -= n) < 0) inputBits = 0; }
 };
 #endif
+
 #ifndef NO_DCT_STREAM
 //------------------------------------------------------------------------
 // DCTStream
@@ -779,6 +782,7 @@ private:
 #endif // HAVE_JPEGLIB
 };
 #endif /* NO_DCT_STREAM */
+
 //------------------------------------------------------------------------
 // FlateStream
 //------------------------------------------------------------------------
@@ -830,14 +834,13 @@ public:
 
 private:
 
-  StreamPredictor* pred{ nullptr };	// predictor
-  Guchar* buf;	// output data buffer
+  StreamPredictor *pred{ nullptr };	// predictor
+  int* codeLengths{ nullptr };		// literal and distance code lengths
+  Guchar *buf;	// output data buffer
   int index{ 0 };			// current index into output buffer
   int remain{ 0 };			// number valid bytes in output buffer
   int codeBuf{ 0 };			// input buffer
   int codeSize{ 0 };			// number of bits in input buffer
-  int				// literal and distance code lengths
-	  codeLengths[flateMaxLitCodes + flateMaxDistCodes]{};
   FlateHuffmanTab litCodeTab{ };	// literal code table
   FlateHuffmanTab distCodeTab{ };	// distance code table
   GBool compressedBlock{ gFalse };	// set if reading a compressed block
@@ -967,8 +970,8 @@ public:
 private:
 
   char buf[4]{ };
-  char* bufPtr{ buf };
-  char* bufEnd{ buf };
+  char *bufPtr{ buf };
+  char *bufEnd{ buf };
   int lineLen{ 0 };
   GBool eof{ gFalse };
 
@@ -1069,10 +1072,10 @@ public:
 
 private:
 
-  LZWEncoderNode table[4096]{ };
+  LZWEncoderNode* table{ nullptr };
+  Guchar *inBuf{ nullptr };
   int nextSeq{ 0 };
   int codeLen{ 0 };
-  Guchar inBuf[8192]{ };
   int inBufStart{ 0 };
   int inBufLen{ 0 };
   int outBuf{ 0 };

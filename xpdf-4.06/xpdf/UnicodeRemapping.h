@@ -42,8 +42,8 @@ private:
   int findSMap(Unicode u);
 
   Unicode page0[256];
-  UnicodeRemappingString *sMap;
-  int sMapLen, sMapSize;
+  UnicodeRemappingString* sMap{nullptr};
+  int sMapLen{0}, sMapSize{0};
 };
 
 #endif

@@ -260,6 +260,27 @@ GBool PageAttrs::readBox(Dict *dict, const char *key, PDFRectangle *box) {
     }
     obj2.free();
     if (ok) {
+      // limit the box coords so they can be converted to 32-bit ints later
+      if (tmp.x1 < -1e9) {
+	tmp.x1 = -1e9;
+      } else if (tmp.x1 > 1e9) {
+	tmp.x1 = 1e9;
+      }
+      if (tmp.y1 < -1e9) {
+	tmp.y1 = -1e9;
+      } else if (tmp.y1 > 1e9) {
+	tmp.y1 = 1e9;
+      }
+      if (tmp.x2 < -1e9) {
+	tmp.x2 = -1e9;
+      } else if (tmp.x2 > 1e9) {
+	tmp.x2 = 1e9;
+      }
+      if (tmp.y2 < -1e9) {
+	tmp.y2 = -1e9;
+      } else if (tmp.y2 > 1e9) {
+	tmp.y2 = 1e9;
+      }
       if (tmp.x1 > tmp.x2) {
 	t = tmp.x1; tmp.x1 = tmp.x2; tmp.x2 = t;
       }
@@ -356,17 +377,19 @@ Links *Page::getLinks() {
   return links;
 }
 
-void Page::display(OutputDev *out, double hDPI, double vDPI,
+void Page::display(OutputDev *out, LocalParams *localParams,
+		   double hDPI, double vDPI,
 		   int rotate, GBool useMediaBox, GBool crop,
 		   GBool printing,
 		   GBool (*abortCheckCbk)(void *data),
 		   void *abortCheckCbkData) {
-  displaySlice(out, hDPI, vDPI, rotate, useMediaBox, crop,
+  displaySlice(out, localParams, hDPI, vDPI, rotate, useMediaBox, crop,
 	       -1, -1, -1, -1, printing,
 	       abortCheckCbk, abortCheckCbkData);
 }
 
-void Page::displaySlice(OutputDev *out, double hDPI, double vDPI,
+void Page::displaySlice(OutputDev *out, LocalParams *localParams,
+			double hDPI, double vDPI,
 			int rotate, GBool useMediaBox, GBool crop,
 			int sliceX, int sliceY, int sliceW, int sliceH,
 			GBool printing,
@@ -408,7 +431,7 @@ void Page::displaySlice(OutputDev *out, double hDPI, double vDPI,
     printf("***** Rotate = %d\n", attrs->getRotate());
   }
 
-  gfx = new Gfx(doc, out, num, attrs->getResourceDict(),
+  gfx = new Gfx(doc, out, localParams, num, attrs->getResourceDict(),
 		hDPI, vDPI, &box, crop ? cropBox : (PDFRectangle *)NULL,
 		rotate, abortCheckCbk, abortCheckCbkData);
   contents.fetch(xref, &obj);
@@ -537,7 +560,7 @@ void Page::getDefaultCTM(double *ctm, double hDPI, double vDPI,
   } else if (rotate < 0) {
     rotate += 360;
   }
-  state = new GfxState(hDPI, vDPI,
+  state = new GfxState(NULL, hDPI, vDPI,
 		       useMediaBox ? getMediaBox() : getCropBox(),
 		       rotate, upsideDown);
   for (i = 0; i < 6; ++i) {

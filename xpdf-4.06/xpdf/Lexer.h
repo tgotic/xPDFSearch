@@ -74,9 +74,9 @@ private:
 
   Array* streams{ nullptr };		// array of input streams
   int strPtr{ 0 };			// index of current stream
-  Object curStr;		// current stream
   GBool freeArray{ gTrue };		// should lexer free the streams array?
-  char tokBuf[tokBufSize]{ };	// temporary token buffer
+  Object curStr;			// current stream
+  char tokBuf[tokBufSize]{ };		// temporary token buffer
 };
 
 #endif

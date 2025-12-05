@@ -519,7 +519,7 @@ int AcroForm::lookupAnnotPage(Object *annotRef) {
 
 void AcroForm::scanField(Object *fieldRef, char *touchedObjs) {
   AcroFormField *field;
-  Object fieldObj, kidsObj, kidRef, kidObj, subtypeObj;
+  Object fieldObj, kidsRef, kidsObj, kidRef, kidObj, subtypeObj;
   GBool isTerminal;
   int i;
 
@@ -540,12 +540,28 @@ void AcroForm::scanField(Object *fieldRef, char *touchedObjs) {
     return;
   }
 
+  // look for a Kids entry, and check for an object loop there
+  if (fieldObj.dictLookupNF("Kids", &kidsRef)->isRef()) {
+    if (kidsRef.getRefNum() < 0 ||
+	kidsRef.getRefNum() >= doc->getXRef()->getNumObjects() ||
+	touchedObjs[kidsRef.getRefNum()]) {
+      kidsRef.free();
+      fieldObj.free();
+      return;
+    }
+    touchedObjs[kidsRef.getRefNum()] = 1;
+    kidsRef.fetch(doc->getXRef(), &kidsObj);
+  } else {
+    kidsRef.copy(&kidsObj);
+  }
+  kidsRef.free();
+
   // if this field has a Kids array, and all of the kids have a Parent
   // reference (i.e., they're all form fields, not widget
   // annotations), then this is a non-terminal field, and we need to
   // scan the kids
   isTerminal = gTrue;
-  if (fieldObj.dictLookup("Kids", &kidsObj)->isArray()) {
+  if (kidsObj.isArray()) {
     isTerminal = gFalse;
     for (i = 0; !isTerminal && i < kidsObj.arrayGetLength(); ++i) {
       kidsObj.arrayGet(i, &kidObj);
@@ -875,7 +891,7 @@ Unicode *AcroFormField::getValue(int *length) {
   // if this field has a counterpart in the XFA form, take the value
   // from the XFA field (NB: an XFA field with no value overrides the
   // AcroForm value)
-  if (xfaField) {
+  if (xfaField && globalParams->getPreferXFAFieldValues()) {
     if (xfaField->getValue()) {
       u = utf8ToUnicode(xfaField->getValue(), length);
     }
@@ -2198,6 +2214,18 @@ void AcroFormField::drawText(GString *text, GString *da, GfxFontDict *fontDict,
     // comb formatting
     if (comb > 0) {
 
+      // Acrobat apparently reduces the field width by the sum of the
+      // left and right margins (but doesn't shift the text to the
+      // right at all) -- I'm not really sure what's going on here
+      // (maybe a bug in Acrobat?), but rendering SSN fields in tax
+      // forms depends on this.
+      if (xfaField) {
+	XFAFieldLayoutInfo *layoutInfo = xfaField->getLayoutInfo();
+	if (layoutInfo) {
+	  dx -= layoutInfo->marginLeft + layoutInfo->marginRight;
+	}
+      }
+
       // compute comb spacing
       w = dx / comb;
 
@@ -2963,6 +2991,7 @@ void AcroFormField::drawBarcode(GString *value, GString *da,
   delete value2;
 }
 #endif
+
 GList *AcroFormField::tokenize(GString *s) {
   GList *toks;
   int i, j;
@@ -3478,9 +3507,6 @@ GString *AcroFormField::pictureFormatDateTime(GString *value,
     } else if (c == 'Y') {
       for (n = 1; n < 4 && i < picEnd && picture->getChar(i) == 'Y'; ++n, ++i) ;
       pic->append(new PictureYear(n));
-    } else if (c == 'M') {
-      for (n = 1; n < 2 && i < picEnd && picture->getChar(i) == 'M'; ++n, ++i) ;
-      pic->append(new PictureMonth(n));
     } else if (c == 'D') {
       for (n = 1; n < 2 && i < picEnd && picture->getChar(i) == 'D'; ++n, ++i) ;
       pic->append(new PictureDay(n));
@@ -3491,8 +3517,14 @@ GString *AcroFormField::pictureFormatDateTime(GString *value,
       for (n = 1; n < 2 && i < picEnd && picture->getChar(i) == 'H'; ++n, ++i) ;
       pic->append(new PictureHour(gTrue, n));
     } else if (c == 'M') {
-      for (n = 1; n < 2 && i < picEnd && picture->getChar(i) == 'M'; ++n, ++i) ;
-      pic->append(new PictureMinute(n));
+      node = (PictureNode*)pic->get(pic->getLength() - 1); // get last node
+      if (node->isLiteral() || node->isHour()) {
+        for (n = 1; n < 2 && i < picEnd && picture->getChar(i) == 'M'; ++n, ++i) ;
+        pic->append(new PictureMinute(n));
+      } else {
+        for (n = 1; n < 2 && i < picEnd && picture->getChar(i) == 'M'; ++n, ++i) ;
+        pic->append(new PictureMonth(n));
+      }
     } else if (c == 'S') {
       for (n = 1; n < 2 && i < picEnd && picture->getChar(i) == 'S'; ++n, ++i) ;
       pic->append(new PictureSecond(n));

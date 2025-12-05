@@ -23,6 +23,7 @@ class Annots;
 class Links;
 class LinkAction;
 class LinkDest;
+class LocalParams;
 class Outline;
 class OutlineItem;
 class OptionalContent;
@@ -74,7 +75,7 @@ public:
   Catalog *getCatalog() { return catalog; }
 
   // Get annotations.
-  Annots* getAnnots();
+  Annots *getAnnots();
 
   // Get base stream.
   BaseStream *getBaseStream() { return str; }
@@ -102,21 +103,22 @@ public:
   Object *getStructTreeRoot() { return catalog->getStructTreeRoot(); }
 
   // Display a page.
-  void displayPage(OutputDev *out, int page,
+  void displayPage(OutputDev *out, LocalParams *localParams, int page,
 		   double hDPI, double vDPI, int rotate,
 		   GBool useMediaBox, GBool crop, GBool printing,
 		   GBool (*abortCheckCbk)(void *data) = NULL,
 		   void *abortCheckCbkData = NULL);
 
   // Display a range of pages.
-  void displayPages(OutputDev *out, int firstPage, int lastPage,
+  void displayPages(OutputDev *out, LocalParams *localParams,
+		    int firstPage, int lastPage,
 		    double hDPI, double vDPI, int rotate,
 		    GBool useMediaBox, GBool crop, GBool printing,
 		    GBool (*abortCheckCbk)(void *data) = NULL,
 		    void *abortCheckCbkData = NULL);
 
   // Display part of a page.
-  void displayPageSlice(OutputDev *out, int page,
+  void displayPageSlice(OutputDev *out, LocalParams *localParams, int page,
 			double hDPI, double vDPI, int rotate,
 			GBool useMediaBox, GBool crop, GBool printing,
 			int sliceX, int sliceY, int sliceW, int sliceH,
@@ -149,7 +151,7 @@ public:
 #endif
 
   // Return the OptionalContent object.
-  OptionalContent* getOptionalContent();
+  OptionalContent *getOptionalContent();
 
   // Is the file encrypted?
   GBool isEncrypted() { return xref->isEncrypted(); }

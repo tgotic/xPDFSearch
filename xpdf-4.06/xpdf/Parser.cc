@@ -19,10 +19,6 @@
 #include "XRef.h"
 #include "Error.h"
 
-// Max number of nested objects.  This is used to catch infinite loops
-// in the object structure.
-#define recursionLimit 500
-
 Parser::Parser(XRef *xrefA, Lexer *lexerA, GBool allowStreamsA) 
     : xref{ xrefA }
     , lexer{ lexerA }
@@ -60,7 +56,7 @@ Object *Parser::getObj(Object *obj, GBool simpleOnly,
   }
 
   // array
-  if (!simpleOnly && recursion < recursionLimit && buf1.isCmd("[")) {
+  if (!simpleOnly && recursion < objectRecursionLimit && buf1.isCmd("[")) {
     shift();
     obj->initArray(xref);
     while (!buf1.isCmd("]") && !buf1.isEOF())
@@ -71,7 +67,8 @@ Object *Parser::getObj(Object *obj, GBool simpleOnly,
     shift();
 
   // dictionary or stream
-  } else if (!simpleOnly && recursion < recursionLimit && buf1.isCmd("<<")) {
+  } else if (!simpleOnly && recursion < objectRecursionLimit &&
+	     buf1.isCmd("<<")) {
     shift();
     obj->initDict(xref);
     while (!buf1.isCmd(">>") && !buf1.isEOF()) {
@@ -112,7 +109,14 @@ Object *Parser::getObj(Object *obj, GBool simpleOnly,
     num = buf1.getInt();
     shift();
     if (buf1.isInt() && buf2.isCmd("R")) {
-      obj->initRef(num, buf1.getInt());
+      int gen = buf1.getInt();
+      if (num >= 0 && gen >= 0) {
+	obj->initRef(num, gen);
+      } else {
+	error(errSyntaxError, getPos(),
+	      "Negative number or generation in indirect reference");
+	obj->initError();
+      }
       shift();
       shift();
     } else {

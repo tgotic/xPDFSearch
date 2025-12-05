@@ -39,10 +39,10 @@ public:
   ~PageTreeNode();
 
   Ref ref;
-  int count;
   PageTreeNode *parent;
   GList *kids;			// [PageTreeNode]
   PageAttrs *attrs;
+  int count;
 };
 
 PageTreeNode::PageTreeNode(Ref refA, int countA, PageTreeNode *parentA) 
@@ -389,11 +389,15 @@ LinkDest *Catalog::findDest(GString *name) {
     }
   }
   if (!found && nameTree.isDict()) {
-    if (!findDestInTree(&nameTree, name, &obj1)->isNull()) {
+    char *touchedObjs = (char *)gmalloc(xref->getNumObjects());
+    memset(touchedObjs, 0, xref->getNumObjects());
+    if (!findDestInTree(&nameTree, &nameTree, name, &obj1, touchedObjs)
+	->isNull()) {
       found = gTrue;
     } else {
       obj1.free();
     }
+    gfree(touchedObjs);
   }
   if (!found) {
     return NULL;
@@ -422,11 +426,30 @@ LinkDest *Catalog::findDest(GString *name) {
   return dest;
 }
 
-Object *Catalog::findDestInTree(Object *tree, GString *name, Object *obj) {
+Object *Catalog::findDestInTree(Object *treeRef, Object *tree, GString *name,
+				Object *obj, char *touchedObjs) {
   Object names, name1;
-  Object kids, kid, limits, low, high;
+  Object kids, kidRef, kid, limits, low, high;
   GBool done, found;
   int cmp, i;
+
+  // check for invalid reference
+  if (treeRef->isRef() &&
+      (treeRef->getRefNum() < 0 ||
+       treeRef->getRefNum() >= xref->getNumObjects())) {
+    obj->initNull();
+    return obj;
+  }
+
+  // check for a destination tree loop
+  if (treeRef->isRef()) {
+    if (touchedObjs[treeRef->getRefNum()]) {
+      error(errSyntaxError, -1, "Loop in destination name tree");
+      obj->initNull();
+      return obj;
+    }
+    touchedObjs[treeRef->getRefNum()] = 1;
+  }
 
   // leaf node
   if (tree->dictLookup("Names", &names)->isArray()) {
@@ -456,13 +479,15 @@ Object *Catalog::findDestInTree(Object *tree, GString *name, Object *obj) {
   done = gFalse;
   if (tree->dictLookup("Kids", &kids)->isArray()) {
     for (i = 0; !done && i < kids.arrayGetLength(); ++i) {
-      if (kids.arrayGet(i, &kid)->isDict()) {
+      kids.arrayGetNF(i, &kidRef);
+      kids.arrayGet(i, &kid);
+      if (kid.isDict()) {
 	if (kid.dictLookup("Limits", &limits)->isArray()) {
 	  if (limits.arrayGet(0, &low)->isString() &&
 	      name->cmp(low.getString()) >= 0) {
 	    if (limits.arrayGet(1, &high)->isString() &&
 		name->cmp(high.getString()) <= 0) {
-	      findDestInTree(&kid, name, obj);
+	      findDestInTree(&kidRef, &kid, name, obj, touchedObjs);
 	      done = gTrue;
 	    }
 	    high.free();
@@ -472,6 +497,7 @@ Object *Catalog::findDestInTree(Object *tree, GString *name, Object *obj) {
 	limits.free();
       }
       kid.free();
+      kidRef.free();
     }
   }
   kids.free();
@@ -568,8 +594,24 @@ int Catalog::countPageTree(Object *pagesNodeRef, char *touchedObjs) {
   // count the subtree
   int n = 0;
   if (pagesNode.isDict()) {
-    Object kids;
-    if (pagesNode.dictLookup("Kids", &kids)->isArray()) {
+    Object kidsRef, kids;
+    pagesNode.dictLookupNF("Kids", &kidsRef);
+    if (kidsRef.isRef() &&
+	kidsRef.getRefNum() >= 0 &&
+	kidsRef.getRefNum() < xref->getNumObjects()) {
+      if (touchedObjs[kidsRef.getRefNum()]) {
+	error(errSyntaxError, -1, "Loop in Pages tree");
+	kidsRef.free();
+	pagesNode.free();
+	return 0;
+      }
+      touchedObjs[kidsRef.getRefNum()] = 1;
+      xref->fetch(kidsRef.getRefNum(), kidsRef.getRefGen(), &kids);
+    } else {
+      kidsRef.copy(&kids);
+    }
+    kidsRef.free();
+    if (kids.isArray()) {
       for (int i = 0; i < kids.arrayGetLength(); ++i) {
 	Object kid;
 	kids.arrayGetNF(i, &kid);
@@ -788,14 +830,14 @@ void Catalog::readEmbeddedFileTree(Object *nodeRef, char *touchedObjs) {
     return;
   }
 
-  if (node.dictLookup("Kids", &kidsObj)->isArray()) {
+  if (checkDictLookup(&node, "Kids", &kidsObj, touchedObjs)->isArray()) {
     for (i = 0; i < kidsObj.arrayGetLength(); ++i) {
       kidsObj.arrayGetNF(i, &kidObj);
       readEmbeddedFileTree(&kidObj, touchedObjs);
       kidObj.free();
     }
   } else {
-    if (node.dictLookup("Names", &namesObj)->isArray()) {
+    if (checkDictLookup(&node, "Names", &namesObj, touchedObjs)->isArray()) {
       for (i = 0; i+1 < namesObj.arrayGetLength(); ++i) {
 	namesObj.arrayGet(i, &nameObj);
 	namesObj.arrayGet(i+1, &fileSpecObj);
@@ -835,20 +877,22 @@ void Catalog::readFileAttachmentAnnots(Object *pageNodeRef,
   }
 
   if (pageNode.isDict()) {
-    if (pageNode.dictLookup("Kids", &kids)->isArray()) {
+    if (checkDictLookup(&pageNode, "Kids", &kids, touchedObjs)->isArray()) {
       for (i = 0; i < kids.arrayGetLength(); ++i) {
 	readFileAttachmentAnnots(kids.arrayGetNF(i, &kid), touchedObjs);
 	kid.free();
       }
     } else {
-      if (pageNode.dictLookup("Annots", &annots)->isArray()) {
+      if (checkDictLookup(&pageNode, "Annots",
+			  &annots, touchedObjs)->isArray()) {
 	for (i = 0; i < annots.arrayGetLength(); ++i) {
-	  if (annots.arrayGet(i, &annot)->isDict()) {
-	    if (annot.dictLookup("Subtype", &subtype)
+	  if (checkArrayGet(&annots, i, &annot, touchedObjs)->isDict()) {
+	    if (checkDictLookup(&annot, "Subtype", &subtype, touchedObjs)
 		  ->isName("FileAttachment")) {
-	      if (annot.dictLookup("FS", &fileSpec)) {
+	      if (checkDictLookup(&annot, "FS", &fileSpec, touchedObjs)) {
 		readEmbeddedFile(&fileSpec,
-				 annot.dictLookup("Contents", &contents));
+				 checkDictLookup(&annot, "Contents",
+						 &contents, touchedObjs));
 		contents.free();
 	      }
 	      fileSpec.free();
@@ -958,7 +1002,7 @@ void Catalog::readPageLabelTree(Object *root) {
 }
 
 void Catalog::readPageLabelTree2(Object *nodeRef, char *touchedObjs) {
-  Object node, nums, num, labelObj, kids, kid;
+  Object node, nums, num, labelObj, kidsRef, kids, kid;
   int i;
 
   // check for an object loop
@@ -993,7 +1037,23 @@ void Catalog::readPageLabelTree2(Object *nodeRef, char *touchedObjs) {
   }
   nums.free();
 
-  if (node.dictLookup("Kids", &kids)->isArray()) {
+  // check for an object loop in the Kids entry
+  if (node.dictLookupNF("Kids", &kidsRef)->isRef()) {
+    if (kidsRef.getRefNum() < 0 ||
+	kidsRef.getRefNum() >= doc->getXRef()->getNumObjects() ||
+	touchedObjs[kidsRef.getRefNum()]) {
+      kidsRef.free();
+      node.free();
+      return;
+    }
+    touchedObjs[kidsRef.getRefNum()] = 1;
+    kidsRef.fetch(doc->getXRef(), &kids);
+  } else {
+    kidsRef.copy(&kids);
+  }
+  kidsRef.free();
+
+  if (kids.isArray()) {
     for (i = 0; i < kids.arrayGetLength(); ++i) {
       kids.arrayGetNF(i, &kid);
       readPageLabelTree2(&kid, touchedObjs);
@@ -1302,7 +1362,7 @@ GBool Catalog::scanPageTreeForJavaScript(Object *pageNodeRef,
   GBool usesJS = gFalse;
   if (pageNode.isDict()) {
     Object kids;
-    if (pageNode.dictLookup("Kids", &kids)->isArray()) {
+    if (checkDictLookup(&pageNode, "Kids", &kids, touchedObjs)->isArray()) {
       for (int i = 0; i < kids.arrayGetLength() && !usesJS; ++i) {
 	Object kid;
 	if (scanPageTreeForJavaScript(kids.arrayGetNF(i, &kid), touchedObjs)) {
@@ -1314,7 +1374,7 @@ GBool Catalog::scanPageTreeForJavaScript(Object *pageNodeRef,
 
       // scan Page.AA
       Object pageAA;
-      if (pageNode.dictLookup("AA", &pageAA)->isDict()) {
+      if (checkDictLookup(&pageNode, "AA", &pageAA, touchedObjs)->isDict()) {
 	if (scanAAForJavaScript(&pageAA)) {
 	  usesJS = gTrue;
 	}
@@ -1324,12 +1384,14 @@ GBool Catalog::scanPageTreeForJavaScript(Object *pageNodeRef,
       // scanPage.Annots
       if (!usesJS) {
 	Object annots;
-	if (pageNode.dictLookup("Annots", &annots)->isArray()) {
+	if (checkDictLookup(&pageNode, "Annots",
+			    &annots, touchedObjs)->isArray()) {
 	  for (int i = 0; i < annots.arrayGetLength() && !usesJS; ++i) {
 	    Object annot;
-	    if (annots.arrayGet(i, &annot)->isDict()) {
+	    if (checkArrayGet(&annots, i, &annot, touchedObjs)->isDict()) {
 	      Object annotAA;
-	      if (annot.dictLookup("AA", &annotAA)->isDict()) {
+	      if (checkDictLookup(&annot, "AA", &annotAA,
+				  touchedObjs)->isDict()) {
 		if (scanAAForJavaScript(&annotAA)) {
 		  usesJS = gTrue;
 		}
@@ -1386,4 +1448,42 @@ GBool Catalog::hasPageLabels() {
     readPageLabelTree(&pageLabelsObj);
   }
   return (pageLabels != nullptr);
+}
+
+Object *Catalog::checkDictLookup(Object *dictObj, const char *key,
+				 Object *element, char *touchedObjs) {
+  Object refObj;
+  dictObj->dictLookupNF(key, &refObj);
+  if (refObj.isRef()) {
+    int num = refObj.getRefNum();
+    if (num >= 0 && num < xref->getNumObjects() && !touchedObjs[num]) {
+      touchedObjs[num] = 1;
+      xref->fetch(num, refObj.getRefGen(), element);
+    } else {
+      element->initNull();
+    }
+    refObj.free();
+  } else {
+    *element = refObj;
+  }
+  return element;
+}
+
+Object *Catalog::checkArrayGet(Object *arrayObj, int i,
+			       Object *element, char *touchedObjs) {
+  Object refObj;
+  arrayObj->arrayGetNF(i, &refObj);
+  if (refObj.isRef()) {
+    int num = refObj.getRefNum();
+    if (num >= 0 && num < xref->getNumObjects() && !touchedObjs[num]) {
+      touchedObjs[num] = 1;
+      xref->fetch(num, refObj.getRefGen(), element);
+    } else {
+      element->initNull();
+    }
+    refObj.free();
+  } else {
+    *element = refObj;
+  }
+  return element;
 }

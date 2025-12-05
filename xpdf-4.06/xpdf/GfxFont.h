@@ -217,6 +217,11 @@ public:
   // converting text to Unicode.
   virtual GBool problematicForUnicode() = 0;
 
+  // Returns true if this font swaps the left and right parens in its
+  // ToUnicode map. This is likely a kludge used by bad PDF generators
+  // with Arabic fonts.
+  virtual GBool parensAreSwapped(XRef *xref) = 0;
+
 protected:
 
   static GfxFontType getFontType(XRef *xref, Dict *fontDict, Ref *embID);
@@ -297,18 +302,20 @@ public:
 
   virtual GBool problematicForUnicode();
 
+  virtual GBool parensAreSwapped(XRef *xref);
+
 private:
 
   Base14FontMapEntry *base14;	// for Base-14 fonts only; NULL otherwise
   char *enc[256];		// char code --> char name
   char encFree[256];		// boolean for each char name: if set,
 				//   the string is malloc'ed
+  double widths[256];		// character widths
   CharCodeToUnicode *ctu;	// char code --> Unicode
   GBool hasEncoding;
   GBool usesMacRomanEnc;
   GBool baseEncFromFontFile;
   GBool usedNumericHeuristic;
-  double widths[256];		// character widths
   Object charProcs;		// Type 3 CharProcs dictionary
   Object resources;		// Type 3 Resources dictionary
 
@@ -358,6 +365,8 @@ public:
 
   virtual GBool problematicForUnicode();
 
+  virtual GBool parensAreSwapped(XRef *xref);
+
 private:
 
   void readTrueTypeUnicodeMapping(XRef *xref);
@@ -368,8 +377,6 @@ private:
   GString *collection;		// collection name
   CMap *cMap;			// char code --> CID
   CharCodeToUnicode *ctu;	// CID/char code --> Unicode
-  GBool ctuUsesCharCode;	// true: ctu maps char code to Unicode;
-				//   false: ctu maps CID to Unicode
   GfxFontCIDWidths widths;	// character widths
   int *cidToGID;		// CID --> GID mapping (for embedded
 				//   TrueType fonts)
@@ -377,6 +384,8 @@ private:
   GBool hasKnownCollection;
   GBool hasIdentityCIDToGID;
   GBool identityEnc;
+  GBool ctuUsesCharCode;	// true: ctu maps char code to Unicode;
+				// false: ctu maps CID to Unicode
 };
 
 //------------------------------------------------------------------------

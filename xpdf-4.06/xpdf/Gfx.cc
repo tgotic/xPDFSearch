@@ -512,7 +512,8 @@ GBool GfxResources::lookupPropertiesNF(const char *name, Object *obj) {
 // Gfx
 //------------------------------------------------------------------------
 
-Gfx::Gfx(PDFDoc *docA, OutputDev *outA, int pageNum, Dict *resDict,
+Gfx::Gfx(PDFDoc *docA, OutputDev *outA, LocalParams *localParams,
+	 int pageNum, Dict *resDict,
 	 double hDPI, double vDPI, PDFRectangle *box,
 	 PDFRectangle *cropBox, int rotate,
 	 GBool (*abortCheckCbkA)(void *data),
@@ -520,7 +521,7 @@ Gfx::Gfx(PDFDoc *docA, OutputDev *outA, int pageNum, Dict *resDict,
   : doc(docA), xref(doc->getXRef()), out(outA), subPage(gFalse)
   , printCommands(globalParams->getPrintCommands())
   , res(new GfxResources(xref, resDict, NULL)), defaultFont(NULL), opCounter(0)
-  , state(new GfxState(hDPI, vDPI, box, rotate, out->upsideDown()))
+  , state(new GfxState(localParams, hDPI, vDPI, box, rotate, out->upsideDown()))
   , fontChanged(gFalse), haveSavedClipPath(gFalse), clip(clipNone), ignoreUndef(0)
   , formDepth(0), ocState(gTrue)
   , markedContentStack(new GList()), parser(NULL)
@@ -548,14 +549,14 @@ Gfx::Gfx(PDFDoc *docA, OutputDev *outA, int pageNum, Dict *resDict,
   }
 }
 
-Gfx::Gfx(PDFDoc *docA, OutputDev *outA, Dict *resDict,
-	 PDFRectangle *box, PDFRectangle *cropBox,
+Gfx::Gfx(PDFDoc *docA, OutputDev *outA, LocalParams *localParams, 
+	 Dict *resDict, PDFRectangle *box, PDFRectangle *cropBox,
 	 GBool (*abortCheckCbkA)(void *data),
 	 void *abortCheckCbkDataA) 
     : doc(docA), xref(doc->getXRef()), out(outA), subPage(gTrue)
     , printCommands(globalParams->getPrintCommands())
     , res(new GfxResources(xref, resDict, NULL)), defaultFont(NULL), opCounter(0)
-    , state(new GfxState(72, 72, box, 0, gFalse))
+    , state(new GfxState(localParams, 72, 72, box, 0, gFalse))
     , fontChanged(gFalse), haveSavedClipPath(gFalse), clip(clipNone), ignoreUndef(0)
     , formDepth(0), ocState(gTrue)
     , markedContentStack(new GList()), parser(NULL)
@@ -1139,6 +1140,13 @@ void Gfx::opSetExtGState(Object args[], int numArgs) {
   }
   obj2.free();
 
+  // alpha is shape
+  if (obj1.dictLookup("AIS", &obj2)->isBool()) {
+    state->setAlphaIsShape(obj2.getBool());
+    out->updateAlphaIsShape(state);
+  }
+  obj2.free();
+
   // soft mask
   if (!obj1.dictLookup("SMask", &obj2)->isNull()) {
     if (obj2.isName("None")) {
@@ -1216,11 +1224,6 @@ void Gfx::doSoftMask(Object *str, Object *strRef, GBool alpha,
   Object obj1, obj2;
   int i;
 
-  // check for excessive recursion
-  if (formDepth > 20) {
-    return;
-  }
-
   // get stream dict
   dict = str->streamGetDict();
 
@@ -1265,10 +1268,8 @@ void Gfx::doSoftMask(Object *str, Object *strRef, GBool alpha,
   resDict = obj1.isDict() ? obj1.getDict() : (Dict *)NULL;
 
   // draw it
-  ++formDepth;
   drawForm(strRef, resDict, m, bbox, gTrue, gTrue, isolated, knockout,
 	   alpha, transferFunc, backdropColorObj);
-  --formDepth;
 
   obj1.free();
 }
@@ -4762,11 +4763,6 @@ void Gfx::doForm(Object *strRef, Object *str) {
   Object obj1, obj2, obj3;
   int i;
 
-  // check for excessive recursion
-  if (formDepth > 100) {
-    return;
-  }
-
   // check for optional content
   if (!ocState && !out->needCharCount()) {
     return;
@@ -4843,9 +4839,7 @@ void Gfx::doForm(Object *strRef, Object *str) {
   obj1.free();
 
   // draw it
-  ++formDepth;
   drawForm(strRef, resDict, m, bbox, transpGroup, gFalse, isolated, knockout);
-  --formDepth;
 
   resObj.free();
 }
@@ -4863,6 +4857,12 @@ void Gfx::drawForm(Object *strRef, Dict *resDict,
   Object strObj, groupAttrsObj, csObj, obj1;
   double oldBaseMatrix[6];
   int i;
+
+  if (formDepth > 100) {
+    error(errSyntaxError, getPos(), "Excessive recursion in Form XObjects");
+    return;
+  }
+  ++formDepth;
 
   out->startStream(strRef->getRef(), state);
 
@@ -4996,6 +4996,8 @@ void Gfx::drawForm(Object *strRef, Dict *resDict,
   }
 
   out->endStream(strRef->getRef());
+
+  --formDepth;
 }
 
 void Gfx::takeContentStreamStack(Gfx *oldGfx) {
@@ -5311,10 +5313,14 @@ void Gfx::drawAnnot(Object *strRef, AnnotBorderStyle *borderStyle,
 
     // get the form matrix
     dict->lookup("Matrix", &matrixObj);
-    if (matrixObj.isArray()) {
+    if (matrixObj.isArray() && matrixObj.arrayGetLength() == 6) {
       for (i = 0; i < 6; ++i) {
 	matrixObj.arrayGet(i, &obj1);
+	if (obj1.isNum()) {
 	m[i] = obj1.getNum();
+	} else {
+	  m[i] = 0;
+	}
 	obj1.free();
       }
     } else {
@@ -5371,13 +5377,13 @@ void Gfx::drawAnnot(Object *strRef, AnnotBorderStyle *borderStyle,
     //                             [0  sy 0]
     //                             [tx ty 1]
     // bbox to the annotation rectangle
-    if (formXMin == formXMax) {
+    if (formXMax - formXMin < 1e-8) {
       // this shouldn't happen
       sx = 1;
     } else {
       sx = (xMax - xMin) / (formXMax - formXMin);
     }
-    if (formYMin == formYMax) {
+    if (formYMax - formYMin < 1e-8) {
       // this shouldn't happen
       sy = 1;
     } else {

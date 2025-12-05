@@ -53,13 +53,13 @@ public:
 private:
 
   XRef *xref;			// the xref table for this PDF file
-  Object *elems;		// array of elements
-  int size;			// size of <elems> array
-  int length;			// number of elements in array
+  Object* elems{ nullptr };	// array of elements
+  int size{ 0 };		// size of <elems> array
+  int length{ 0 };		// number of elements in array
 #if MULTITHREADED
-  GAtomicCounter ref;		// reference count
+  GAtomicCounter ref{ 1 };	// reference count
 #else
-  long ref;			// reference count
+  long ref{ 1 };		// reference count
 #endif
 };
 
