@@ -402,7 +402,7 @@ bool PDFDocEx::openXMP()
     if (!m_xmpChecked)
     {
         m_xmpChecked = true;
-        const auto metadata{ std::make_unique<GString>(readMetadata()) };
+        const std::unique_ptr<GString> metadata{ readMetadata() };
         if (metadata && metadata->getLength())
         {
             m_xmp.reset(ZxDoc::loadMem(metadata->getCString(), metadata->getLength()));
@@ -886,19 +886,24 @@ GString* PDFDocEx::getEncryption()
 
         if (encryptObj.dictLookup("SubFilter", &tmpObj)->isName()) 
         {
-            encryption->append(GString::format(" ({0:s})", tmpObj.getName()));
+            std::unique_ptr<GString> fmt{ GString::format(" ({0:s})", tmpObj.getName()) };
+            encryption->append(fmt.get());
         }
         tmpObj.free();
 
         if (encryptObj.dictLookup("V", &tmpObj)->isInt()) 
         {
             v = tmpObj.getInt();
-            encryption->append(GString::format(" v{0:d}", v));
+            {
+                std::unique_ptr<GString> fmt{ GString::format(" v{0:d}", v) };
+                encryption->append(fmt.get());
+            }
             tmpObj.free();
 
             if (encryptObj.dictLookup("R", &tmpObj)->isInt())
             {
-                encryption->append(GString::format(".{0:d}", tmpObj.getInt()));
+                std::unique_ptr<GString> fmt{ GString::format(".{0:d}", tmpObj.getInt()) };
+                encryption->append(fmt.get());
             }
         }
         tmpObj.free();
@@ -926,7 +931,8 @@ GString* PDFDocEx::getEncryption()
                     {
                         if (cffObj.dictLookup("CFM", &tmpObj)->isName())
                         {
-                            encryption->append(GString::format(" {0:s}", tmpObj.getName()));
+                            std::unique_ptr<GString> fmt{ GString::format(" {0:s}", tmpObj.getName()) };
+                            encryption->append(fmt.get());
                         }
                         tmpObj.free();
 
@@ -955,7 +961,8 @@ GString* PDFDocEx::getEncryption()
             if (bits < 40)
                 bits *= 8;
 
-            encryption->append(GString::format(" {0:d}-bit", bits));
+            std::unique_ptr<GString> fmt{ GString::format(" {0:d}-bit", bits) };
+            encryption->append(fmt.get());
         }
 
     }
