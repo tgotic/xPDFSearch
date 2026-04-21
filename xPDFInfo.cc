@@ -146,9 +146,6 @@ BOOL WINAPI DllMain(HINSTANCE hDLL, DWORD reason, LPVOID)
         globalParams->setTextPageBreaks(gFalse);        // don't add \f for page breaks
         globalParams->setTextEOL("unix");               // extracted text line endings
         hModule = static_cast<HMODULE>(hDLL);
-
-        RegCloseKey(nullptr);   // load Advapi32.dll from system32 so GetModuleHandleW doesn't need full system path
-
         break;
     }
     case DLL_PROCESS_DETACH:

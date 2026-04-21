@@ -68,7 +68,9 @@ ptrdiff_t ThreadData::UnicodeToUTF16(const Unicode* src, ptrdiff_t cchSrc, wchar
 void ThreadData::createProducer()
 {
     if (!hasProducer())
+    {
         handles[PRODUCER_HANDLE] = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+    }
 }
 
 /**
@@ -78,7 +80,9 @@ void ThreadData::createProducer()
 void ThreadData::createConsumer()
 {
     if (!hasConsumer())
+    {
         handles[CONSUMER_HANDLE] = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+    }
 }
 
 /**
@@ -165,8 +169,9 @@ void ThreadData::closeWorker()
 DWORD ThreadData::waitForProducer(DWORD timeout) const
 {
     if (hasProducer())
+    {
         return WaitForSingleObject(handles[PRODUCER_HANDLE], timeout);
-
+    }
     return 1UL;
 }
 
@@ -179,8 +184,9 @@ DWORD ThreadData::waitForProducer(DWORD timeout) const
 DWORD ThreadData::waitForConsumer(DWORD timeout) const
 {
     if (hasConsumer())
+    {
         return WaitForSingleObject(handles[CONSUMER_HANDLE], timeout);
-
+    }
     return 1UL;
 }
 
@@ -194,8 +200,9 @@ DWORD ThreadData::waitForConsumer(DWORD timeout) const
 DWORD ThreadData::notifyProducerAndWait(DWORD timeout) const
 {
     if (hasProducer() && hasWorker())
+    {
         return SignalObjectAndWait(handles[PRODUCER_HANDLE], handles[WORKER_HANDLE], timeout, FALSE);
-
+    }
     return 1UL;
 }
 
@@ -468,9 +475,13 @@ int ThreadData::output(const char *text, ptrdiff_t len, bool textIsUnicode)
             }
 
             if (lenConverted)
+            {
                 len -= lenConverted;
+            }
             else
+            {
                 len = 0;    // prevent infinite loop
+            }
 
             if (cbDstWtmp != cbDstW)
             {
