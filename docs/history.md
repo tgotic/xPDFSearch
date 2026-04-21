@@ -1,3 +1,8 @@
+# Version 1.47
+
+CHANGED
+* Disabled automatic daylight saving time detection introduced in v1.43
+
 # Version 1.46
 
 CHANGED
