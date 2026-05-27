@@ -1110,6 +1110,7 @@ void GlobalParams::createDefaultKeyBindings() {
 
 void GlobalParams::initStateFilePaths() {
 #ifdef _WIN32
+#if 0
   // Windows state files are {APPDATA}/xpdf/xpdf.pages etc
   char path[MAX_PATH];
   if (SHGetFolderPathA(NULL, CSIDL_APPDATA, NULL,
@@ -1121,6 +1122,7 @@ void GlobalParams::initStateFilePaths() {
   pagesFile = appendToPath(stateDir->copy(), "xpdf.pages");
   tabStateFile = appendToPath(stateDir->copy(), "xpdf.tab-state");
   sessionFile = appendToPath(stateDir, "xpdf.session");
+#endif
 #elif USE_XDG
   // XDG state files are {XDG_STATE}/xpdf/pages etc
   char *path = getenv("XDG_STATE_HOME");
@@ -1512,11 +1514,11 @@ void GlobalParams::parseLine(char *buf, GString *fileName, int line) {
       parseUnbind(tokens, fileName, line);
     } else if (!cmd->cmp("popupMenuCmd")) {
       parsePopupMenuCmd(tokens, fileName, line);
-#endif
     } else if (!cmd->cmp("tabStateFile")) {
       parseString("tabStateFile", &tabStateFile, tokens, fileName, line);
     } else if (!cmd->cmp("sessionFile")) {
       parseString("sessionFile", &sessionFile, tokens, fileName, line);
+#endif
     } else if (!cmd->cmp("saveSessionOnQuit")) {
       parseYesNo("saveSessionOnQuit", &saveSessionOnQuit,
 		 tokens, fileName, line);
@@ -2432,9 +2434,11 @@ GlobalParams::~GlobalParams() {
   delete droppedFonts;
   deleteGList(keyBindings, KeyBinding);
   deleteGList(popupMenuCmds, PopupMenuCmd);
+#if 0
   delete pagesFile;
   delete tabStateFile;
   delete sessionFile;
+#endif
   delete debugLogFile;
 
   cMapDirs->startIter(&iter);
@@ -3750,6 +3754,7 @@ PopupMenuCmd *GlobalParams::getPopupMenuCmd(int idx) {
   return cmd;
 }
 
+#if 0
 GString *GlobalParams::getPagesFile() {
   GString *s = nullptr;
 
@@ -3778,6 +3783,7 @@ GString *GlobalParams::getSessionFile() {
   unlockGlobalParams;
   return s;
 }
+#endif
 
 GBool GlobalParams::getSavePageNumbers() {
   GBool s;
@@ -4237,6 +4243,7 @@ void GlobalParams::setMapExtTrueTypeFontsViaUnicode(GBool map) {
   unlockGlobalParams;
 }
 
+#if 0
 void GlobalParams::setTabStateFile(char *tabStateFileA) {
   lockGlobalParams;
   delete tabStateFile;
@@ -4250,6 +4257,7 @@ void GlobalParams::setSessionFile(char *sessionFileA) {
   sessionFile = new GString(sessionFileA);
   unlockGlobalParams;
 }
+#endif
 
 void GlobalParams::setPrintCommands(GBool printCommandsA) {
   lockGlobalParams;

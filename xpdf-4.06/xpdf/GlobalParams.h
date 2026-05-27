@@ -353,9 +353,11 @@ public:
   GList *getAllKeyBindings();
   int getNumPopupMenuCmds();
   PopupMenuCmd *getPopupMenuCmd(int idx);
+#if 0
   GString *getPagesFile();
   GString *getTabStateFile();
   GString *getSessionFile();
+#endif
   GBool getSaveSessionOnQuit();
   GBool getSavePageNumbers();
   GBool getPrintCommands();
@@ -413,8 +415,10 @@ public:
   void setMapNumericCharNames(GBool map);
   void setMapUnknownCharNames(GBool map);
   void setMapExtTrueTypeFontsViaUnicode(GBool map);
+#if 0
   void setTabStateFile(char *tabStateFileA);
   void setSessionFile(char *sessionFileA);
+  #endif
   void setPrintCommands(GBool printCommandsA);
   void setPrintStatusInfo(GBool printStatusInfoA);
   void setErrQuiet(GBool errQuietA);
@@ -623,9 +627,11 @@ private:
   GBool discardCoveredText;	// discard text covered by fill or image
   GList *keyBindings;		// key & mouse button bindings [KeyBinding]
   GList *popupMenuCmds;		// popup menu commands [PopupMenuCmd]
+  #if 0
   GString *pagesFile;		// path for the page number save file
   GString *tabStateFile;	// path for the tab state save file
   GString *sessionFile;		// path for the session save file
+  #endif
   GBool saveSessionOnQuit;	// save session info when xpdf is quit
   GBool savePageNumbers;	// save page number when file is closed
 				//   and restore page number when opened
