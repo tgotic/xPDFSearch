@@ -1,3 +1,9 @@
+# Version 1.47.1
+
+CHANGED
+* Disabled creation of %AppData%\xpdf directory
+* Updated Chinese translation
+
 # Version 1.47
 
 CHANGED
