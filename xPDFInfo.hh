@@ -58,7 +58,8 @@ extern options_t globalOptionsFromIni;
 enum fieldIndexes
 {
     fiTitle, fiSubject, fiKeywords, fiAuthor, fiCreator, fiProducer, fiDocStart, fiFirstRow, fiExtensions,
-    fiNumberOfPages, fiNumberOfFontlessPages,fiNumberOfPagesWithImages,
+    fiNumberOfPages, fiNumberOfFontlessPages,fiNumberOfPagesWithImages, fiNumberOfPagesWithFonts,
+    fiAllPagesHaveImages, fiAllPagesHaveNoImages, fiAllPagesHaveFonts, fiAllPagesHaveNoFonts, fiAllPagesHaveExactlyOneImage,
     fiPDFVersion, fiPageWidth, fiPageHeight,
     fiCopyable, fiPrintable, fiCommentable, fiChangeable, fiEncrypted, fiTagged, fiLinearized, fiIncremental, fiSigned, fiOutlined, fiEmbeddedFiles, fiProtected,
     fiCreationDate, fiModifiedDate, fiMetadataDate,

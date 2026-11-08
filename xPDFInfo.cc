@@ -28,7 +28,8 @@ options_t globalOptionsFromIni;
 static constexpr std::array fieldNames
 {
     "Title", "Subject", "Keywords", "Author", "Application", "PDF Producer", "Document Start", "First Row", "Extensions",
-    "Number Of Pages", "Number Of Fontless Pages", "Number Of Pages With Images",
+    "Number Of Pages", "Number Of Fontless Pages", "Number Of Pages With Images", "Number Of Pages With Fonts",
+    "All Pages Have Images", "All Pages Have No Images", "All Pages Have Fonts", "All Pages Have No Fonts", "All Pages Have Exactly One Image",
     "PDF Version", "Page Width", "Page Height",
     "Copying Allowed", "Printing Allowed", "Adding Comments Allowed", "Changing Allowed", "Encrypted", "Tagged", "Linearized", "Incremental", "Signature Field", "Outlined", "Embedded Files", "Protected",
     "Created", "Modified", "Metadata Date",
@@ -41,7 +42,8 @@ static_assert(fieldNames.size() == FIELD_COUNT, "fieldNames size error");
 constexpr std::array fieldTypes
 {
     ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw,
-    ft_numeric_32, ft_numeric_32, ft_numeric_32,
+    ft_numeric_32, ft_numeric_32, ft_numeric_32, ft_numeric_32,
+    ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean,
     ft_numeric_floating, ft_numeric_floating, ft_numeric_floating,
     ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean,
     ft_datetime, ft_datetime, ft_datetime,
@@ -54,11 +56,12 @@ static_assert(fieldTypes.size() == FIELD_COUNT, "fieldTypes size error");
 constexpr std::array fieldFlags
 {
     0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0,0,
+    0, 0, 0, 0,
+    0, 0, 0, 0, 0,
     0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0,
-    0, contflags_substattributestr, 0, 0, 0, 0, 0 ,0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, contflags_substattributestr,
+    0, 0, 0, 0, 0, 0, 0,
     0, 0
 };
 static_assert(fieldFlags.size() == FIELD_COUNT, "fieldFlags size error");

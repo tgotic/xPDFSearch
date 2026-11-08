@@ -74,6 +74,30 @@ Plugin can be used in Synchronize Directories to compare content of PDF files.
       <td>The number of pages with Image XObjects. Does not detect inline images.</td>
     </tr>
     <tr>
+      <td>Number Of Pages With Fonts</td>
+      <td>The number of pages with a Font resource.</td>
+    </tr>
+    <tr>
+      <td>All Pages Have Images</td>
+      <td>Indicates if every page has at least one Image XObject.</td>
+    </tr>
+    <tr>
+      <td>All Pages Have No Images</td>
+      <td>Indicates if no page has an Image XObject.</td>
+    </tr>
+    <tr>
+      <td>All Pages Have Fonts</td>
+      <td>Indicates if every page has a Font resource.</td>
+    </tr>
+    <tr>
+      <td>All Pages Have No Fonts</td>
+      <td>Indicates if no page has a Font resource.</td>
+    </tr>
+    <tr>
+      <td>All Pages Have Exactly One Image</td>
+      <td>Indicates if every page has exactly one Image XObject.</td>
+    </tr>
+    <tr>
       <td>PDF Version</td>
       <td>The PDF version of the document.</td>
     </tr>

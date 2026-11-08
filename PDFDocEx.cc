@@ -772,6 +772,37 @@ int PDFDocEx::getNumFontlessPages()
 }
 
 /**
+* Get number of pages with Font resource.
+*
+* @return Number of pages with Font resource.
+*/
+int PDFDocEx::getNumPagesWithFonts()
+{
+    int nPages{ 0 };
+    const auto cat{ getCatalog() };
+    if (cat)
+    {
+        const auto numPages{ getNumPages() };
+        for (int i{ 1 }; i <= numPages; ++i)
+        {
+            const auto page{ cat->getPage(i) };
+            const auto attrs{ page ? page->getAttrs() : nullptr };
+            const auto resource{ attrs ? attrs->getResourceDict() : nullptr };
+            if (resource)
+            {
+                Object fontObj;
+                if (resource->lookup("Font", &fontObj)->isDict())
+                {
+                    ++nPages;
+                }
+                fontObj.free();
+            }
+        }
+    }
+    return nPages;
+}
+
+/**
 * Get number of pages with XObject Image.
 *
 * It can be used to detect pages with images.
@@ -863,6 +894,88 @@ int PDFDocEx::getNumPagesWithImages()
         TRACE(L"%hs!no catalog\n", __FUNCTION__);
     }
     return nPages;
+}
+
+/**
+* Get number of pages containing an exact number of XObject Image resources.
+*
+* @param[in] imageCount required number of images on a page.
+* @return Number of pages with the requested image count.
+*/
+int PDFDocEx::getNumPagesWithImageCount(int imageCount)
+{
+    int nPages{ 0 };
+    const auto cat{ getCatalog() };
+    if (cat)
+    {
+        const auto numPages{ getNumPages() };
+        for (int i{ 1 }; i <= numPages; ++i)
+        {
+            int pageImageCount{ 0 };
+            const auto page{ cat->getPage(i) };
+            const auto attrs{ page ? page->getAttrs() : nullptr };
+            const auto resource{ attrs ? attrs->getResourceDict() : nullptr };
+            if (resource)
+            {
+                Object xObjDict;
+                if (resource->lookup("XObject", &xObjDict)->isDict())
+                {
+                    const auto xObjDictLen{ xObjDict.dictGetLength() };
+                    for (int j{ 0 }; j < xObjDictLen; ++j)
+                    {
+                        Object xObj;
+                        if (xObjDict.dictGetVal(j, &xObj)->isStream())
+                        {
+                            Object subtypeObj;
+                            xObj.streamGetDict()->lookup("Subtype", &subtypeObj);
+                            if (subtypeObj.isName("Image"))
+                            {
+                                ++pageImageCount;
+                            }
+                            subtypeObj.free();
+                        }
+                        xObj.free();
+                    }
+                }
+                xObjDict.free();
+            }
+            if (pageImageCount == imageCount)
+            {
+                ++nPages;
+            }
+        }
+    }
+    return nPages;
+}
+
+bool PDFDocEx::allPagesHaveImages()
+{
+    const auto numPages{ getNumPages() };
+    return numPages > 0 && getNumPagesWithImageCount(0) == 0;
+}
+
+bool PDFDocEx::allPagesHaveNoImages()
+{
+    const auto numPages{ getNumPages() };
+    return numPages > 0 && getNumPagesWithImageCount(0) == numPages;
+}
+
+bool PDFDocEx::allPagesHaveFonts()
+{
+    const auto numPages{ getNumPages() };
+    return numPages > 0 && getNumPagesWithFonts() == numPages;
+}
+
+bool PDFDocEx::allPagesHaveNoFonts()
+{
+    const auto numPages{ getNumPages() };
+    return numPages > 0 && getNumPagesWithFonts() == 0;
+}
+
+bool PDFDocEx::allPagesHaveExactlyOneImage()
+{
+    const auto numPages{ getNumPages() };
+    return numPages > 0 && getNumPagesWithImageCount(1) == numPages;
 }
 
 /**

@@ -15,7 +15,13 @@ public:
     bool isTagged();
     int getAdbeExtensionLevel();
     int getNumFontlessPages();
+    int getNumPagesWithFonts();
     int getNumPagesWithImages();
+    bool allPagesHaveImages();
+    bool allPagesHaveNoImages();
+    bool allPagesHaveFonts();
+    bool allPagesHaveNoFonts();
+    bool allPagesHaveExactlyOneImage();
     GString* getExtensions();
     GString* getMetadataString(const char* key);
     GString* getMetadataDateTime(const char* key);
@@ -28,6 +34,7 @@ private:
     static bool getElemOrAttrData(const ZxElement* elem, const char* nodeName, GString& value, const char* prefix);
     static const char* findXmpPrefix(const ZxElement* elem, const char* nsURI);
     static bool pageContentIsEmpty(Page* page);
+    int getNumPagesWithImageCount(int imageCount);
     GString* getXmpValue(const char* nsURI, const char* key, const char* arrayType);
     void getExtensionValues(Object* objExt, GString& data);
     bool openXMP();

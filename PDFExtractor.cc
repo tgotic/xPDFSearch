@@ -769,6 +769,24 @@ void PDFExtractor::doWork()
     case fiNumberOfPagesWithImages:
         m_data->setValue(m_doc->getNumPagesWithImages(), ft_numeric_32);
         break;
+    case fiNumberOfPagesWithFonts:
+        m_data->setValue(m_doc->getNumPagesWithFonts(), ft_numeric_32);
+        break;
+    case fiAllPagesHaveImages:
+        m_data->setValue<BOOL>(m_doc->allPagesHaveImages(), ft_boolean);
+        break;
+    case fiAllPagesHaveNoImages:
+        m_data->setValue<BOOL>(m_doc->allPagesHaveNoImages(), ft_boolean);
+        break;
+    case fiAllPagesHaveFonts:
+        m_data->setValue<BOOL>(m_doc->allPagesHaveFonts(), ft_boolean);
+        break;
+    case fiAllPagesHaveNoFonts:
+        m_data->setValue<BOOL>(m_doc->allPagesHaveNoFonts(), ft_boolean);
+        break;
+    case fiAllPagesHaveExactlyOneImage:
+        m_data->setValue<BOOL>(m_doc->allPagesHaveExactlyOneImage(), ft_boolean);
+        break;
     case fiPDFVersion:
         getVersion();
         break;
