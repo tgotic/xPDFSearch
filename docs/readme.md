@@ -326,7 +326,7 @@ xPDFSearch plugin can be configured in `xPDFSearch.ini` file:
 ```
 [xPDFSearch]
 •  NoCache=0
-   ◦  0=file caching disabled, fast reading of fields, unable to rename or alter attributes of the open PDF file
+   ◦  0=file caching enabled, fast reading of fields, unable to rename or alter attributes of the open PDF file
    ◦  1=disables file caching, slower reading of fields, allows renaming PDF file with values form xPDFSearch and changing PDF file attributes (not content of PDF file)
 •  DiscardInvisibleText=1 discard all invisible characters
 •  DiscardDiagonalText=1 discard all text that's not close to 0/90/180/270 degrees

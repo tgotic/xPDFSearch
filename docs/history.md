@@ -1,3 +1,11 @@
+# Version 1.48
+
+ADDED
+* New fields: Number Of Pages With Fonts, All Pages Have Images, All Pages Have No Images, All Pages Have Fonts, All Pages Have No Fonts, All Pages Have Exactly One Image
+
+CHANGED
+* fixed translation key "Number Of Pages"
+
 # Version 1.47.1
 
 CHANGED

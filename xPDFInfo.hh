@@ -57,18 +57,52 @@ extern options_t globalOptionsFromIni;
 */
 enum fieldIndexes
 {
-    fiTitle, fiSubject, fiKeywords, fiAuthor, fiCreator, fiProducer, fiDocStart, fiFirstRow, fiExtensions,
-    fiNumberOfPages, fiNumberOfFontlessPages,fiNumberOfPagesWithImages, fiNumberOfPagesWithFonts,
-    fiAllPagesHaveImages, fiAllPagesHaveNoImages, fiAllPagesHaveFonts, fiAllPagesHaveNoFonts, fiAllPagesHaveExactlyOneImage,
-    fiPDFVersion, fiPageWidth, fiPageHeight,
-    fiCopyable, fiPrintable, fiCommentable, fiChangeable, fiEncrypted, fiTagged, fiLinearized, fiIncremental, fiSigned, fiOutlined, fiEmbeddedFiles, fiProtected,
-    fiCreationDate, fiModifiedDate, fiMetadataDate,
-    fiID, fiAttributesString, fiConformance, fiEncryption, fiCreationDateRaw, fiModifiedDateRaw, fiMetadataDateRaw,
-    fiOutlines, fiText
+    fiTitle,
+    fiSubject,
+    fiKeywords,
+    fiAuthor,
+    fiCreator,
+    fiProducer,
+    fiDocStart,
+    fiFirstRow,
+    fiExtensions,
+    fiNumberOfPages,
+    fiNumberOfFontlessPages,
+    fiNumberOfPagesWithImages,
+    fiNumberOfPagesWithFonts,
+    fiAllPagesHaveImages,
+    fiAllPagesHaveNoImages,
+    fiAllPagesHaveFonts,
+    fiAllPagesHaveNoFonts,
+    fiAllPagesHaveExactlyOneImage,
+    fiPDFVersion,
+    fiPageWidth,
+    fiPageHeight,
+    fiCopyable,
+    fiPrintable,
+    fiCommentable,
+    fiChangeable,
+    fiEncrypted,
+    fiTagged,
+    fiLinearized,
+    fiIncremental,
+    fiSigned,
+    fiOutlined,
+    fiEmbeddedFiles,
+    fiProtected,
+    fiCreationDate,
+    fiModifiedDate,
+    fiMetadataDate,
+    fiID,
+    fiAttributesString,
+    fiConformance,
+    fiEncryption,
+    fiCreationDateRaw,
+    fiModifiedDateRaw,
+    fiMetadataDateRaw,
+    fiOutlines,
+    fiText
 };
-
-/**< used to globally set the number of supported fields. */
-constexpr size_t FIELD_COUNT{ static_cast<size_t>(fiText + 1) };
 
 #ifdef _DEBUG
 extern bool __cdecl _trace(const wchar_t *format, ...);

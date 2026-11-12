@@ -727,7 +727,6 @@ int PDFDocEx::getNumFontlessPages()
                     if (resource)
                     {
                         Object fontObj;
-                        ;
                         if (resource->lookup("Font", &fontObj)->isDict())
                         {
                             countPageAsFontless = false;

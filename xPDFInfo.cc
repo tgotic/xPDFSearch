@@ -22,49 +22,68 @@ static auto enableCompareFields{ false };
 options_t globalOptionsFromIni;
 
 /**
-* Names of fields returned to TC.
-* Names are grouped by field types.
+ * TC field structure
+ */
+typedef struct field_s
+{
+    const char* name;
+    int type;
+    int flags;
+} field_t;
+
+/**
+* Names, types and flags of fields returned to TC.
 */
-static constexpr std::array fieldNames
+static constexpr std::array fields
 {
-    "Title", "Subject", "Keywords", "Author", "Application", "PDF Producer", "Document Start", "First Row", "Extensions",
-    "Number Of Pages", "Number Of Fontless Pages", "Number Of Pages With Images", "Number Of Pages With Fonts",
-    "All Pages Have Images", "All Pages Have No Images", "All Pages Have Fonts", "All Pages Have No Fonts", "All Pages Have Exactly One Image",
-    "PDF Version", "Page Width", "Page Height",
-    "Copying Allowed", "Printing Allowed", "Adding Comments Allowed", "Changing Allowed", "Encrypted", "Tagged", "Linearized", "Incremental", "Signature Field", "Outlined", "Embedded Files", "Protected",
-    "Created", "Modified", "Metadata Date",
-    "ID", "PDF Attributes", "Conformance", "Encryption", "Created Raw", "Modified Raw", "Metadata Date Raw",
-    "Outlines", "Text"
+    field_t{ "Title",                               ft_stringw,             0 }, // fiTitle
+    field_t{ "Subject",                             ft_stringw,             0 }, // fiSubject
+    field_t{ "Keywords",                            ft_stringw,             0 }, // fiKeywords
+    field_t{ "Author",                              ft_stringw,             0 }, // fiAuthor
+    field_t{ "Application",                         ft_stringw,             0 }, // fiCreator
+    field_t{ "PDF Producer",                        ft_stringw,             0 }, // fiProducer
+    field_t{ "Document Start",                      ft_stringw,             0 }, // fiDocStart
+    field_t{ "First Row",                           ft_stringw,             0 }, // fiFirstRow
+    field_t{ "Extensions",                          ft_stringw,             0 }, // fiExtensions
+    field_t{ "Number Of Pages",                     ft_numeric_32,          0 }, // fiNumberOfPages
+    field_t{ "Number Of Fontless Pages",            ft_numeric_32,          0 }, // fiNumberOfFontlessPages
+    field_t{ "Number Of Pages With Images",         ft_numeric_32,          0 }, // fiNumberOfPagesWithImages
+    field_t{ "Number Of Pages With Fonts",          ft_numeric_32,          0 }, // fiNumberOfPagesWithFonts
+    field_t{ "All Pages Have Images",               ft_boolean,             0 }, // fiAllPagesHaveImages
+    field_t{ "All Pages Have No Images",            ft_boolean,             0 }, // fiAllPagesHaveNoImages
+    field_t{ "All Pages Have Fonts",                ft_boolean,             0 }, // fiAllPagesHaveFonts
+    field_t{ "All Pages Have No Fonts",             ft_boolean,             0 }, // fiAllPagesHaveNoFonts
+    field_t{ "All Pages Have Exactly One Image",    ft_boolean,             0 }, // fiAllPagesHaveExactlyOneImage
+    field_t{ "PDF Version",                         ft_numeric_floating,    0 }, // fiPDFVersion
+    field_t{ "Page Width",                          ft_numeric_floating,    0 }, // fiPageWidth
+    field_t{ "Page Height",                         ft_numeric_floating,    0 }, // fiPageHeight
+    field_t{ "Copying Allowed",                     ft_boolean,             0 }, // fiCopyable
+    field_t{ "Printing Allowed",                    ft_boolean,             0 }, // fiPrintable
+    field_t{ "Adding Comments Allowed",             ft_boolean,             0 }, // fiCommentable
+    field_t{ "Changing Allowed",                    ft_boolean,             0 }, // fiChangeable
+    field_t{ "Encrypted",                           ft_boolean,             0 }, // fiEncrypted
+    field_t{ "Tagged",                              ft_boolean,             0 }, // fiTagged
+    field_t{ "Linearized",                          ft_boolean,             0 }, // fiLinearized
+    field_t{ "Incremental",                         ft_boolean,             0 }, // fiIncremental
+    field_t{ "Signature Field",                     ft_boolean,             0 }, // fiSigned
+    field_t{ "Outlined",                            ft_boolean,             0 }, // fiOutlined
+    field_t{ "Embedded Files",                      ft_boolean,             0 }, // fiEmbeddedFiles
+    field_t{ "Protected",                           ft_boolean,             0 }, // fiProtected
+    field_t{ "Created",                             ft_datetime,            0 }, // fiCreationDate
+    field_t{ "Modified",                            ft_datetime,            0 }, // fiModifiedDate
+    field_t{ "Metadata Date",                       ft_datetime,            0 }, // fiMetadataDate
+    field_t{ "ID",                                  ft_stringw,             0 }, // fiID
+    field_t{ "PDF Attributes",                      ft_stringw,             contflags_substattributestr }, // fiAttributesString
+    field_t{ "Conformance",                         ft_stringw,             0 }, // fiConformance
+    field_t{ "Encryption",                          ft_stringw,             0 }, // fiEncryption
+    field_t{ "Created Raw",                         ft_stringw,             0 }, // fiCreationDateRaw
+    field_t{ "Modified Raw",                        ft_stringw,             0 }, // fiModifiedDateRaw
+    field_t{ "Metadata Date Raw",                   ft_stringw,             0 }, // fiMetadataDateRaw
+    field_t{ "Outlines",                            ft_fulltext,            0 }, // fiOutlines
+    field_t{ "Text",                                ft_fulltext,            0 }, // fiText
 };
-static_assert(fieldNames.size() == FIELD_COUNT, "fieldNames size error");
 
-/** Array used to simplify fieldType returning. */
-constexpr std::array fieldTypes
-{
-    ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw,
-    ft_numeric_32, ft_numeric_32, ft_numeric_32, ft_numeric_32,
-    ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean,
-    ft_numeric_floating, ft_numeric_floating, ft_numeric_floating,
-    ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean, ft_boolean,
-    ft_datetime, ft_datetime, ft_datetime,
-    ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw, ft_stringw,
-    ft_fulltext, ft_fulltext
-};
-static_assert(fieldTypes.size() == FIELD_COUNT, "fieldTypes size error");
-
-/** Supported field flags, special value for attributes */
-constexpr std::array fieldFlags
-{
-    0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0, 0,
-    0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, contflags_substattributestr,
-    0, 0, 0, 0, 0, 0, 0,
-    0, 0
-};
-static_assert(fieldFlags.size() == FIELD_COUNT, "fieldFlags size error");
+static_assert(fields.size() == fieldIndexes::fiText + 1, "fields size error");
 
 /**< Only one instance of PDFExtractor per thread. */
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
@@ -200,25 +219,25 @@ int __stdcall ContentGetSupportedField(int fieldIndex, char* fieldName, char* un
     units[0] = 0;
 
     // set field names for compare indexes
-    if ((fieldIndex >= ft_comparebaseindex) && (fieldIndex < ft_comparebaseindex + FIELD_COUNT))
+    if ((fieldIndex >= ft_comparebaseindex) && (fieldIndex < ft_comparebaseindex + fields.size()))
     {
         if (enableCompareFields)
         {
-            StringCchPrintfA(fieldName, maxlen, "Compare %s", fieldNames[fieldIndex - ft_comparebaseindex]);
+            StringCchPrintfA(fieldName, maxlen, "Compare %s", fields[fieldIndex - ft_comparebaseindex].name);
             return ft_comparecontent;
         }
         return ft_nomorefields;
     }
 
     // Exclude date time fields in older TC versions.
-    if ((fieldIndex < 0) || (fieldIndex >= FIELD_COUNT) ||
+    if ((fieldIndex < 0) || (fieldIndex >= fields.size()) ||
         (!enableDateTimeField && ((fieldIndex == fiCreationDate) || (fieldIndex == fiModifiedDate) || (fieldIndex == fiMetadataDate))))
     {
         return ft_nomorefields;
     }
 
     // set field names
-    StringCchCopyA(fieldName, maxlen, fieldNames[fieldIndex]);
+    StringCchCopyA(fieldName, maxlen, fields[fieldIndex].name);
 
     //set units names
     if ((fieldIndex == fiPageWidth) || (fieldIndex == fiPageHeight))
@@ -226,7 +245,7 @@ int __stdcall ContentGetSupportedField(int fieldIndex, char* fieldName, char* un
         StringCchCopyA(units, maxlen, "mm|cm|in|pt");
     }
 
-    return fieldTypes[fieldIndex];
+    return fields[fieldIndex].type;
 }
 
 /**
@@ -280,7 +299,7 @@ int __stdcall ContentGetValueW(const wchar_t* fileName, int fieldIndex, int unit
 {
     TRACE(L"%hs!%ls!%d %d\n", __FUNCTION__, fileName, fieldIndex, unitIndex);
 
-    if ((fieldIndex >= fiTitle) && (fieldIndex <= fiText))
+    if ((fieldIndex >= 0) && (fieldIndex < fields.size()))
     {
         if (CONTENT_DELAYIFSLOW & flags)
         {
@@ -445,9 +464,9 @@ int __stdcall ContentGetSupportedFieldFlags(int fieldIndex)
         return contflags_substmask;
     }
 
-    if ((fieldIndex >= fiTitle) && (fieldIndex <= fiText))
+    if ((fieldIndex >= 0) && (fieldIndex < fields.size()))
     {
-        return fieldFlags[fieldIndex];
+        return fields[fieldIndex].flags;
     }
 
     return 0;
@@ -467,7 +486,7 @@ int __stdcall ContentGetSupportedFieldFlags(int fieldIndex)
 int __stdcall ContentCompareFilesW(PROGRESSCALLBACKPROC progressCallback, int compareIndex, wchar_t* fileName1, wchar_t* fileName2, FileDetailsStruct* fileDetails)
 {
     TRACE(L"%hs\n", __FUNCTION__);
-    if ((compareIndex < ft_comparebaseindex) || (compareIndex >= ft_comparebaseindex + FIELD_COUNT))
+    if ((compareIndex < ft_comparebaseindex) || (compareIndex >= ft_comparebaseindex + fields.size()))
     {
         return ft_compare_next;
     }
